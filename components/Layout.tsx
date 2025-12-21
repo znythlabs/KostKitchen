@@ -41,6 +41,7 @@ export const DesktopSidebar = () => {
       <div className="flex-1 px-3 py-4 space-y-0.5">
         <NavItemDesktop target="dashboard" label="Overview" icon="lucide:layout-grid" />
         <NavItemDesktop target="recipes" label="Menu" icon="lucide:utensils" />
+        <NavItemDesktop target="engineering" label="Matrix" icon="lucide:scatter-chart" />
         <NavItemDesktop target="inventory" label="Inventory" icon="lucide:package" />
         <NavItemDesktop target="finance" label="Financials" icon="lucide:pie-chart" />
         <NavItemDesktop target="calendar" label="Reports" icon="lucide:calendar" />
@@ -64,10 +65,11 @@ export const MobileNav = () => {
   const { view, setView } = useApp();
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 glass-regular border-x-0 border-b-0 z-40 pb-safe-b">
-      <div className="grid grid-cols-5 h-[52px]">
+      <div className="grid grid-cols-6 h-[52px]">
         <NavItemMobile target="dashboard" label="Overview" icon="lucide:layout-grid" />
         <NavItemMobile target="recipes" label="Menu" icon="lucide:chef-hat" />
-        <NavItemMobile target="inventory" label="Inventory" icon="lucide:package-open" />
+        <NavItemMobile target="engineering" label="Matrix" icon="lucide:scatter-chart" />
+        <NavItemMobile target="inventory" label="Inv" icon="lucide:package-open" />
         <NavItemMobile target="finance" label="Finance" icon="lucide:banknote" />
         <NavItemMobile target="calendar" label="Reports" icon="lucide:calendar" />
       </div>
@@ -83,6 +85,7 @@ export const Header = () => {
   const titleMap: Record<string, string> = {
     dashboard: 'Overview',
     recipes: 'Menu',
+    engineering: 'Menu Engineering',
     inventory: 'Inventory',
     finance: 'Financials',
     calendar: 'Reports',

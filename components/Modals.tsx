@@ -41,6 +41,63 @@ const ConfirmationModal = () => {
   );
 };
 
+const CookModal = () => {
+    const { cookModal, closeCookModal, cookRecipe } = useApp();
+    const [portions, setPortions] = useState<string>('1');
+
+    if (!cookModal.isOpen) return null;
+
+    const handleCook = async () => {
+        if (cookModal.recipeId && portions) {
+            await cookRecipe(cookModal.recipeId, Number(portions));
+            closeCookModal();
+            setPortions('1');
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={closeCookModal}></div>
+            <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl max-w-sm w-full relative z-10 overflow-hidden fade-enter border border-gray-100 dark:border-[#38383A]">
+                <div className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                         <div className="w-10 h-10 rounded-full bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center">
+                            <iconify-icon icon="lucide:chef-hat" width="20"></iconify-icon>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Cook Mode</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Deduct ingredients from stock</p>
+                        </div>
+                    </div>
+                    
+                    <div className="mb-6">
+                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Recipe</label>
+                        <div className="text-base font-medium text-gray-900 dark:text-white mb-4">{cookModal.recipeName}</div>
+                        
+                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Portions to Cook</label>
+                        <input 
+                            type="number" 
+                            min="1"
+                            value={portions}
+                            onChange={(e) => setPortions(e.target.value)}
+                            className="w-full bg-gray-100 dark:bg-white/5 border border-transparent focus:border-[#007AFF] focus:bg-white dark:focus:bg-black rounded-xl px-4 py-3 text-lg font-bold text-gray-900 dark:text-white outline-none transition-all"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                         <button onClick={closeCookModal} className="px-4 py-3 rounded-xl font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+                            Cancel
+                        </button>
+                        <button onClick={handleCook} className="px-4 py-3 rounded-xl font-semibold text-white bg-[#007AFF] hover:bg-[#0056b3] transition-colors shadow-lg shadow-blue-500/20">
+                            Cook Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export const Modals = () => {
   const { activeModal, closeModal, data, builder, setBuilder, addStockItem, deleteStockItem, editingStockItem, pickerFilter } = useApp();
   const [pickerSearch, setPickerSearch] = useState("");
@@ -332,6 +389,7 @@ export const Modals = () => {
       </div>
       
       <ConfirmationModal />
+      <CookModal />
     </>
   );
 };

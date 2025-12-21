@@ -6,7 +6,7 @@ export const Recipes = () => {
     data, builder, setBuilder, loadRecipeToBuilder,
     calculateRecipeCost, getIngredient, getRecipeFinancials,
     openModal, saveCurrentRecipe, deleteRecipe, duplicateRecipe, askConfirmation, darkMode, resetBuilder,
-    selectedRecipeId, setSelectedRecipeId
+    selectedRecipeId, setSelectedRecipeId, openCookModal
   } = useApp();
 
   const mode = builder.showBuilder ? 'builder' : 'list';
@@ -259,6 +259,14 @@ export const Recipes = () => {
                     </div>
                   )}
                   <div className="absolute top-2 right-2 glass-ultra-thin px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider text-gray-800 dark:text-gray-200">{r.category}</div>
+                  
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); openCookModal(r.id, r.name); }}
+                    className="absolute top-2 left-2 glass-ultra-thin w-8 h-8 rounded-full flex items-center justify-center text-gray-800 dark:text-white hover:bg-[#007AFF] hover:text-white transition-colors shadow-sm"
+                    title="Cook Mode"
+                  >
+                    <iconify-icon icon="lucide:chef-hat" width="16"></iconify-icon>
+                  </button>
 
                   {isSelected && (
                     <div className="absolute inset-0 bg-[#007AFF]/20 backdrop-blur-[1px] flex items-center justify-center">

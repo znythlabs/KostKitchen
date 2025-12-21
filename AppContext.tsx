@@ -7,6 +7,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: PropsWithChildren) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<{ email?: string } | null>(null);
   const [view, setView] = useState<View>('dashboard');
   const [darkMode, setDarkMode] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -27,13 +28,48 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [pickerFilter, setPickerFilter] = useState<'ingredient' | 'other' | null>(null);
   const [editingStockItem, setEditingStockItem] = useState<Ingredient | null>(null);
 
-  const [confirmModal, setConfirmModal] = useState<{ title: string; message: string; onConfirm: () => void; isDestructive?: boolean; isOpen: boolean }>({
+  const [confirmModal, setConfirmModal] = useState<{ title: string; message: string; onConfirm: () => void; isDestructive?: boolean; isOpen: boolean }>({ 
     isOpen: false,
     title: '',
     message: '',
     onConfirm: () => { },
     isDestructive: false
   });
+
+  const [cookModal, setCookModal] = useState<{ isOpen: boolean; recipeId: number | null; recipeName: string }>({ isOpen: false, recipeId: null, recipeName: '' });
+
+  const openCookModal = (recipeId: number, recipeName: string) => setCookModal({ isOpen: true, recipeId, recipeName });
+  const closeCookModal = () => setCookModal({ isOpen: false, recipeId: null, recipeName: '' });
+
+  const cookRecipe = async (recipeId: number, portions: number) => {
+    const recipe = data.recipes.find(r => r.id === recipeId);
+    if (!recipe) return;
+
+    const batchSize = recipe.batchSize || 1;
+    const ratio = portions / batchSize;
+    const updates: { id: number, stockQty: number }[] = [];
+
+    for (const ri of recipe.ingredients) {
+        const ingredient = data.ingredients.find(i => i.id === ri.id);
+        if (ingredient) {
+            const amountNeeded = ri.qty * ratio;
+            const newStock = ingredient.stockQty - amountNeeded;
+            updates.push({ id: ingredient.id, stockQty: newStock });
+        }
+    }
+
+    // Optimistic Update
+    const newIngredients = data.ingredients.map(i => {
+        const update = updates.find(u => u.id === i.id);
+        return update ? { ...i, stockQty: update.stockQty } : i;
+    });
+    setData(prev => ({ ...prev, ingredients: newIngredients }));
+
+    // Database Update
+    for (const u of updates) {
+        await supabase.from('ingredients').update({ stock_qty: u.stockQty }).eq('id', u.id);
+    }
+  };
 
   // --- SUPABASE DATA FETCHING ---
   const refreshData = async () => {
@@ -42,11 +78,13 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     
     if (!user) {
       setIsLoggedIn(false);
+      setUser(null);
       setLoading(false);
       return;
     }
 
     setIsLoggedIn(true);
+    setUser(user);
 
     try {
       // Parallel Fetch
@@ -177,6 +215,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const login = () => { refreshData(); }; // Handled by AuthLayer + Subscription
   const logout = async () => { 
     await supabase.auth.signOut();
+    setUser(null);
     window.location.reload(); 
   };
 
@@ -546,14 +585,15 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   return (
     <AppContext.Provider value={{
-      view, setView, isLoggedIn, login, logout, darkMode, toggleDarkMode,
+      view, setView, isLoggedIn, login, logout, darkMode, toggleDarkMode, user,
       data, setData, getIngredient, calculateRecipeCost, getRecipeFinancials, getProjection, getStockStatus,
       captureDailySnapshot, getWeeklySummary, getMonthlySummary,
       builder, setBuilder, loadRecipeToBuilder, saveCurrentRecipe, deleteRecipe, duplicateRecipe, resetBuilder,
       selectedRecipeId, setSelectedRecipeId,
       inventoryEditMode, toggleInventoryEdit, updateStockItem, addStockItem, deleteStockItem,
       activeModal, pickerFilter, openModal, closeModal, editingStockItem,
-      confirmModal, askConfirmation, closeConfirmation
+      confirmModal, askConfirmation, closeConfirmation,
+      cookModal, openCookModal, closeCookModal, cookRecipe
     }}>
       {children}
     </AppContext.Provider>

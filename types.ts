@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export type View = 'dashboard' | 'recipes' | 'inventory' | 'finance' | 'calendar' | 'profile';
+export type View = 'dashboard' | 'recipes' | 'inventory' | 'finance' | 'calendar' | 'profile' | 'engineering';
 
 export interface Ingredient {
   id: number;
@@ -177,4 +177,7 @@ export interface AppContextType {
   confirmModal: { title: string; message: string; onConfirm: () => void; isDestructive?: boolean; isOpen: boolean };
   askConfirmation: (options: { title: string; message: string; onConfirm: () => void; isDestructive?: boolean; }) => void;
   closeConfirmation: () => void;
+  
+  // User
+  user: { email?: string } | null;
 }

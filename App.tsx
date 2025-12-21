@@ -11,6 +11,7 @@ import { Recipes } from './views/Recipes';
 import { Finance } from './views/Finance';
 import { Calendar } from './views/Calendar';
 import { Profile } from './views/Profile';
+import { MenuEngineering } from './views/MenuEngineering';
 
 const MainContent = () => {
   const { isLoggedIn, view } = useApp();
@@ -31,6 +32,7 @@ const MainContent = () => {
           {view === 'recipes' && <Recipes />}
           {view === 'finance' && <Finance />}
           {view === 'calendar' && <Calendar />}
+          {view === 'engineering' && <MenuEngineering />}
           {view === 'profile' && <Profile />}
         </div>
       </main>

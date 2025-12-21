@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useApp } from '../AppContext';
 import { Ingredient } from '../types';
 
@@ -56,6 +58,46 @@ export const Inventory = () => {
       return comparison;
     });
   }, [data.ingredients, search, activeTab, sortConfig]);
+
+  // Smart Purchasing Logic
+  const lowStockCount = useMemo(() => {
+    return data.ingredients.filter(i => i.minStock > 0 && i.stockQty <= i.minStock).length;
+  }, [data.ingredients]);
+
+  const generateShoppingList = () => {
+    const lowStockItems = data.ingredients.filter(i => i.minStock > 0 && i.stockQty <= i.minStock);
+    
+    if (lowStockItems.length === 0) {
+        alert("Everything is well stocked! No items need reordering.");
+        return;
+    }
+
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text("Shopping List", 14, 22);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.text(`Total Items: ${lowStockItems.length}`, 14, 35);
+
+    const tableData = lowStockItems.map(i => [
+        i.name,
+        i.supplier || '-',
+        `${i.stockQty} ${i.unit}`,
+        `${i.minStock} ${i.unit}`,
+        `${Math.ceil((i.minStock * 2 - i.stockQty))} ${i.unit}`
+    ]);
+
+    autoTable(doc, {
+        head: [['Item', 'Supplier', 'Current Stock', 'Min Stock', 'Order Qty (Est)']],
+        body: tableData,
+        startY: 40,
+        theme: 'grid',
+        styles: { fontSize: 10, cellPadding: 3 },
+        headStyles: { fillColor: [0, 122, 255] }
+    });
+
+    doc.save(`shopping-list-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   const toggleSort = (key: SortKey) => setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
 
@@ -177,6 +219,21 @@ export const Inventory = () => {
                   className={`whitespace-nowrap px-5 py-2.5 text-sm font-bold rounded-full shadow-sm active-scale transition-all flex items-center gap-2 border ${selectionMode ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-black dark:border-white' : 'bg-white dark:bg-[#2C2C2E] text-gray-700 dark:text-white border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5'}`}
                 >
                   {selectionMode ? 'Cancel' : 'Select'}
+                </button>
+            )}
+
+            {!inventoryEditMode && (
+                <button 
+                  onClick={generateShoppingList}
+                  className="whitespace-nowrap px-5 py-2.5 text-sm font-bold rounded-full shadow-sm active-scale transition-all flex items-center gap-2 border bg-white dark:bg-[#2C2C2E] text-gray-700 dark:text-white border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 relative overflow-visible"
+                >
+                  <iconify-icon icon="lucide:shopping-cart" width="16"></iconify-icon>
+                  <span className="hidden md:inline">Smart Buy</span>
+                  {lowStockCount > 0 && (
+                      <span className="absolute my-1 -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-[#1C1C1E] animate-pulse z-10">
+                          {lowStockCount}
+                      </span>
+                  )}
                 </button>
             )}
 
