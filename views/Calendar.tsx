@@ -480,7 +480,7 @@ export const Calendar = () => {
                         </div>
 
                         {/* Header */}
-                        <div className="px-6 pb-4 pt-6 md:pt-8 md:px-6 md:pb-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl sticky top-0 z-10 shrink-0">
+                        <div className="px-6 pb-4 pt-0 md:pt-6 md:px-6 md:pb-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl sticky top-0 z-10 shrink-0">
                             <div>
                                 <h3 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
                                     {new Date(selectedDay.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -583,7 +583,7 @@ export const Calendar = () => {
                             <div className="w-10 h-1 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
                         </div>
 
-                        <div className="px-6 pb-4 pt-6 md:pt-8 md:px-6 md:pb-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl sticky top-0 z-10 shrink-0">
+                        <div className="px-6 pb-4 pt-0 md:pt-6 md:px-6 md:pb-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl sticky top-0 z-10 shrink-0">
                             <div>
                                 <h3 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Weekly Summary</h3>
                                 <p className="text-sm font-medium text-gray-500">

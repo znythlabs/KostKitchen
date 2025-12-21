@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../AppContext';
 import { Ingredient } from '../types';
 
@@ -345,9 +346,26 @@ export const Inventory = () => {
                   </div>
 
                   {/* Mobile Layout */}
-                  <div className="flex flex-col md:hidden px-4 py-4 space-y-3 active:bg-gray-50 dark:active:bg-white/5 transition-colors" onClick={() => !inventoryEditMode && toggleExpand(item.id)}>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 pr-4">
+                  <div className={`flex flex-col md:hidden px-4 py-4 space-y-3 active:bg-gray-50 dark:active:bg-white/5 transition-colors border-b border-gray-100 dark:border-white/5 last:border-0 ${selectedItems.has(item.id) ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`} onClick={() => {
+                    if (selectionMode) {
+                        toggleSelect(item.id);
+                    } else if (!inventoryEditMode) {
+                        toggleExpand(item.id);
+                    }
+                  }}>
+                    <div className="flex justify-between items-start gap-3">
+                      {selectionMode && (
+                        <div className="flex items-center pt-1 animate-in slide-in-from-left-2 duration-200">
+                             <input 
+                                type="checkbox" 
+                                className="rounded border-gray-300 text-[#007AFF] focus:ring-[#007AFF] w-5 h-5 cursor-pointer"
+                                checked={selectedItems.has(item.id)}
+                                onChange={() => toggleSelect(item.id)}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </div>
+                      )}
+                      <div className="flex-1 pr-2">
                         <div className="flex items-center gap-2">
                            <div className="font-semibold text-gray-900 dark:text-white text-base">{item.name}</div>
                            {!inventoryEditMode && <button onClick={(e) => { e.stopPropagation(); openModal('stock', item); }} className="text-gray-400 p-1"><iconify-icon icon="lucide:pencil" width="14"></iconify-icon></button>}
@@ -467,32 +485,35 @@ export const Inventory = () => {
         </div>
         </div>
       </div>
-      {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden scale-100 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-              <div className="p-6 text-center">
-                 <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 text-red-500 flex items-center justify-center mx-auto mb-4">
-                    <iconify-icon icon="lucide:alert-triangle" width="24"></iconify-icon>
-                 </div>
-                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Delete Item?</h3>
-                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                      {deleteConfirm.type === 'bulk' 
-                        ? `Are you sure you want to delete ${deleteConfirm.count} selected items? This action cannot be undone.`
-                        : <>Are you sure you want to delete <span className="font-bold text-gray-900 dark:text-white">"{deleteConfirm.name}"</span>? This action cannot be undone.</>
-                      }
-                   </p>
-                   <div className="grid grid-cols-2 gap-3">
-                      <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2.5 rounded-xl font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
-                         Cancel
-                      </button>
-                      <button onClick={confirmDelete} className="px-4 py-2.5 rounded-xl font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20">
-                         Delete
-                      </button>
-                   </div>
+      {deleteConfirm && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[100]">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setDeleteConfirm(null)}></div>
+          <div className="relative z-10 min-h-full flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden scale-100 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 pb-6 pt-6 text-center">
+                <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 text-red-500 flex items-center justify-center mx-auto mb-4">
+                  <iconify-icon icon="lucide:alert-triangle" width="24"></iconify-icon>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Delete Item?</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                  {deleteConfirm.type === 'bulk'
+                    ? `Are you sure you want to delete ${deleteConfirm.count} selected items? This action cannot be undone.`
+                    : <>Are you sure you want to delete <span className="font-bold text-gray-900 dark:text-white">"{deleteConfirm.name}"</span>? This action cannot be undone.</>
+                  }
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2.5 rounded-xl font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={confirmDelete} className="px-4 py-2.5 rounded-xl font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20">
+                    Delete
+                  </button>
+                </div>
               </div>
-           </div>
-        </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

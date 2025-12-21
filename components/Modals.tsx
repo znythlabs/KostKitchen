@@ -42,8 +42,9 @@ const ConfirmationModal = () => {
 };
 
 export const Modals = () => {
-  const { activeModal, closeModal, data, builder, setBuilder, addStockItem, editingStockItem, pickerFilter } = useApp();
+  const { activeModal, closeModal, data, builder, setBuilder, addStockItem, deleteStockItem, editingStockItem, pickerFilter } = useApp();
   const [pickerSearch, setPickerSearch] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [stockForm, setStockForm] = useState({ 
     name: '', 
     cost: '', 
@@ -61,6 +62,7 @@ export const Modals = () => {
   // Load editing item
   useEffect(() => {
     if (editingStockItem && activeModal === 'stock') {
+      setShowDeleteConfirm(false);
       setStockForm({
         name: editingStockItem.name,
         cost: editingStockItem.cost.toString(),
@@ -76,9 +78,17 @@ export const Modals = () => {
       });
     } else if (activeModal === 'stock') {
       // Reset
+      setShowDeleteConfirm(false);
       setStockForm({ name: '', cost: '', unit: 'g', qty: '', min: '', supplier: '', packageCost: '', packageQty: '', shippingFee: '', priceBuffer: '', type: 'ingredient' });
     }
   }, [activeModal, editingStockItem]);
+
+  const handleDelete = () => {
+    if (editingStockItem) {
+        deleteStockItem(editingStockItem.id);
+        closeModal();
+    }
+  };
 
   // Auto-calculate Unit Cost when package details change
   useEffect(() => {
@@ -295,10 +305,28 @@ export const Modals = () => {
           </div>
           
           <div className="shrink-0 p-6 pt-2 pb-safe-b bg-white dark:bg-[#1C1C1E] border-t border-gray-100 dark:border-[#38383A]">
-            <div className="flex gap-3">
-              <button type="button" onClick={closeModal} className="flex-1 py-3 rounded-xl text-sm font-semibold bg-gray-100 dark:bg-[#2C2C2E] text-gray-900 dark:text-white active-scale">Cancel</button>
-              <button type="submit" className="flex-1 py-3 rounded-xl text-sm font-semibold bg-[#007AFF] text-white active-scale shadow-sm shadow-blue-200 dark:shadow-none">{editingStockItem ? 'Update Item' : 'Add Item'}</button>
-            </div>
+            {showDeleteConfirm ? (
+                 <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                    <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/20 text-center">
+                        <p className="text-sm font-semibold text-red-600 dark:text-red-400">Are you sure you want to delete this item?</p>
+                        <p className="text-[10px] text-red-500/80 mt-1">This action cannot be undone.</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <button type="button" onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-3 rounded-xl text-sm font-semibold bg-gray-100 dark:bg-[#2C2C2E] text-gray-900 dark:text-white active-scale">Cancel</button>
+                        <button type="button" onClick={handleDelete} className="flex-1 py-3 rounded-xl text-sm font-semibold bg-red-500 text-white active-scale shadow-sm shadow-red-200 dark:shadow-none">Confirm Delete</button>
+                    </div>
+                 </div>
+            ) : (
+                <div className="flex gap-3">
+                    {editingStockItem && (
+                         <button type="button" onClick={() => setShowDeleteConfirm(true)} className="px-4 py-3 rounded-xl text-sm font-semibold bg-red-50 dark:bg-red-900/10 text-red-500 active-scale hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors">
+                            <iconify-icon icon="lucide:trash-2" width="18"></iconify-icon>
+                         </button>
+                    )}
+                    <button type="button" onClick={closeModal} className="flex-1 py-3 rounded-xl text-sm font-semibold bg-gray-100 dark:bg-[#2C2C2E] text-gray-900 dark:text-white active-scale">Cancel</button>
+                    <button type="submit" className="flex-1 py-3 rounded-xl text-sm font-semibold bg-[#007AFF] text-white active-scale shadow-sm shadow-blue-200 dark:shadow-none">{editingStockItem ? 'Update Item' : 'Add Item'}</button>
+                </div>
+            )}
           </div>
         </form>
       </div>
