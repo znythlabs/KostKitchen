@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppProvider, useApp } from './AppContext';
+import { SoundProvider } from './SoundContext';
 import { AuthLayer } from './components/AuthLayer';
 import { MobileNav, DesktopSidebar, Header } from './components/Layout';
 import { Modals } from './components/Modals';
@@ -44,7 +45,9 @@ const MainContent = () => {
 const App = () => {
   return (
     <AppProvider>
-      <MainContent />
+      <SoundProvider>
+        <MainContent />
+      </SoundProvider>
     </AppProvider>
   );
 };

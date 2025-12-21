@@ -43,56 +43,92 @@ const ConfirmationModal = () => {
 
 const CookModal = () => {
     const { cookModal, closeCookModal, cookRecipe } = useApp();
-    const [portions, setPortions] = useState<string>('1');
+    const [portions, setPortions] = useState<number>(1);
+    const [isSuccess, setIsSuccess] = useState(false);
+
+    useEffect(() => {
+        if (cookModal.isOpen) {
+            setPortions(1);
+            setIsSuccess(false);
+        }
+    }, [cookModal.isOpen]);
 
     if (!cookModal.isOpen) return null;
 
     const handleCook = async () => {
-        if (cookModal.recipeId && portions) {
-            await cookRecipe(cookModal.recipeId, Number(portions));
-            closeCookModal();
-            setPortions('1');
+        if (cookModal.recipeId && portions > 0) {
+            await cookRecipe(cookModal.recipeId, portions);
+            setIsSuccess(true);
+            setTimeout(() => {
+                closeCookModal();
+            }, 1500);
         }
     };
+
+    const increment = () => setPortions(p => p + 1);
+    const decrement = () => setPortions(p => Math.max(1, p - 1));
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={closeCookModal}></div>
-            <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl max-w-sm w-full relative z-10 overflow-hidden fade-enter border border-gray-100 dark:border-[#38383A]">
-                <div className="p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                         <div className="w-10 h-10 rounded-full bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center">
-                            <iconify-icon icon="lucide:chef-hat" width="20"></iconify-icon>
+            <div className="bg-white dark:bg-[#1C1C1E] rounded-[32px] shadow-2xl max-w-sm w-full relative z-10 overflow-hidden fade-enter border border-gray-100 dark:border-[#38383A] p-8 flex flex-col items-center text-center transition-all duration-300">
+                
+                {isSuccess ? (
+                    <div className="py-8 animate-in fade-in zoom-in duration-300">
+                        <div className="w-20 h-20 rounded-full bg-green-50 dark:bg-green-900/20 text-green-500 flex items-center justify-center mb-6 mx-auto">
+                            <iconify-icon icon="lucide:check" width="40"></iconify-icon>
                         </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Cook Mode</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">Deduct ingredients from stock</p>
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Bon Appétit!</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Inventory updated successfully.</p>
+                    </div>
+                ) : (
+                    <>
+                        {/* Header Icon */}
+                        <div className="w-16 h-16 rounded-full bg-orange-50 dark:bg-orange-900/20 text-orange-500 flex items-center justify-center mb-6 shadow-sm">
+                            <iconify-icon icon="lucide:flame" width="32"></iconify-icon>
                         </div>
-                    </div>
-                    
-                    <div className="mb-6">
-                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Recipe</label>
-                        <div className="text-base font-medium text-gray-900 dark:text-white mb-4">{cookModal.recipeName}</div>
-                        
-                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Portions to Cook</label>
-                        <input 
-                            type="number" 
-                            min="1"
-                            value={portions}
-                            onChange={(e) => setPortions(e.target.value)}
-                            className="w-full bg-gray-100 dark:bg-white/5 border border-transparent focus:border-[#007AFF] focus:bg-white dark:focus:bg-black rounded-xl px-4 py-3 text-lg font-bold text-gray-900 dark:text-white outline-none transition-all"
-                        />
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                         <button onClick={closeCookModal} className="px-4 py-3 rounded-xl font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
-                            Cancel
-                        </button>
-                        <button onClick={handleCook} className="px-4 py-3 rounded-xl font-semibold text-white bg-[#007AFF] hover:bg-[#0056b3] transition-colors shadow-lg shadow-blue-500/20">
-                            Cook Now
-                        </button>
-                    </div>
-                </div>
+                        {/* Text Content */}
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Cook: {cookModal.recipeName}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-[240px]">Enter number of servings to deduct from inventory.</p>
+                        
+                        {/* Stepper Input */}
+                        <div className="flex items-center gap-6 mb-8">
+                            <button 
+                                onClick={decrement}
+                                className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors active:scale-95"
+                            >
+                                <iconify-icon icon="lucide:minus" width="20"></iconify-icon>
+                            </button>
+                            <div className="text-4xl font-bold text-gray-900 dark:text-white w-16 text-center tabular-nums">
+                                {portions}
+                            </div>
+                            <button 
+                                onClick={increment}
+                                className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 transition-colors active:scale-95"
+                            >
+                                <iconify-icon icon="lucide:plus" width="20"></iconify-icon>
+                            </button>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="w-full space-y-4">
+                            <button 
+                                onClick={handleCook} 
+                                className="w-full bg-[#007AFF] hover:bg-[#0062cc] text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                <iconify-icon icon="lucide:check-circle" width="20"></iconify-icon>
+                                <span>Confirm & Deduct</span>
+                            </button>
+                            <button 
+                                onClick={closeCookModal}
+                                className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

@@ -42,24 +42,58 @@
     }
 
     /* --- LIQUID GLASS BACKGROUND SYSTEM --- */
+    @keyframes gradient-flow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
     .liquid-bg {
-      /* Light Mode: Subtle, airy mesh */
-      background:
+      /* Light Mode: Cinematic Mesh */
+      background: 
         radial-gradient(circle at 15% 50%, rgba(0, 122, 255, 0.08), transparent 25%),
         radial-gradient(circle at 85% 30%, rgba(52, 199, 89, 0.08), transparent 25%),
+        radial-gradient(circle at 50% 80%, rgba(255, 149, 0, 0.05), transparent 30%),
         linear-gradient(180deg, #F2F2F7 0%, #E5E5EA 100%);
-      background-color: #F2F2F7;
+      background-size: 200% 200%;
       background-attachment: fixed;
+      animation: gradient-flow 15s ease infinite;
     }
 
     .dark .liquid-bg {
-      /* Dark Mode: Deep, rich black/gray mesh */
-      background:
-        radial-gradient(circle at 15% 50%, rgba(10, 132, 255, 0.15), transparent 35%),
-        radial-gradient(circle at 85% 30%, rgba(48, 209, 88, 0.1), transparent 35%),
-        linear-gradient(180deg, #000000 0%, #1C1C1E 100%);
-      background-color: #000000;
+      /* Dark Mode: Deep Space Mesh */
+      background: 
+        radial-gradient(circle at 15% 50%, rgba(10, 132, 255, 0.12), transparent 35%),
+        radial-gradient(circle at 85% 30%, rgba(48, 209, 88, 0.08), transparent 35%),
+        radial-gradient(circle at 50% 90%, rgba(255, 69, 58, 0.05), transparent 40%),
+        linear-gradient(180deg, #000000 0%, #101010 100%);
+      background-size: 200% 200%;
       background-attachment: fixed;
+      animation: gradient-flow 20s ease infinite;
+    }
+
+    .midnight .liquid-bg {
+      /* Midnight Mode: Deep Blue/Purple */
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(88, 86, 214, 0.15), transparent 40%),
+        radial-gradient(circle at 80% 30%, rgba(175, 82, 222, 0.1), transparent 40%),
+        linear-gradient(180deg, #050508 0%, #0a0a12 100%);
+      background-size: 200% 200%;
+      background-attachment: fixed;
+      animation: gradient-flow 25s ease infinite;
+    }
+
+    .oled .liquid-bg {
+      /* OLED Mode: Pure Black */
+      background: #000000;
+      animation: none;
+    }
+    
+    .oled .glass-regular, .oled .glass-thin, .oled .glass-ultra-thin {
+        background: #000000 !important;
+        border: 1px solid #333 !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
     }
 
     /* --- MATERIAL SYSTEM --- */

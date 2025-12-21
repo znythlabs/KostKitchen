@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../AppContext';
+import { useSound } from '../SoundContext';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export const Recipes = () => {
   const {
@@ -8,6 +10,8 @@ export const Recipes = () => {
     openModal, saveCurrentRecipe, deleteRecipe, duplicateRecipe, askConfirmation, darkMode, resetBuilder,
     selectedRecipeId, setSelectedRecipeId, openCookModal
   } = useApp();
+
+  const { playClick, playSuccess, playDelete, playHover } = useSound();
 
   const mode = builder.showBuilder ? 'builder' : 'list';
   const [showDiscountDetails, setShowDiscountDetails] = useState(false);
@@ -18,19 +22,20 @@ export const Recipes = () => {
     };
   }, []);
 
-  const handleSwitchToList = () => { resetBuilder(); setSelectedRecipeId(null); };
-  const handleSwitchToBuilder = () => { resetBuilder(); setBuilder(prev => ({ ...prev, showBuilder: true })); setSelectedRecipeId(null); };
+  const handleSwitchToList = () => { playClick(); resetBuilder(); setSelectedRecipeId(null); };
+  const handleSwitchToBuilder = () => { playClick(); resetBuilder(); setBuilder(prev => ({ ...prev, showBuilder: true })); setSelectedRecipeId(null); };
 
-  const handleEditSelected = () => { if (selectedRecipeId) loadRecipeToBuilder(selectedRecipeId); };
-  const handleDuplicateSelected = () => { if (selectedRecipeId) duplicateRecipe(selectedRecipeId); };
+  const handleEditSelected = () => { playClick(); if (selectedRecipeId) loadRecipeToBuilder(selectedRecipeId); };
+  const handleDuplicateSelected = () => { playClick(); if (selectedRecipeId) duplicateRecipe(selectedRecipeId); };
   const handleDeleteSelected = () => {
+    playClick();
     const r = data.recipes.find(i => i.id === selectedRecipeId);
     if (r) {
       askConfirmation({
         title: 'Delete Recipe?',
         message: `Are you sure you want to delete "${r.name}"? This action cannot be undone.`,
         isDestructive: true,
-        onConfirm: () => { deleteRecipe(r.id); setSelectedRecipeId(null); }
+        onConfirm: () => { playDelete(); deleteRecipe(r.id); setSelectedRecipeId(null); }
       });
     }
   };
@@ -68,7 +73,7 @@ export const Recipes = () => {
     setBuilder(prev => ({ ...prev, batchSize: Math.max(1, prev.batchSize + d) }));
   };
 
-  const handleSave = () => { saveCurrentRecipe(); resetBuilder(); };
+  const handleSave = () => { playSuccess(); saveCurrentRecipe(); resetBuilder(); };
 
   // --- CALCULATION ENGINE ---
   const ingredientsList = builder.ingredients.map(i => ({ ...i, details: getIngredient(i.id) }));
@@ -119,16 +124,13 @@ export const Recipes = () => {
     </div>
   );
 
-  const IngredientRow = ({ item }: { item: typeof mappedIngredients[0] }) => {
-    if (!item.details) return null;
+  const IngredientRow = ({ item }: { item: any }) => {
+    const rowTotal = item.qty * (item.details?.cost || 0);
     const [inputValue, setInputValue] = useState(item.qty.toString());
     const [isEditing, setIsEditing] = useState(false);
 
-    // Sync from parent if changed externally (unless editing)
     useEffect(() => {
-      if (!isEditing) {
-        setInputValue(item.qty.toString());
-      }
+      if (!isEditing) setInputValue(item.qty.toString());
     }, [item.qty, isEditing]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,51 +138,66 @@ export const Recipes = () => {
     };
 
     const commitChange = () => {
-      setIsEditing(false);
       const val = parseFloat(inputValue);
-      if (!isNaN(val)) {
+      if (!isNaN(val) && val >= 0) {
         updateBuilderIngredientQty(item.originalIndex, val);
       } else {
         setInputValue(item.qty.toString());
       }
+      setIsEditing(false);
     };
 
-    const bufferedCost = item.details.priceBuffer && item.details.priceBuffer > 0;
-    const rowTotal = item.qty * item.details.cost;
-
     return (
-      <div className="grid grid-cols-12 gap-2 items-center px-4 py-3 border-b border-gray-100 dark:border-white/10 last:border-0 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-        <div className="col-span-5 flex flex-col justify-center pr-1">
-          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight" title={item.details.name}>{item.details.name}</p>
-          <div className="flex items-center gap-1 mt-1">
-            <span className="text-[10px] font-medium text-gray-400">₱{item.details.cost.toFixed(3)}</span>
-            <span className="text-[10px] text-gray-300 dark:text-gray-600">/</span>
-            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{item.details.unit}</span>
-            {bufferedCost && <span className="ml-1 w-1.5 h-1.5 rounded-full bg-[#007AFF]"></span>}
+      <div className="group relative bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-white/5 hover:border-[#007AFF]/50 dark:hover:border-[#007AFF]/50 hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-2 mb-3">
+        {/* Drag Handle (Visual) */}
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity">
+          <iconify-icon icon="lucide:grip-vertical" width="16"></iconify-icon>
+        </div>
+
+        <div className="flex items-center gap-4 pl-6">
+          {/* Icon/Type Indicator */}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.details?.type === 'other' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400' : 'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400'}`}>
+             <iconify-icon icon={item.details?.type === 'other' ? "lucide:package" : "lucide:leaf"} width="20"></iconify-icon>
           </div>
-        </div>
-        <div className="col-span-3 flex items-center justify-center gap-1.5">
-          <input
-            type="text"
-            inputMode="decimal"
-            className="glass-input w-16 rounded-lg py-1.5 px-1 text-center text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-[#007AFF]/20 transition-all outline-none"
-            value={inputValue}
-            onFocus={() => setIsEditing(true)}
-            onBlur={commitChange}
-            onChange={handleInputChange}
-            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-          />
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{item.details.unit}</span>
-        </div>
-        <div className="col-span-3 text-right pl-1">
-          <span className="font-bold text-gray-900 dark:text-white text-sm">
-            ₱{rowTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-        </div>
-        <div className="col-span-1 flex justify-end">
-          <button onClick={() => removeBuilderIngredient(item.originalIndex)} className="w-7 h-7 rounded-full text-gray-400 bg-transparent hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 flex items-center justify-center transition-colors">
-            <iconify-icon icon="lucide:trash-2" width="16"></iconify-icon>
-          </button>
+
+          <div className="flex-1 min-w-0">
+            <h4 className="font-bold text-gray-900 dark:text-white truncate text-base">{item.details?.name}</h4>
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span>₱{item.details?.cost?.toFixed(2)}/{item.details?.unit}</span>
+              <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+              <span className="uppercase tracking-wide">{item.details?.supplier || 'No Supplier'}</span>
+            </div>
+          </div>
+
+          {/* Qty Input */}
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 rounded-lg p-1 border border-transparent group-hover:border-gray-200 dark:group-hover:border-white/10 transition-colors">
+              <input
+                type="text"
+                inputMode="decimal"
+                className="w-16 bg-transparent text-right font-bold text-gray-900 dark:text-white outline-none"
+                value={inputValue}
+                onFocus={() => { setIsEditing(true); playClick(); }}
+                onBlur={commitChange}
+                onChange={handleInputChange}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+              />
+              <span className="text-xs font-bold text-gray-400 pr-2">{item.details?.unit}</span>
+            </div>
+          </div>
+
+          {/* Total & Remove */}
+          <div className="text-right min-w-[80px]">
+            <div className="font-bold text-gray-900 dark:text-white text-base">
+              ₱{rowTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <button 
+              onClick={() => { playDelete(); removeBuilderIngredient(item.originalIndex); }}
+              className="text-[10px] font-bold text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:underline mt-1"
+            >
+              Remove
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -241,12 +258,18 @@ export const Recipes = () => {
       </div>
 
       {mode === 'list' && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
+        <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
+          <AnimatePresence>
           {data.recipes.map(r => {
             const f = getRecipeFinancials(r);
             const isSelected = selectedRecipeId === r.id;
             return (
-              <div
+              <motion.div
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
                 key={r.id}
                 onClick={() => setSelectedRecipeId(isSelected ? null : r.id)}
                 className={`glass-thin rounded-2xl flex flex-col justify-between overflow-hidden cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-[#007AFF] border-transparent transform scale-[1.02] shadow-lg z-10' : 'hover:bg-white/40 dark:hover:bg-white/10'}`}
@@ -260,14 +283,6 @@ export const Recipes = () => {
                   )}
                   <div className="absolute top-2 right-2 glass-ultra-thin px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider text-gray-800 dark:text-gray-200">{r.category}</div>
                   
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); openCookModal(r.id, r.name); }}
-                    className="absolute top-2 left-2 glass-ultra-thin w-8 h-8 rounded-full flex items-center justify-center text-gray-800 dark:text-white hover:bg-[#007AFF] hover:text-white transition-colors shadow-sm"
-                    title="Cook Mode"
-                  >
-                    <iconify-icon icon="lucide:chef-hat" width="16"></iconify-icon>
-                  </button>
-
                   {isSelected && (
                     <div className="absolute inset-0 bg-[#007AFF]/20 backdrop-blur-[1px] flex items-center justify-center">
                       <div className="w-8 h-8 bg-[#007AFF] rounded-full flex items-center justify-center text-white shadow-lg animate-in fade-in zoom-in duration-200">
@@ -290,11 +305,22 @@ export const Recipes = () => {
                       <p className="text-base font-bold text-[#007AFF]">₱{r.price}</p>
                     </div>
                   </div>
+
+                  <div className="mt-4">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); openCookModal(r.id, r.name); }}
+                      className="w-full py-2.5 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all duration-300 hover:bg-orange-500 dark:hover:bg-orange-500 hover:text-white dark:hover:text-white hover:shadow-[0_0_20px_rgba(249,115,22,0.4)] group"
+                    >
+                      <iconify-icon icon="lucide:flame" width="14" class="transition-colors group-hover:text-white dark:group-hover:text-white"></iconify-icon>
+                      Cook
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+          </AnimatePresence>
+        </motion.div>
       )}
 
       {mode === 'builder' && (

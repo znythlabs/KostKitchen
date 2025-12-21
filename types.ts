@@ -22,6 +22,8 @@ declare global {
 
 export type View = 'dashboard' | 'recipes' | 'inventory' | 'finance' | 'calendar' | 'profile' | 'engineering';
 
+export type Theme = 'light' | 'dark' | 'midnight' | 'oled';
+
 export interface Ingredient {
   id: number;
   name: string;
@@ -129,8 +131,8 @@ export interface AppContextType {
   isLoggedIn: boolean;
   login: () => void;
   logout: () => void;
-  darkMode: boolean;
-  toggleDarkMode: () => void;
+  theme: Theme;
+  setTheme: (t: Theme) => void;
   data: AppData;
   setData: React.Dispatch<React.SetStateAction<AppData>>;
 
@@ -177,6 +179,12 @@ export interface AppContextType {
   confirmModal: { title: string; message: string; onConfirm: () => void; isDestructive?: boolean; isOpen: boolean };
   askConfirmation: (options: { title: string; message: string; onConfirm: () => void; isDestructive?: boolean; }) => void;
   closeConfirmation: () => void;
+  
+  // Cook Mode
+  cookModal: { isOpen: boolean; recipeId: number | null; recipeName: string };
+  openCookModal: (recipeId: number, recipeName: string) => void;
+  closeCookModal: () => void;
+  cookRecipe: (recipeId: number, portions: number) => Promise<void>;
   
   // User
   user: { email?: string } | null;

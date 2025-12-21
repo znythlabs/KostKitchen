@@ -78,7 +78,7 @@ export const MobileNav = () => {
 };
 
 export const Header = () => {
-  const { view, setView, data, darkMode, toggleDarkMode } = useApp();
+  const { view, setView, data, theme, setTheme } = useApp();
   const [showNotifications, setShowNotifications] = useState(false);
 
   const lowStockCount = data.ingredients.filter(i => i.stockQty <= i.minStock).length;
@@ -90,6 +90,19 @@ export const Header = () => {
     finance: 'Financials',
     calendar: 'Reports',
     profile: 'Profile'
+  };
+
+  const cycleTheme = () => {
+    const themes: ('light' | 'dark' | 'midnight' | 'oled')[] = ['light', 'dark', 'midnight', 'oled'];
+    const nextIndex = (themes.indexOf(theme) + 1) % themes.length;
+    setTheme(themes[nextIndex]);
+  };
+  
+  const themeIcon = {
+    light: 'lucide:sun',
+    dark: 'lucide:moon',
+    midnight: 'lucide:sparkles',
+    oled: 'lucide:eye'
   };
 
   return (
@@ -112,10 +125,10 @@ export const Header = () => {
       <div className="flex items-center gap-3 shrink-0 ml-4 relative">
         <button
           type="button"
-          onClick={toggleDarkMode}
+          onClick={cycleTheme}
           className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-gray-300 active-scale transition-colors"
         >
-          <iconify-icon icon={darkMode ? "lucide:sun" : "lucide:moon"} width="18"></iconify-icon>
+          <iconify-icon icon={themeIcon[theme]} width="18"></iconify-icon>
         </button>
         <button
           type="button"

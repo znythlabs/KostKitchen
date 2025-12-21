@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../AppContext';
 
 export const Finance = () => {
-  const { getProjection, data, setData, darkMode } = useApp();
+  const { getProjection, data, setData, theme } = useApp();
   const [financePeriod, setFinancePeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const f = getProjection(financePeriod);
 
@@ -63,7 +63,7 @@ export const Finance = () => {
     return `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, ${track} ${pct}%, ${track} 100%)`;
   };
 
-  const trackColor = darkMode ? "#38383A" : "#E5E5EA";
+  const trackColor = theme === 'light' ? "#E5E5EA" : "#38383A";
   const totalMonthlyEx = data.settings.expenses.reduce((sum, e) => sum + e.amount, 0);
 
   return (

@@ -99,7 +99,13 @@ export const INITIAL_DATA: AppData = {
       price: 60,
       dailyVolume: 40,
       image: null,
-      batchSize: 1
+      batchSize: 1,
+      instructions: [
+        "Sauté garlic in oil until golden brown. Set aside half for toppings.",
+        "Add day-old rice to the pan and stir-fry for 5 minutes.",
+        "Season with salt and pepper.",
+        "Top with reserved fried garlic before serving."
+      ]
     },
     {
       id: 103,

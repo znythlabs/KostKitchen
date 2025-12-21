@@ -225,15 +225,22 @@ export const Inventory = () => {
             {!inventoryEditMode && (
                 <button 
                   onClick={generateShoppingList}
-                  className="whitespace-nowrap px-5 py-2.5 text-sm font-bold rounded-full shadow-sm active-scale transition-all flex items-center gap-2 border bg-white dark:bg-[#2C2C2E] text-gray-700 dark:text-white border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 relative overflow-visible"
+                  className="whitespace-nowrap px-5 py-2.5 text-sm font-bold rounded-full shadow-sm active-scale transition-all flex items-center gap-2 border bg-white dark:bg-[#2C2C2E] text-gray-700 dark:text-white border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 relative overflow-visible group"
                 >
-                  <iconify-icon icon="lucide:shopping-cart" width="16"></iconify-icon>
-                  <span className="hidden md:inline">Smart Buy</span>
+                  <div className="relative">
+                    <iconify-icon icon="lucide:sparkles" width="16" class="text-purple-500 animate-pulse"></iconify-icon>
+                    <div className="absolute inset-0 bg-purple-500 blur-sm opacity-50 animate-pulse"></div>
+                  </div>
+                  <span className="hidden md:inline bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent font-extrabold">AI Procurement</span>
                   {lowStockCount > 0 && (
-                      <span className="absolute my-1 -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-[#1C1C1E] animate-pulse z-10">
+                      <span className="absolute my-1 -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-[#1C1C1E] animate-bounce z-10">
                           {lowStockCount}
                       </span>
                   )}
+                  {/* Tooltip for Predictive Forecasting */}
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-gray-900 text-white text-[10px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    Predictive Forecasting Active
+                  </div>
                 </button>
             )}
 
