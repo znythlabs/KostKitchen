@@ -174,7 +174,7 @@ export const Inventory = () => {
             {!inventoryEditMode && (
                 <button 
                   onClick={toggleSelectionMode} 
-                  className={`whitespace-nowrap px-5 py-2.5 text-sm font-bold rounded-full shadow-sm active-scale transition-all flex items-center gap-2 ${selectionMode ? 'bg-gray-200 dark:bg-white/10 text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10'}`}
+                  className={`whitespace-nowrap px-5 py-2.5 text-sm font-bold rounded-full shadow-sm active-scale transition-all flex items-center gap-2 border ${selectionMode ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-black dark:border-white' : 'bg-white dark:bg-[#2C2C2E] text-gray-700 dark:text-white border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5'}`}
                 >
                   {selectionMode ? 'Cancel' : 'Select'}
                 </button>
@@ -185,7 +185,7 @@ export const Inventory = () => {
             </button>
             <button 
               onClick={toggleInventoryEdit} 
-              className={`hidden md:block whitespace-nowrap px-6 py-2.5 text-[13px] font-bold rounded-full shadow-sm active-scale transition-all ${inventoryEditMode ? 'bg-[#007AFF] text-white' : 'material-thin text-gray-900 dark:text-white hover:bg-white/60 dark:hover:bg-white/10'}`}
+              className={`hidden md:block whitespace-nowrap px-5 py-2.5 text-sm font-bold rounded-full shadow-sm active-scale transition-all border ${inventoryEditMode ? 'bg-[#007AFF] text-white border-[#007AFF]' : 'bg-white dark:bg-[#2C2C2E] text-gray-700 dark:text-white border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5'}`}
             >
               {inventoryEditMode ? 'Done' : 'Edit Stock'}
             </button>
