@@ -126,14 +126,15 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
     // Realtime Subscription
     const channel = supabase.channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, () => {
-         // Debounce or just refresh for now. 
-         // For a perfect UX, we should merge the payload, but refreshData is safer for consistency.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, (payload) => {
+         console.log('Realtime Event received:', payload);
          refreshData();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'recipes' }, () => refreshData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => refreshData())
-      .subscribe();
+      .subscribe((status) => {
+        console.log("Realtime Connection Status:", status);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN') refreshData();

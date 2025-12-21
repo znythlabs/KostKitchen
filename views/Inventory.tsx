@@ -153,38 +153,109 @@ export const Inventory = () => {
               const hasBuffer = buffer > 0;
               
               return (
-                <div key={item.id} className="group hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                <div key={item.id} className="group hover:bg-gray-50 dark:hover:bg-white/5 transition-colors border-b border-gray-100 dark:border-white/5 last:border-0">
                   {/* Desktop Layout */}
-                  <div className="hidden md:flex items-center px-6 py-3 text-sm">
+                  <div className="hidden md:flex items-center px-6 py-4 text-sm">
                     {inventoryEditMode ? (
                       <>
-                         <div className="w-[22%] pr-4 space-y-1">
-                            <input className="ios-input glass-input w-full px-2 py-1 text-xs font-medium" value={item.name} onChange={(e) => updateStockItem(item.id, 'name', e.target.value)} placeholder="Item Name" />
-                            <input className="ios-input glass-input w-full px-2 py-1 text-xs text-gray-500" value={item.supplier} onChange={(e) => updateStockItem(item.id, 'supplier', e.target.value)} placeholder="Supplier" />
+                         {/* Item & Supplier */}
+                         <div className="w-[22%] pr-4 flex flex-col justify-center">
+                            <input 
+                              className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-sm font-bold text-gray-900 dark:text-white placeholder-gray-300 transition-all outline-none" 
+                              value={item.name} 
+                              onChange={(e) => updateStockItem(item.id, 'name', e.target.value)} 
+                              placeholder="Item Name" 
+                            />
+                            <input 
+                              className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-[11px] text-gray-500 placeholder-gray-300 transition-all outline-none mt-1" 
+                              value={item.supplier} 
+                              onChange={(e) => updateStockItem(item.id, 'supplier', e.target.value)} 
+                              placeholder="Supplier Name" 
+                            />
                          </div>
-                         <div className="w-[10%] pl-2 space-y-1">
-                            <div className="flex items-center gap-1">
-                              <span className="text-[9px] text-gray-400 w-4 text-right shrink-0">P</span>
-                              <input type="number" className="ios-input glass-input w-full px-1 py-1 text-xs text-right" value={item.packageCost} onChange={(e) => updateStockItem(item.id, 'packageCost', e.target.value)} />
+
+                         {/* Package Price & Buffer */}
+                         <div className="w-[10%] pl-2 flex flex-col items-end justify-center">
+                            <div className="flex items-center justify-end w-full group/price">
+                              <span className="text-[10px] text-gray-400 mr-1 select-none">₱</span>
+                              <input 
+                                type="number" 
+                                className="w-16 bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-sm font-medium text-right text-gray-900 dark:text-white outline-none" 
+                                value={item.packageCost} 
+                                onChange={(e) => updateStockItem(item.id, 'packageCost', e.target.value)} 
+                                placeholder="0"
+                              />
                             </div>
-                            <div className="flex items-center gap-1">
-                              <span className="text-[9px] text-gray-400 w-4 text-right shrink-0">B%</span>
-                              <input type="number" className="ios-input glass-input w-full px-1 py-1 text-xs text-right text-blue-500" value={item.priceBuffer} onChange={(e) => updateStockItem(item.id, 'priceBuffer', e.target.value)} placeholder="0" />
+                            <div className="flex items-center justify-end w-full mt-1">
+                              <span className="text-[9px] text-blue-400/70 mr-1 select-none">Buf%</span>
+                              <input 
+                                type="number" 
+                                className="w-12 bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-[11px] font-medium text-right text-blue-500 outline-none placeholder-gray-300" 
+                                value={item.priceBuffer} 
+                                onChange={(e) => updateStockItem(item.id, 'priceBuffer', e.target.value)} 
+                                placeholder="0" 
+                              />
                             </div>
                          </div>
-                         <div className="w-[8%] pl-2"><input type="number" className="ios-input glass-input w-full px-1 py-1 text-xs text-right" value={item.packageQty} onChange={(e) => updateStockItem(item.id, 'packageQty', e.target.value)} /></div>
-                         <div className="w-[8%] pl-2"><input type="number" className="ios-input glass-input w-full px-1 py-1 text-xs text-right" value={item.shippingFee} onChange={(e) => updateStockItem(item.id, 'shippingFee', e.target.value)} /></div>
-                         <div className="w-[12%] pl-4 flex items-center gap-1">
-                            <input type="number" className="ios-input glass-input w-full px-2 py-1 text-xs text-right" value={item.cost} disabled title="Calculated automatically" />
+
+                         {/* Qty/Pack */}
+                         <div className="w-[8%] pl-2 text-right">
+                           <input 
+                              type="number" 
+                              className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-sm text-right text-gray-600 dark:text-gray-300 outline-none" 
+                              value={item.packageQty} 
+                              onChange={(e) => updateStockItem(item.id, 'packageQty', e.target.value)} 
+                              placeholder="0"
+                            />
+                         </div>
+
+                         {/* Shipping */}
+                         <div className="w-[8%] pl-2 text-right">
+                           <input 
+                              type="number" 
+                              className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-sm text-right text-gray-600 dark:text-gray-300 outline-none" 
+                              value={item.shippingFee} 
+                              onChange={(e) => updateStockItem(item.id, 'shippingFee', e.target.value)} 
+                              placeholder="0"
+                            />
+                         </div>
+
+                         {/* Unit Cost (Read Only) */}
+                         <div className="w-[12%] pl-4 flex items-center justify-end gap-1 opacity-60 grayscale">
+                            <span className="font-semibold text-gray-900 dark:text-white">₱{safeNumber(item.cost).toFixed(2)}</span>
                             <span className="text-gray-400 text-xs whitespace-nowrap">/ {item.unit}</span>
                          </div>
+
+                         {/* Min Stock */}
                          <div className="w-[10%] px-4">
-                            <input type="number" className="ios-input glass-input w-full px-2 py-1 text-xs text-center" value={item.minStock} onChange={(e) => updateStockItem(item.id, 'minStock', e.target.value)} placeholder="Min" />
+                            <input 
+                              type="number" 
+                              className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-sm text-center text-gray-600 dark:text-gray-300 outline-none placeholder-gray-300" 
+                              value={item.minStock} 
+                              onChange={(e) => updateStockItem(item.id, 'minStock', e.target.value)} 
+                              placeholder="-" 
+                            />
                          </div>
-                         <div className="w-[30%] pl-6 flex items-center gap-2">
-                            <input type="number" className="ios-input glass-input w-24 px-2 py-1 text-xs text-right font-bold" value={item.stockQty} onChange={(e) => updateStockItem(item.id, 'stockQty', e.target.value)} />
-                            <span className="text-xs text-gray-500">{item.unit}</span>
-                            <button onClick={() => handleDelete(item.id, item.name)} className="ml-auto text-red-500 hover:bg-red-100 p-1.5 rounded-lg transition-colors"><iconify-icon icon="lucide:trash-2" width="14"></iconify-icon></button>
+
+                         {/* Stock Level & Actions */}
+                         <div className="w-[30%] pl-6 flex items-center gap-4">
+                            <div className="flex-1 flex items-center gap-2 bg-gray-50 dark:bg-white/5 rounded-lg px-3 py-1.5 border border-transparent focus-within:border-blue-500 focus-within:bg-white transition-all">
+                              <input 
+                                type="number" 
+                                className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm font-bold text-right text-gray-900 dark:text-white outline-none" 
+                                value={item.stockQty} 
+                                onChange={(e) => updateStockItem(item.id, 'stockQty', e.target.value)} 
+                              />
+                              <span className="text-xs text-gray-500 font-medium select-none">{item.unit}</span>
+                            </div>
+                            
+                            <button 
+                              onClick={() => handleDelete(item.id, item.name)} 
+                              className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all shrink-0"
+                              title="Delete Item"
+                            >
+                              <iconify-icon icon="lucide:trash-2" width="16"></iconify-icon>
+                            </button>
                          </div>
                       </>
                     ) : (
