@@ -511,12 +511,16 @@ export const Inventory = () => {
                               <input type="number" className="inv-field w-full text-xs text-right mt-1" value={item.shippingFee} onChange={(e) => updateStockItem(item.id, 'shippingFee', e.target.value)} />
                            </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="col-span-1">
                             <label className="text-[10px] uppercase text-gray-400 font-bold">Stock Qty</label>
                             <input type="number" className="inv-field w-full text-xs mt-1" value={item.stockQty} onChange={(e) => updateStockItem(item.id, 'stockQty', e.target.value)} />
                           </div>
-                          <div>
+                          <div className="col-span-1">
+                            <label className="text-[10px] uppercase text-gray-400 font-bold">Unit</label>
+                            <input className="inv-field w-full text-xs mt-1" value={item.unit} onChange={(e) => updateStockItem(item.id, 'unit', e.target.value)} />
+                          </div>
+                          <div className="col-span-1">
                             <label className="text-[10px] uppercase text-gray-400 font-bold">Unit Cost</label>
                             <input type="number" className="inv-field w-full text-xs mt-1" value={item.cost} onChange={(e) => updateStockItem(item.id, 'cost', e.target.value)} />
                           </div>
