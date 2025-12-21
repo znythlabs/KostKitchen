@@ -297,7 +297,7 @@ export const Recipes = () => {
               <div className="flex flex-row gap-4">
                 <div className="shrink-0">
                   <input type="file" id="builder-image-input" className="hidden" accept="image/*" onChange={handleImageUpload} />
-                  <label htmlFor="builder-image-input" className="w-32 h-32 rounded-xl bg-black/5 dark:bg-white/5 border border-dashed border-black/10 dark:border-white/20 flex items-center justify-center cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors overflow-hidden relative group">
+                  <label htmlFor="builder-image-input" className="w-32 h-32 mt-4 rounded-xl bg-black/5 dark:bg-white/5 border border-dashed border-black/10 dark:border-white/20 flex items-center justify-center cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors overflow-hidden relative group">
                     {builder.image ? (
                       <img src={builder.image} className="w-full h-full object-cover" alt="Builder" />
                     ) : (

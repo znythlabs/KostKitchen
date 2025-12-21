@@ -2,18 +2,27 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../AppContext';
 import { Ingredient } from '../types';
 
-type SortKey = 'name' | 'supplier' | 'packageCost' | 'packageQty' | 'shippingFee' | 'unit' | 'cost' | 'stockQty';
+type SortKey = 'name' | 'supplier' | 'packageCost' | 'packageQty' | 'shippingFee' | 'unit' | 'cost' | 'stockQty' | 'minStock';
 type TabType = 'ingredient' | 'other';
 
 export const Inventory = () => {
   const { 
     data, getStockStatus, inventoryEditMode, toggleInventoryEdit, 
-    openModal, updateStockItem, deleteStockItem, askConfirmation 
+    openModal, updateStockItem, deleteStockItem 
   } = useApp();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabType>('ingredient');
   const [sortConfig, setSortConfig] = useState<{ key: SortKey, direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id?: number, name?: string, count?: number, type: 'single' | 'bulk' } | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
+
+  // Optimized Grid Layout (Matches editstock.html) with Selection Column
+  // Reduced widths to prevent horizontal scrolling while maintaining readability
+  const gridTemplate = selectionMode 
+    ? "40px minmax(160px, 2fr) 85px 75px 75px 90px 75px minmax(130px, 1.2fr)"
+    : "minmax(160px, 2fr) 85px 75px 75px 90px 75px minmax(130px, 1.2fr)";
 
   const filteredItems = useMemo(() => {
     let items = data.ingredients.filter(i => {
@@ -50,12 +59,51 @@ export const Inventory = () => {
   const toggleSort = (key: SortKey) => setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
 
   const handleDelete = (id: number, name: string) => {
-    askConfirmation({
-      title: 'Delete Item?',
-      message: `Are you sure you want to remove "${name}" from inventory?`,
-      isDestructive: true,
-      onConfirm: () => deleteStockItem(id)
-    });
+    setDeleteConfirm({ id, name, type: 'single' });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedItems.size === 0) return;
+    setDeleteConfirm({ count: selectedItems.size, type: 'bulk' });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteConfirm) return;
+
+    if (deleteConfirm.type === 'single' && deleteConfirm.id) {
+        deleteStockItem(deleteConfirm.id);
+    } else if (deleteConfirm.type === 'bulk') {
+        selectedItems.forEach(id => deleteStockItem(id));
+        setSelectedItems(new Set());
+    }
+    setDeleteConfirm(null);
+  };
+
+  const toggleSelect = (id: number) => {
+    const newSelected = new Set(selectedItems);
+    if (newSelected.has(id)) {
+        newSelected.delete(id);
+    } else {
+        newSelected.add(id);
+    }
+    setSelectedItems(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItems.size === filteredItems.length) {
+        setSelectedItems(new Set());
+    } else {
+        setSelectedItems(new Set(filteredItems.map(i => i.id)));
+    }
+  };
+
+  const toggleSelectionMode = () => {
+    if (selectionMode) {
+        setSelectionMode(false);
+        setSelectedItems(new Set());
+    } else {
+        setSelectionMode(true);
+    }
   };
 
   const formatShipping = (val?: number) => {
@@ -116,12 +164,27 @@ export const Inventory = () => {
             />
           </div>
           <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
+            {selectionMode && selectedItems.size > 0 && (
+                <button onClick={handleBulkDelete} className="whitespace-nowrap px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-full shadow-sm active-scale flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+                  <iconify-icon icon="lucide:trash-2" width="16"></iconify-icon> Delete ({selectedItems.size})
+                </button>
+            )}
+            
+            {!inventoryEditMode && (
+                <button 
+                  onClick={toggleSelectionMode} 
+                  className={`whitespace-nowrap px-5 py-2.5 text-sm font-bold rounded-full shadow-sm active-scale transition-all flex items-center gap-2 ${selectionMode ? 'bg-gray-200 dark:bg-white/10 text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10'}`}
+                >
+                  {selectionMode ? 'Cancel' : 'Select'}
+                </button>
+            )}
+
             <button onClick={() => openModal('stock')} className="whitespace-nowrap px-4 py-2.5 bg-[#007AFF] text-white text-sm font-semibold rounded-full shadow-sm active-scale flex items-center gap-2">
               <iconify-icon icon="lucide:plus" width="16"></iconify-icon> Add
             </button>
             <button 
               onClick={toggleInventoryEdit} 
-              className={`hidden md:block whitespace-nowrap px-5 py-2.5 text-sm font-semibold rounded-full border shadow-sm active-scale ${inventoryEditMode ? 'bg-[#007AFF] text-white border-transparent' : 'glass-thin text-gray-900 dark:text-white'}`}
+              className={`hidden md:block whitespace-nowrap px-6 py-2.5 text-[13px] font-bold rounded-full shadow-sm active-scale transition-all ${inventoryEditMode ? 'bg-[#007AFF] text-white' : 'material-thin text-gray-900 dark:text-white hover:bg-white/60 dark:hover:bg-white/10'}`}
             >
               {inventoryEditMode ? 'Done' : 'Edit Stock'}
             </button>
@@ -130,17 +193,31 @@ export const Inventory = () => {
       </div>
 
       {/* Table Container - OPAQUE SURFACE (Readability Priority) */}
-      <div className="surface-opaque rounded-2xl flex-1 flex flex-col overflow-hidden">
-        {/* Desktop Header */}
-        <div className="hidden md:flex items-center px-6 py-3 bg-gray-50/80 dark:bg-white/5 border-b border-gray-100 dark:border-white/10 text-[10px] font-bold text-gray-500 uppercase tracking-wider select-none shrink-0">
-          <SortHeader label="Item & Supplier" sortKey="name" className="w-[22%]" />
-          <SortHeader label="Pkg. Price" sortKey="packageCost" className="w-[10%]" align="right" />
-          <SortHeader label="Qty/Pack" sortKey="packageQty" className="w-[8%]" align="right" />
-          <SortHeader label="Shipping" sortKey="shippingFee" className="w-[8%]" align="right" />
-          <SortHeader label="Unit Cost" sortKey="cost" className="w-[12%]" align="right" />
-          <SortHeader label="Min. Stock" sortKey="minStock" className="w-[10%]" align="center" />
-          <div className="w-[30%] pl-6">Stock Level</div>
-        </div>
+      <div className="surface-opaque rounded-[24px] overflow-hidden overflow-x-auto shadow-glass-sm border border-gray-200/50 dark:border-white/10 flex-1 flex flex-col">
+        <div className="w-full min-w-fit md:min-w-0 flex flex-col h-full">
+          {/* Desktop Header */}
+          <div 
+            className="hidden md:grid gap-3 items-center px-4 py-3.5 bg-gray-50/80 dark:bg-white/5 border-b border-gray-200 dark:border-white/5 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider select-none shrink-0"
+            style={{ gridTemplateColumns: gridTemplate }}
+          >
+            {selectionMode && (
+                <div className="flex items-center justify-center animate-in fade-in duration-200">
+                    <input 
+                        type="checkbox" 
+                        className="rounded border-gray-300 text-[#007AFF] focus:ring-[#007AFF] w-4 h-4 cursor-pointer"
+                        checked={filteredItems.length > 0 && selectedItems.size === filteredItems.length}
+                        onChange={toggleSelectAll}
+                    />
+                </div>
+            )}
+            <SortHeader label="Item & Supplier" sortKey="name" />
+            <SortHeader label="Pkg. Price" sortKey="packageCost" align="right" />
+            <SortHeader label="Qty/Pack" sortKey="packageQty" align="center" />
+            <SortHeader label="Shipping" sortKey="shippingFee" align="center" />
+            <SortHeader label="Unit Cost" sortKey="cost" align="right" />
+            <SortHeader label="Min. Stock" sortKey="minStock" align="center" />
+            <div>Stock Level</div>
+          </div>
 
         {/* Table Body */}
         <div className="overflow-y-auto flex-1 p-0 overscroll-contain touch-pan-y" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -155,143 +232,113 @@ export const Inventory = () => {
               return (
                 <div key={item.id} className="group hover:bg-gray-50 dark:hover:bg-white/5 transition-colors border-b border-gray-100 dark:border-white/5 last:border-0">
                   {/* Desktop Layout */}
-                  <div className="hidden md:flex items-center px-6 py-4 text-sm">
+                  <div 
+                    className="hidden md:grid gap-3 items-center px-4 py-3 text-sm transition-colors"
+                    style={{ gridTemplateColumns: gridTemplate }}
+                  >
+                    {selectionMode && (
+                        <div className="flex items-center justify-center animate-in fade-in duration-200">
+                            <input 
+                                type="checkbox" 
+                                className="rounded border-gray-300 text-[#007AFF] focus:ring-[#007AFF] w-4 h-4 cursor-pointer"
+                                checked={selectedItems.has(item.id)}
+                                onChange={() => toggleSelect(item.id)}
+                            />
+                        </div>
+                    )}
                     {inventoryEditMode ? (
                       <>
                          {/* Item & Supplier */}
-                         <div className="w-[22%] pr-4 flex flex-col justify-center">
-                            <input 
-                              className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-sm font-bold text-gray-900 dark:text-white placeholder-gray-300 transition-all outline-none" 
-                              value={item.name} 
-                              onChange={(e) => updateStockItem(item.id, 'name', e.target.value)} 
-                              placeholder="Item Name" 
-                            />
-                            <input 
-                              className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-[11px] text-gray-500 placeholder-gray-300 transition-all outline-none mt-1" 
-                              value={item.supplier} 
-                              onChange={(e) => updateStockItem(item.id, 'supplier', e.target.value)} 
-                              placeholder="Supplier Name" 
-                            />
+                         <div className="flex flex-col gap-2">
+                            <input className="inv-field font-semibold text-sm text-gray-900 dark:text-white placeholder-gray-400 w-full" value={item.name} onChange={(e) => updateStockItem(item.id, 'name', e.target.value)} placeholder="Item Name" />
+                            <input className="inv-field text-[11px] text-gray-500 uppercase tracking-wide w-full" value={item.supplier || ''} onChange={(e) => updateStockItem(item.id, 'supplier', e.target.value)} placeholder="SUPPLIER" />
                          </div>
-
-                         {/* Package Price & Buffer */}
-                         <div className="w-[10%] pl-2 flex flex-col items-end justify-center">
-                            <div className="flex items-center justify-end w-full group/price">
-                              <span className="text-[10px] text-gray-400 mr-1 select-none">₱</span>
-                              <input 
-                                type="number" 
-                                className="w-16 bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-sm font-medium text-right text-gray-900 dark:text-white outline-none" 
-                                value={item.packageCost} 
-                                onChange={(e) => updateStockItem(item.id, 'packageCost', e.target.value)} 
-                                placeholder="0"
-                              />
+                         
+                         {/* Pkg Price & Buffer */}
+                         <div className="space-y-1">
+                            <div className="relative w-full">
+                                <span className="absolute left-2.5 top-1.5 text-xs text-gray-400 font-medium">₱</span>
+                                <input type="number" step="0.01" className="inv-field text-right w-full text-sm font-bold text-gray-900 dark:text-white pl-5 py-1" value={item.packageCost} onChange={(e) => updateStockItem(item.id, 'packageCost', e.target.value)} />
                             </div>
-                            <div className="flex items-center justify-end w-full mt-1">
-                              <span className="text-[9px] text-blue-400/70 mr-1 select-none">Buf%</span>
-                              <input 
-                                type="number" 
-                                className="w-12 bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-[11px] font-medium text-right text-blue-500 outline-none placeholder-gray-300" 
-                                value={item.priceBuffer} 
-                                onChange={(e) => updateStockItem(item.id, 'priceBuffer', e.target.value)} 
-                                placeholder="0" 
-                              />
+                            <div className="relative w-full flex items-center justify-end">
+                               <span className="text-[10px] text-blue-500 font-bold mr-1">+</span>
+                               <input type="number" className="inv-field text-center w-12 text-[10px] font-bold text-blue-500 py-0.5 px-1 h-6" value={item.priceBuffer} onChange={(e) => updateStockItem(item.id, 'priceBuffer', e.target.value)} placeholder="0" />
+                               <span className="text-[10px] text-blue-500 font-bold ml-0.5">%</span>
                             </div>
                          </div>
 
                          {/* Qty/Pack */}
-                         <div className="w-[8%] pl-2 text-right">
-                           <input 
-                              type="number" 
-                              className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-sm text-right text-gray-600 dark:text-gray-300 outline-none" 
-                              value={item.packageQty} 
-                              onChange={(e) => updateStockItem(item.id, 'packageQty', e.target.value)} 
-                              placeholder="0"
-                            />
+                         <div>
+                            <input type="number" step="0.01" className="inv-field text-center w-full text-sm text-gray-500 dark:text-gray-400" value={item.packageQty} onChange={(e) => updateStockItem(item.id, 'packageQty', e.target.value)} />
                          </div>
 
                          {/* Shipping */}
-                         <div className="w-[8%] pl-2 text-right">
-                           <input 
-                              type="number" 
-                              className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-sm text-right text-gray-600 dark:text-gray-300 outline-none" 
-                              value={item.shippingFee} 
-                              onChange={(e) => updateStockItem(item.id, 'shippingFee', e.target.value)} 
-                              placeholder="0"
-                            />
+                         <div>
+                            <input type="number" step="0.01" className="inv-field text-center w-full text-sm text-gray-500 dark:text-gray-400" value={item.shippingFee} onChange={(e) => updateStockItem(item.id, 'shippingFee', e.target.value)} placeholder="0" />
                          </div>
 
                          {/* Unit Cost (Read Only) */}
-                         <div className="w-[12%] pl-4 flex items-center justify-end gap-1 opacity-60 grayscale">
-                            <span className="font-semibold text-gray-900 dark:text-white">₱{safeNumber(item.cost).toFixed(2)}</span>
-                            <span className="text-gray-400 text-xs whitespace-nowrap">/ {item.unit}</span>
+                         <div className="text-right">
+                            <p className="font-bold text-gray-900 dark:text-white text-[15px]">₱{safeNumber(item.cost).toFixed(2)} / {item.unit}</p>
                          </div>
 
                          {/* Min Stock */}
-                         <div className="w-[10%] px-4">
-                            <input 
-                              type="number" 
-                              className="w-full bg-transparent border-b border-transparent focus:border-blue-500 focus:bg-white focus:ring-0 px-0 py-0.5 text-sm text-center text-gray-600 dark:text-gray-300 outline-none placeholder-gray-300" 
-                              value={item.minStock} 
-                              onChange={(e) => updateStockItem(item.id, 'minStock', e.target.value)} 
-                              placeholder="-" 
-                            />
+                         <div>
+                            <input type="number" step="0.01" className="inv-field text-center w-full text-sm text-gray-500 dark:text-gray-400" value={item.minStock} onChange={(e) => updateStockItem(item.id, 'minStock', e.target.value)} />
                          </div>
 
-                         {/* Stock Level & Actions */}
-                         <div className="w-[30%] pl-6 flex items-center gap-4">
-                            <div className="flex-1 flex items-center gap-2 bg-gray-50 dark:bg-white/5 rounded-lg px-3 py-1.5 border border-transparent focus-within:border-blue-500 focus-within:bg-white transition-all">
-                              <input 
-                                type="number" 
-                                className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm font-bold text-right text-gray-900 dark:text-white outline-none" 
-                                value={item.stockQty} 
-                                onChange={(e) => updateStockItem(item.id, 'stockQty', e.target.value)} 
-                              />
-                              <span className="text-xs text-gray-500 font-medium select-none">{item.unit}</span>
+                         {/* Stock Level & Delete */}
+                         <div className="flex flex-col gap-2">
+                            <div className="flex items-center inv-field p-0 overflow-hidden bg-white dark:bg-white/5 border-gray-200 dark:border-white/10">
+                                <input type="number" step="0.01" className="bg-transparent border-none outline-none text-right w-full py-1.5 pl-2 text-sm font-bold text-gray-900 dark:text-white focus:ring-0" value={item.stockQty} onChange={(e) => updateStockItem(item.id, 'stockQty', e.target.value)} />
+                                <span className="text-[10px] font-semibold text-gray-400 px-2 bg-gray-50 dark:bg-white/10 h-8 flex items-center justify-center border-l border-gray-100 dark:border-white/5">{item.unit}</span>
                             </div>
-                            
-                            <button 
-                              onClick={() => handleDelete(item.id, item.name)} 
-                              className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all shrink-0"
-                              title="Delete Item"
-                            >
-                              <iconify-icon icon="lucide:trash-2" width="16"></iconify-icon>
-                            </button>
                          </div>
                       </>
                     ) : (
                       <>
-                        <div className="w-[22%] pr-2 flex items-center justify-between group/edit">
-                          <div>
-                            <div className="font-semibold text-gray-900 dark:text-white truncate" title={item.name}>{item.name}</div>
-                            <div className="text-xs text-gray-400 truncate mt-0.5">{item.supplier}</div>
-                          </div>
+                        {/* Item & Supplier */}
+                        <div className="flex flex-col">
+                           <span className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{item.name}</span>
+                           <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate mt-0.5">{item.supplier || 'No Supplier'}</span>
                         </div>
-                        <div className="w-[10%] text-right">
-                          <div className="font-bold text-gray-900 dark:text-white">
-                            {item.packageCost ? `₱${bufferedPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '-'}
-                          </div>
-                          {hasBuffer && <div className="text-[9px] text-[#007AFF] font-bold">+{buffer}%</div>}
+                        
+                        {/* Pkg Price */}
+                        <div className="text-right flex flex-col items-end">
+                           <span className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight">₱{parseFloat(item.packageCost || '0').toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}</span>
+                           {hasBuffer && <div className="text-[10px] font-bold text-[#007AFF] mt-0.5">+{buffer}%</div>}
                         </div>
-                        <div className="w-[8%] text-right text-gray-500 text-xs">{item.packageQty ? safeNumber(item.packageQty).toLocaleString() : '-'}</div>
-                        <div className="w-[8%] text-right text-gray-500 text-xs">{formatShipping(item.shippingFee)}</div>
-                        <div className="w-[12%] text-right">
-                          <span className="font-semibold text-gray-900 dark:text-white">₱{safeNumber(item.cost).toFixed(2)}</span>
-                          <span className="text-gray-400 ml-1 font-normal text-xs">/ {item.unit}</span>
+                        
+                        {/* Qty/Pack */}
+                        <div className="text-center">
+                           <span className="text-[14px] text-gray-500 dark:text-gray-400 font-medium">{item.packageQty ? safeNumber(item.packageQty).toLocaleString() : '-'}</span>
                         </div>
-                        <div className="w-[10%] text-center text-xs font-medium text-gray-400">
-                            {item.minStock ? item.minStock.toLocaleString() : '-'}
+
+                        {/* Shipping */}
+                        <div className="text-center">
+                           <span className="text-[14px] text-gray-500 dark:text-gray-400 font-medium">{formatShipping(item.shippingFee)}</span>
                         </div>
-                        <div className="w-[30%] pl-6">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${status.bgClass} ${status.textClass}`}>{status.label}</span>
-                            <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300">{safeNumber(item.stockQty).toLocaleString()} {item.unit}</span>
-                          </div>
-                          <div className="w-full h-2 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden relative">
-                             {/* Optional: Marker for Min Stock if we want to be fancy, but simple bar is cleaner */}
-                            <div className={`h-full rounded-full transition-all duration-500 relative ${status.colorClass}`} style={{ width: `${status.width}%` }}>
-                                <div className="absolute inset-0 bg-white/20"></div>
-                            </div>
-                          </div>
+
+                        {/* Unit Cost */}
+                        <div className="text-right">
+                           <span className="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight">₱{safeNumber(item.cost).toFixed(2)}</span>
+                           <span className="text-[11px] text-gray-400 font-medium ml-0.5">/ {item.unit}</span>
+                        </div>
+
+                        {/* Min Stock */}
+                        <div className="text-center">
+                           <span className="text-[14px] text-gray-500 dark:text-gray-400 font-bold">{item.minStock ? safeNumber(item.minStock).toLocaleString() : '-'}</span>
+                        </div>
+
+                        {/* Stock Level */}
+                        <div className="flex flex-col gap-1.5 w-full pl-2">
+                           <div className="flex justify-between items-end">
+                              <span className={`text-[10px] font-bold ${status.textClass} uppercase tracking-wider`}>{status.label}</span>
+                              <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">{safeNumber(item.stockQty).toLocaleString()} {item.unit}</span>
+                           </div>
+                           <div className="h-1.5 w-full bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full ${status.colorClass}`} style={{ width: `${status.width}%` }}></div>
+                           </div>
                         </div>
                       </>
                     )}
@@ -357,43 +404,51 @@ export const Inventory = () => {
                         <div className="grid grid-cols-2 gap-3">
                           <div className="col-span-1">
                             <label className="text-[10px] uppercase text-gray-400 font-bold">Item Name</label>
-                            <input className="ios-input glass-input w-full px-2 py-1.5 text-xs font-medium mt-1" value={item.name} onChange={(e) => updateStockItem(item.id, 'name', e.target.value)} />
+                            <input className="inv-field w-full text-xs font-medium mt-1" value={item.name} onChange={(e) => updateStockItem(item.id, 'name', e.target.value)} />
                           </div>
                            <div className="col-span-1">
                             <label className="text-[10px] uppercase text-gray-400 font-bold">Supplier</label>
-                            <input className="ios-input glass-input w-full px-2 py-1.5 text-xs mt-1" value={item.supplier} onChange={(e) => updateStockItem(item.id, 'supplier', e.target.value)} />
+                            <input className="inv-field w-full text-xs mt-1" value={item.supplier} onChange={(e) => updateStockItem(item.id, 'supplier', e.target.value)} />
                           </div>
                         </div>
                         <div className="grid grid-cols-4 gap-2">
                            <div className="col-span-1">
                               <label className="text-[10px] uppercase text-gray-400 font-bold">Price</label>
-                              <input type="number" className="ios-input glass-input w-full px-2 py-1.5 text-xs text-right mt-1" value={item.packageCost} onChange={(e) => updateStockItem(item.id, 'packageCost', e.target.value)} />
+                              <input type="number" className="inv-field w-full text-xs text-right mt-1" value={item.packageCost} onChange={(e) => updateStockItem(item.id, 'packageCost', e.target.value)} />
                            </div>
                            <div className="col-span-1">
                               <label className="text-[10px] uppercase text-blue-500 font-bold">Buff%</label>
-                              <input type="number" className="ios-input glass-input w-full px-2 py-1.5 text-xs text-right mt-1 text-blue-500" value={item.priceBuffer} onChange={(e) => updateStockItem(item.id, 'priceBuffer', e.target.value)} placeholder="0" />
+                              <input type="number" className="inv-field w-full text-xs text-right mt-1 text-blue-500" value={item.priceBuffer} onChange={(e) => updateStockItem(item.id, 'priceBuffer', e.target.value)} placeholder="0" />
                            </div>
                            <div className="col-span-1">
                               <label className="text-[10px] uppercase text-gray-400 font-bold">Qty</label>
-                              <input type="number" className="ios-input glass-input w-full px-2 py-1.5 text-xs text-right mt-1" value={item.packageQty} onChange={(e) => updateStockItem(item.id, 'packageQty', e.target.value)} />
+                              <input type="number" className="inv-field w-full text-xs text-right mt-1" value={item.packageQty} onChange={(e) => updateStockItem(item.id, 'packageQty', e.target.value)} />
                            </div>
                            <div className="col-span-1">
                               <label className="text-[10px] uppercase text-gray-400 font-bold">Ship</label>
-                              <input type="number" className="ios-input glass-input w-full px-2 py-1.5 text-xs text-right mt-1" value={item.shippingFee} onChange={(e) => updateStockItem(item.id, 'shippingFee', e.target.value)} />
+                              <input type="number" className="inv-field w-full text-xs text-right mt-1" value={item.shippingFee} onChange={(e) => updateStockItem(item.id, 'shippingFee', e.target.value)} />
                            </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-[10px] uppercase text-gray-400 font-bold">Stock Qty</label>
-                            <input type="number" className="ios-input glass-input w-full px-2 py-1.5 text-xs mt-1" value={item.stockQty} onChange={(e) => updateStockItem(item.id, 'stockQty', e.target.value)} />
+                            <input type="number" className="inv-field w-full text-xs mt-1" value={item.stockQty} onChange={(e) => updateStockItem(item.id, 'stockQty', e.target.value)} />
                           </div>
                           <div>
                             <label className="text-[10px] uppercase text-gray-400 font-bold">Unit Cost</label>
-                            <input type="number" className="ios-input glass-input w-full px-2 py-1.5 text-xs mt-1" value={item.cost} onChange={(e) => updateStockItem(item.id, 'cost', e.target.value)} />
+                            <input type="number" className="inv-field w-full text-xs mt-1" value={item.cost} onChange={(e) => updateStockItem(item.id, 'cost', e.target.value)} />
                           </div>
                         </div>
-                        <button onClick={() => handleDelete(item.id, item.name)} className="w-full py-2 bg-red-100 dark:bg-red-900/30 text-red-500 rounded-lg text-xs font-bold mt-1">Delete Item</button>
                       </div>
+                    )}
+
+                    {/* Mobile Edit Mode: Delete Button */}
+                    {inventoryEditMode && (
+                        <div className="flex justify-end pt-2 border-t border-gray-100 dark:border-white/5 mt-2">
+                             <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id, item.name); }} className="text-red-500 font-semibold text-sm flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                <iconify-icon icon="lucide:trash-2" width="14"></iconify-icon> Delete Item
+                             </button>
+                        </div>
                     )}
                   </div>
                 </div>
@@ -410,7 +465,35 @@ export const Inventory = () => {
             )}
           </div>
         </div>
+        </div>
       </div>
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+           <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden scale-100 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              <div className="p-6 text-center">
+                 <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 text-red-500 flex items-center justify-center mx-auto mb-4">
+                    <iconify-icon icon="lucide:alert-triangle" width="24"></iconify-icon>
+                 </div>
+                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Delete Item?</h3>
+                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                      {deleteConfirm.type === 'bulk' 
+                        ? `Are you sure you want to delete ${deleteConfirm.count} selected items? This action cannot be undone.`
+                        : <>Are you sure you want to delete <span className="font-bold text-gray-900 dark:text-white">"{deleteConfirm.name}"</span>? This action cannot be undone.</>
+                      }
+                   </p>
+                   <div className="grid grid-cols-2 gap-3">
+                      <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2.5 rounded-xl font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+                         Cancel
+                      </button>
+                      <button onClick={confirmDelete} className="px-4 py-2.5 rounded-xl font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20">
+                         Delete
+                      </button>
+                   </div>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };

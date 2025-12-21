@@ -96,6 +96,22 @@
       -webkit-backdrop-filter: blur(30px) saturate(190%);
     }
 
+    /* Material Thin (Alias for buttons) */
+    .material-thin {
+      background: rgba(255, 255, 255, 0.55);
+      backdrop-filter: blur(30px) saturate(190%);
+      -webkit-backdrop-filter: blur(30px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .dark .material-thin {
+      background: rgba(40, 40, 40, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(30px) saturate(190%);
+      -webkit-backdrop-filter: blur(30px) saturate(190%);
+    }
+
     /* Regular: Primary decision panels, headers, nav */
     .glass-regular {
       background: rgba(255, 255, 255, 0.72);
@@ -126,6 +142,14 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
+    /* Shadow Utilities */
+    .shadow-glass-sm {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .dark .shadow-glass-sm {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
     /* --- UTILITIES --- */
 
     .glass-input {
@@ -148,6 +172,40 @@
       background: rgba(255, 255, 255, 0.15);
     }
 
+    /* Special Inventory Inputs */
+    .inv-field {
+      background: white;
+      border: 1px solid rgba(0,0,0,0.1);
+      padding: 6px 8px;
+      border-radius: 6px;
+      transition: 0.2s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .dark .inv-field {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255,255,255,0.08);
+    }
+    .inv-field:focus {
+      border-color: #007AFF;
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+      outline: none;
+    }
+    .inv-input-ghost {
+      background: transparent;
+      border: 1px solid transparent;
+      padding: 4px 0;
+      border-radius: 4px;
+      transition: 0.2s;
+    }
+    .inv-input-ghost:hover, .inv-input-ghost:focus {
+      background: rgba(120, 120, 128, 0.08);
+      padding-left: 6px;
+      padding-right: 6px;
+    }
+    .dark .inv-input-ghost:hover, .dark .inv-input-ghost:focus {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
     ::-webkit-scrollbar {
       width: 0px;
       background: transparent;
@@ -168,6 +226,7 @@
     /* --- IOS SYSTEM SLIDER --- */
     input[type="range"] {
       -webkit-appearance: none;
+      appearance: none;
       background: transparent;
       /* Track color handled by inline style in React */
       height: 4px;
