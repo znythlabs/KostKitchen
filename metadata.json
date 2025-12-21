@@ -1,0 +1,5 @@
+{
+  "name": "CostKitchen Admin",
+  "description": "A production-ready kitchen management dashboard for tracking inventory, recipes, and financials.",
+  "requestFramePermissions": []
+}

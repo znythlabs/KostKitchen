@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>CostKitchen Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro"', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            gray: {
+              850: '#1f2937',
+              900: '#111827',
+              950: '#000000',
+            },
+            ios: {
+              dark: '#1C1C1E',
+              input: '#2C2C2E',
+              border: '#38383A',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* --- LIQUID GLASS BACKGROUND SYSTEM --- */
+    .liquid-bg {
+      /* Light Mode: Subtle, airy mesh */
+      background:
+        radial-gradient(circle at 15% 50%, rgba(0, 122, 255, 0.08), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(52, 199, 89, 0.08), transparent 25%),
+        linear-gradient(180deg, #F2F2F7 0%, #E5E5EA 100%);
+      background-color: #F2F2F7;
+      background-attachment: fixed;
+    }
+
+    .dark .liquid-bg {
+      /* Dark Mode: Deep, rich black/gray mesh */
+      background:
+        radial-gradient(circle at 15% 50%, rgba(10, 132, 255, 0.15), transparent 35%),
+        radial-gradient(circle at 85% 30%, rgba(48, 209, 88, 0.1), transparent 35%),
+        linear-gradient(180deg, #000000 0%, #1C1C1E 100%);
+      background-color: #000000;
+      background-attachment: fixed;
+    }
+
+    /* --- MATERIAL SYSTEM --- */
+
+    /* Ultra Thin: Backgrounds, subtle overlays */
+    .glass-ultra-thin {
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .dark .glass-ultra-thin {
+      background: rgba(30, 30, 30, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+    }
+
+    /* Thin: Secondary panels, cards */
+    .glass-thin {
+      background: rgba(255, 255, 255, 0.55);
+      backdrop-filter: blur(30px) saturate(190%);
+      -webkit-backdrop-filter: blur(30px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    }
+
+    .dark .glass-thin {
+      background: rgba(40, 40, 40, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(30px) saturate(190%);
+      -webkit-backdrop-filter: blur(30px) saturate(190%);
+    }
+
+    /* Regular: Primary decision panels, headers, nav */
+    .glass-regular {
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(50px) saturate(200%);
+      -webkit-backdrop-filter: blur(50px) saturate(200%);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+    }
+
+    .dark .glass-regular {
+      background: rgba(50, 50, 50, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(50px) saturate(200%);
+      -webkit-backdrop-filter: blur(50px) saturate(200%);
+    }
+
+    /* Opaque Surface: Dense data lists (Readability priority) */
+    .surface-opaque {
+      background: #FFFFFF;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .dark .surface-opaque {
+      background: #1C1C1E;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    /* --- UTILITIES --- */
+
+    .glass-input {
+      background: rgba(0, 0, 0, 0.05);
+      border: 1px solid transparent;
+      transition: all 0.2s ease-out;
+    }
+
+    .glass-input:focus {
+      background: rgba(255, 255, 255, 0.5);
+      box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.3);
+    }
+
+    .dark .glass-input {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+
+    .dark .glass-input:focus {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    ::-webkit-scrollbar {
+      width: 0px;
+      background: transparent;
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .ios-input {
+      border-radius: 10px;
+    }
+
+    /* --- IOS SYSTEM SLIDER --- */
+    input[type="range"] {
+      -webkit-appearance: none;
+      background: transparent;
+      /* Track color handled by inline style in React */
+      height: 4px;
+      /* System track height */
+      border-radius: 2px;
+      cursor: pointer;
+      width: 100%;
+      margin: 10px 0;
+    }
+
+    /* WebKit Track: Must be transparent to let input background show through */
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 4px;
+      cursor: pointer;
+      background: transparent;
+      border-radius: 2px;
+      border: none;
+    }
+
+    /* WebKit Thumb: White, Circular, Shadowed */
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 28px;
+      width: 28px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      /* Soft system shadow */
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1);
+      cursor: grab;
+      margin-top: -12px;
+      /* Center on 4px track: (4 - 28) / 2 = -12 */
+      transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1);
+      border: 0.5px solid rgba(0, 0, 0, 0.04);
+      /* Ultra subtle border for definition against white backgrounds */
+    }
+
+    input[type="range"]:active::-webkit-slider-thumb {
+      transform: scale(1.05);
+      cursor: grabbing;
+    }
+
+    .active-scale:active {
+      transform: scale(0.96);
+      transition: transform 0.1s;
+    }
+
+    .fade-enter {
+      animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-enter {
+      transform: translate(-50%, 100%);
+      opacity: 0;
+    }
+
+    .modal-active {
+      transform: translate(-50%, -50%);
+      opacity: 1;
+    }
+
+    @media (max-width: 768px) {
+      .modal-active {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      .modal-enter {
+        transform: translateY(100%);
+      }
+    }
+  </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+  }
+}
+</script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+
+<body
+  class="h-[100dvh] liquid-bg text-gray-900 dark:text-gray-100 flex overflow-hidden selection:bg-[#007AFF]/30 transition-colors duration-300">
+  <div id="root" class="w-full h-full flex"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>

@@ -1,0 +1,309 @@
+import React, { useState, useEffect } from 'react';
+import { useApp } from '../AppContext';
+
+const ConfirmationModal = () => {
+  const { confirmModal, closeConfirmation } = useApp();
+  
+  if (!confirmModal.isOpen) return null;
+
+  const handleConfirm = () => {
+    confirmModal.onConfirm();
+    closeConfirmation();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={closeConfirmation}></div>
+      <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl max-w-sm w-full relative z-10 overflow-hidden fade-enter border border-gray-100 dark:border-[#38383A]">
+        <div className="p-6 text-center">
+          <div className={`w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-4 ${confirmModal.isDestructive ? 'bg-red-100 dark:bg-red-900/30 text-red-500' : 'bg-blue-100 text-blue-500'}`}>
+            <iconify-icon icon="lucide:alert-triangle" width="24"></iconify-icon>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{confirmModal.title}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{confirmModal.message}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-px bg-gray-100 dark:bg-[#38383A]">
+          <button 
+            onClick={closeConfirmation}
+            className="bg-white dark:bg-[#1C1C1E] p-4 text-sm font-medium text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#2C2C2E] transition-colors"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleConfirm}
+            className={`bg-white dark:bg-[#1C1C1E] p-4 text-sm font-semibold transition-colors ${confirmModal.isDestructive ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10' : 'text-[#007AFF] hover:bg-blue-50'}`}
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const Modals = () => {
+  const { activeModal, closeModal, data, builder, setBuilder, addStockItem, editingStockItem, pickerFilter } = useApp();
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [stockForm, setStockForm] = useState({ 
+    name: '', 
+    cost: '', 
+    unit: 'g', 
+    qty: '', 
+    min: '', 
+    supplier: '',
+    packageCost: '',
+    packageQty: '',
+    shippingFee: '',
+    priceBuffer: '',
+    type: 'ingredient' as 'ingredient' | 'other'
+  });
+
+  // Load editing item
+  useEffect(() => {
+    if (editingStockItem && activeModal === 'stock') {
+      setStockForm({
+        name: editingStockItem.name,
+        cost: editingStockItem.cost.toString(),
+        unit: editingStockItem.unit,
+        qty: editingStockItem.stockQty.toString(),
+        min: editingStockItem.minStock.toString(),
+        supplier: editingStockItem.supplier,
+        packageCost: editingStockItem.packageCost?.toString() || '',
+        packageQty: editingStockItem.packageQty?.toString() || '',
+        shippingFee: editingStockItem.shippingFee?.toString() || '',
+        priceBuffer: editingStockItem.priceBuffer?.toString() || '',
+        type: editingStockItem.type || 'ingredient'
+      });
+    } else if (activeModal === 'stock') {
+      // Reset
+      setStockForm({ name: '', cost: '', unit: 'g', qty: '', min: '', supplier: '', packageCost: '', packageQty: '', shippingFee: '', priceBuffer: '', type: 'ingredient' });
+    }
+  }, [activeModal, editingStockItem]);
+
+  // Auto-calculate Unit Cost when package details change
+  useEffect(() => {
+    const pc = parseFloat(stockForm.packageCost);
+    const pq = parseFloat(stockForm.packageQty);
+    const sf = parseFloat(stockForm.shippingFee) || 0;
+    const bf = parseFloat(stockForm.priceBuffer) || 0;
+
+    if (!isNaN(pc) && !isNaN(pq) && pq > 0) {
+      // Effective Package Price = Original * (1 + Buffer%) + Shipping
+      const bufferedPackageCost = pc * (1 + (bf / 100));
+      const unitCost = (bufferedPackageCost + sf) / pq;
+      setStockForm(prev => ({ ...prev, cost: unitCost.toFixed(3) }));
+    }
+  }, [stockForm.packageCost, stockForm.packageQty, stockForm.shippingFee, stockForm.priceBuffer]);
+
+  const handlePickerToggle = (id: number) => {
+    const exists = builder.ingredients.find(i => i.id === id);
+    if (exists) {
+      setBuilder(prev => ({
+        ...prev,
+        ingredients: prev.ingredients.filter(i => i.id !== id)
+      }));
+    } else {
+      setBuilder(prev => ({
+        ...prev,
+        ingredients: [...prev.ingredients, { id, qty: 1 }]
+      }));
+    }
+  };
+
+  const handleStockSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    addStockItem({
+      id: editingStockItem ? editingStockItem.id : Date.now(),
+      name: stockForm.name,
+      cost: parseFloat(stockForm.cost),
+      unit: stockForm.unit,
+      stockQty: parseFloat(stockForm.qty),
+      minStock: parseFloat(stockForm.min),
+      supplier: stockForm.supplier,
+      packageCost: parseFloat(stockForm.packageCost) || undefined,
+      packageQty: parseFloat(stockForm.packageQty) || undefined,
+      shippingFee: parseFloat(stockForm.shippingFee) || 0,
+      priceBuffer: parseFloat(stockForm.priceBuffer) || 0,
+      type: stockForm.type
+    });
+    closeModal();
+  };
+
+  // Filter items based on active picker context
+  const filteredItems = data.ingredients.filter(i => {
+    const matchesSearch = i.name.toLowerCase().includes(pickerSearch.toLowerCase());
+    const matchesType = pickerFilter ? (i.type || 'ingredient') === pickerFilter : true;
+    return matchesSearch && matchesType;
+  });
+
+  return (
+    <>
+      {activeModal && (
+        <div 
+          className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-40 transition-opacity duration-300" 
+          onClick={closeModal}
+        ></div>
+      )}
+
+      {/* Picker Modal */}
+      <div className={`fixed z-[100] bg-white dark:bg-[#1C1C1E] shadow-2xl flex flex-col w-full md:w-[440px] h-[calc(100dvh-env(safe-area-inset-top))] md:h-[600px] md:rounded-2xl rounded-t-3xl border dark:border-[#38383A] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] ${activeModal === 'picker' ? 'modal-active bottom-0 left-0 md:top-1/2 md:left-1/2' : 'modal-enter bottom-0 left-0 md:top-1/2 md:left-1/2'}`} style={{ display: activeModal === 'picker' ? 'flex' : 'none' }}>
+        <div className="md:hidden w-full h-6 flex items-center justify-center shrink-0" onClick={closeModal}>
+          <div className="w-10 h-1 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
+        </div>
+        <div className="px-6 pb-4 pt-2 md:p-6 flex justify-between items-center shrink-0">
+          <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
+            Add {pickerFilter === 'other' ? 'Other Items' : 'Ingredients'}
+          </h3>
+          <button onClick={closeModal} className="hidden md:flex w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full items-center justify-center text-gray-500 hover:bg-gray-200">
+            <iconify-icon icon="lucide:x" width="16"></iconify-icon>
+          </button>
+        </div>
+        <div className="px-6 py-4 shrink-0">
+          <div className="relative">
+            <iconify-icon icon="lucide:search" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" width="16"></iconify-icon>
+            <input 
+              type="text" 
+              placeholder={`Search ${pickerFilter === 'other' ? 'items' : 'ingredients'}...`}
+              value={pickerSearch}
+              onChange={(e) => setPickerSearch(e.target.value)}
+              className="ios-input w-full bg-gray-50 dark:bg-[#2C2C2E] pl-10 py-3 text-sm font-medium shadow-none focus:bg-gray-100 dark:focus:bg-[#3A3A3C] text-gray-900 dark:text-white" 
+            />
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 pb-safe-b">
+          {filteredItems.map(i => {
+             const isSelected = builder.ingredients.some(b => b.id === i.id);
+             return (
+              <div key={i.id} onClick={() => handlePickerToggle(i.id)} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-[#38383A] last:border-0 cursor-pointer hover:opacity-70 group">
+                <div>
+                  <p className={`text-sm font-medium ${isSelected ? 'text-[#007AFF]' : 'text-gray-900 dark:text-white'}`}>{i.name}</p>
+                  <p className="text-[10px] text-gray-400">₱{i.cost} / {i.unit}</p>
+                </div>
+                <iconify-icon 
+                  icon={isSelected ? "lucide:minus-circle" : "lucide:plus-circle"} 
+                  class={`transition-colors duration-200 ${isSelected ? 'text-red-500' : 'text-[#007AFF]'}`} 
+                  width="20"
+                ></iconify-icon>
+              </div>
+            );
+          })}
+          {filteredItems.length === 0 && (
+            <div className="py-10 text-center text-gray-400 text-sm">No items found.</div>
+          )}
+        </div>
+      </div>
+
+      {/* Stock Modal */}
+      <div className={`fixed z-[100] w-full md:w-[460px] h-[calc(100dvh-env(safe-area-inset-top))] md:h-[750px] bg-white dark:bg-[#1C1C1E] border border-gray-100 dark:border-[#38383A] shadow-2xl md:rounded-2xl rounded-t-3xl transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] flex flex-col overflow-hidden ${activeModal === 'stock' ? 'modal-active bottom-0 left-0 md:top-1/2 md:left-1/2' : 'modal-enter bottom-0 left-0 md:top-1/2 md:left-1/2'}`} style={{ display: activeModal === 'stock' ? 'flex' : 'none' }}>
+        <div className="md:hidden w-full h-6 flex items-center justify-center shrink-0" onClick={closeModal}>
+          <div className="w-10 h-1 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
+        </div>
+        <div className="px-6 pb-4 pt-2 md:p-6 flex justify-between items-center shrink-0">
+          <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{editingStockItem ? 'Edit Item' : 'Add Stock Item'}</h3>
+          <button onClick={closeModal} className="hidden md:flex w-8 h-8 bg-gray-100 dark:bg-[#2C2C2E] rounded-full items-center justify-center text-gray-500 hover:bg-gray-200">
+            <iconify-icon icon="lucide:x" width="16"></iconify-icon>
+          </button>
+        </div>
+        
+        <form className="flex flex-col flex-1 overflow-hidden" onSubmit={handleStockSubmit}>
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            
+            <div className={`flex bg-gray-100 dark:bg-[#2C2C2E] p-1 rounded-lg ${editingStockItem ? 'opacity-50 pointer-events-none' : ''}`}>
+              <button 
+                type="button" 
+                onClick={() => setStockForm(s => ({...s, type: 'ingredient'}))}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${stockForm.type === 'ingredient' ? 'bg-white dark:bg-[#3A3A3C] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500'}`}
+              >
+                Ingredient
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setStockForm(s => ({...s, type: 'other'}))}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${stockForm.type === 'other' ? 'bg-white dark:bg-[#3A3A3C] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500'}`}
+              >
+                Other Item
+              </button>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Item Name</label>
+              <input value={stockForm.name} onChange={e=>setStockForm({...stockForm, name: e.target.value})} className="ios-input w-full mt-1 p-3 text-sm font-semibold bg-gray-50 dark:bg-[#2C2C2E] text-gray-900 dark:text-white" placeholder={stockForm.type === 'ingredient' ? "e.g. Garlic Powder" : "e.g. Paper Bags"} required />
+            </div>
+
+            <div className="p-3 bg-gray-50 dark:bg-[#2C2C2E] rounded-xl space-y-3">
+              <div className="flex justify-between items-center">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Buying Information</p>
+                {parseFloat(stockForm.priceBuffer) > 0 && (
+                   <span className="text-[10px] font-bold text-[#007AFF]">Buffered +{stockForm.priceBuffer}%</span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                 <div>
+                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Package Price</label>
+                  <input type="number" step="0.01" value={stockForm.packageCost} onChange={e=>setStockForm({...stockForm, packageCost: e.target.value})} className="ios-input w-full mt-1 p-2.5 text-sm bg-white dark:bg-[#3A3A3C] text-gray-900 dark:text-white" placeholder="0.00" />
+                 </div>
+                 <div>
+                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Qty per Pack</label>
+                  <input type="number" step="0.01" value={stockForm.packageQty} onChange={e=>setStockForm({...stockForm, packageQty: e.target.value})} className="ios-input w-full mt-1 p-2.5 text-sm bg-white dark:bg-[#3A3A3C] text-gray-900 dark:text-white" placeholder="1" />
+                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                   <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Shipping Fee</label>
+                   <input type="number" step="0.01" value={stockForm.shippingFee} onChange={e=>setStockForm({...stockForm, shippingFee: e.target.value})} className="ios-input w-full mt-1 p-2.5 text-sm bg-white dark:bg-[#3A3A3C] text-gray-900 dark:text-white" placeholder="0.00" />
+                </div>
+                <div>
+                   <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Buffer % (Optional)</label>
+                   <input type="number" step="0.01" value={stockForm.priceBuffer} onChange={e=>setStockForm({...stockForm, priceBuffer: e.target.value})} className="ios-input w-full mt-1 p-2.5 text-sm bg-white dark:bg-[#3A3A3C] text-gray-900 dark:text-white" placeholder="10-15%" />
+                </div>
+              </div>
+              <div className="px-1">
+                <p className="text-[10px] text-gray-400 leading-tight">Add a 10-15% buffer to account for price fluctuations.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Unit Cost (Calc)</label>
+                <input type="number" step="0.001" value={stockForm.cost} onChange={e=>setStockForm({...stockForm, cost: e.target.value})} className="ios-input w-full mt-1 p-3 text-sm font-semibold bg-gray-50 dark:bg-[#2C2C2E] text-[#007AFF] dark:text-[#0A84FF]" placeholder="0" required />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Unit</label>
+                <div className="relative mt-1">
+                  <select value={stockForm.unit} onChange={e=>setStockForm({...stockForm, unit: e.target.value})} className="ios-input w-full py-3 px-3 text-sm appearance-none bg-gray-50 dark:bg-[#2C2C2E] text-gray-900 dark:text-white" required>
+                    {['g','kg','mL','L','mg','oz','lbs','tsp','tbsp','fl oz','cup','pint','quart','gallon','pc','set','bottle','can','jar','box','pack','bag','tray','dozen']
+  .map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                  <iconify-icon icon="lucide:chevron-down" className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" width="14"></iconify-icon>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Current Stock</label>
+                <input type="number" step="0.01" value={stockForm.qty} onChange={e=>setStockForm({...stockForm, qty: e.target.value})} className="ios-input w-full mt-1 p-3 text-sm font-semibold bg-gray-50 dark:bg-[#2C2C2E] text-gray-900 dark:text-white" placeholder="0" required />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Min Stock</label>
+                <input type="number" step="0.01" value={stockForm.min} onChange={e=>setStockForm({...stockForm, min: e.target.value})} className="ios-input w-full mt-1 p-3 text-sm font-semibold bg-gray-50 dark:bg-[#2C2C2E] text-gray-900 dark:text-white" placeholder="0" required />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Supplier (Optional)</label>
+              <input value={stockForm.supplier} onChange={e=>setStockForm({...stockForm, supplier: e.target.value})} className="ios-input w-full mt-1 p-3 text-sm bg-gray-50 dark:bg-[#2C2C2E] text-gray-900 dark:text-white" placeholder="e.g. Wet Market" />
+            </div>
+          </div>
+          
+          <div className="shrink-0 p-6 pt-2 pb-safe-b bg-white dark:bg-[#1C1C1E] border-t border-gray-100 dark:border-[#38383A]">
+            <div className="flex gap-3">
+              <button type="button" onClick={closeModal} className="flex-1 py-3 rounded-xl text-sm font-semibold bg-gray-100 dark:bg-[#2C2C2E] text-gray-900 dark:text-white active-scale">Cancel</button>
+              <button type="submit" className="flex-1 py-3 rounded-xl text-sm font-semibold bg-[#007AFF] text-white active-scale shadow-sm shadow-blue-200 dark:shadow-none">{editingStockItem ? 'Update Item' : 'Add Item'}</button>
+            </div>
+          </div>
+        </form>
+      </div>
+      
+      <ConfirmationModal />
+    </>
+  );
+};
