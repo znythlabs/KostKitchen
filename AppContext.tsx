@@ -373,6 +373,13 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   };
 
   const deleteStockItem = async (id: number) => {
+    // First delete references in recipe_ingredients to avoid foreign key constraint violation
+    const { error: relError } = await supabase.from('recipe_ingredients').delete().eq('ingredient_id', id);
+    if (relError) {
+      alert("Failed to delete related recipe ingredients: " + relError.message);
+      return;
+    }
+
     const { error } = await supabase.from('ingredients').delete().eq('id', id);
     if (error) alert("Failed to delete: " + error.message);
     else refreshData();

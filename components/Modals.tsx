@@ -373,11 +373,21 @@ export const Modals = () => {
               <div>
                 <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Unit</label>
                 <div className="relative mt-1">
-                  <select value={stockForm.unit} onChange={e=>setStockForm({...stockForm, unit: e.target.value})} className="ios-input w-full py-3 px-3 text-sm appearance-none bg-gray-50 dark:bg-[#2C2C2E] text-gray-900 dark:text-white" required>
+                  <input 
+                    list="units" 
+                    value={stockForm.unit} 
+                    onChange={e=>setStockForm({...stockForm, unit: e.target.value})} 
+                    className="ios-input w-full py-3 px-3 text-sm bg-gray-50 dark:bg-[#2C2C2E] text-gray-900 dark:text-white" 
+                    placeholder="Select or type" 
+                    required 
+                  />
+                  <datalist id="units">
                     {['g','kg','mL','L','mg','oz','lbs','tsp','tbsp','fl oz','cup','pint','quart','gallon','pc','set','bottle','can','jar','box','pack','bag','tray','dozen']
-  .map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                  <iconify-icon icon="lucide:chevron-down" className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" width="14"></iconify-icon>
+                      .map(u => <option key={u} value={u} />)}
+                  </datalist>
+                  <div className="absolute right-3 top-3.5 pointer-events-none">
+                    <iconify-icon icon="lucide:chevrons-up-down" width="14" class="text-gray-400"></iconify-icon>
+                  </div>
                 </div>
               </div>
             </div>
