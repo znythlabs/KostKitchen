@@ -195,7 +195,7 @@ export const Dashboard = () => {
             </div>
             <div className="text-xs font-semibold text-gray-500 mt-2 ml-1 flex items-center gap-2">
               <div className="w-1 h-1 rounded-full bg-gray-400"></div>
-              TEST Operating Profit (After OPEX)
+              Operating Profit (After OPEX)
             </div>
           </div>
 
