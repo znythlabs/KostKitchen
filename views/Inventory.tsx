@@ -31,8 +31,19 @@ export const Inventory = () => {
       const aVal = a[sortConfig.key] || 0;
       // @ts-ignore
       const bVal = b[sortConfig.key] || 0;
-      if (typeof aVal === 'string' && typeof bVal === 'string') return sortConfig.direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-      return sortConfig.direction === 'asc' ? (Number(aVal) - Number(bVal)) : (Number(bVal) - Number(aVal));
+      
+      let comparison = 0;
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        comparison = sortConfig.direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      } else {
+        comparison = sortConfig.direction === 'asc' ? (Number(aVal) - Number(bVal)) : (Number(bVal) - Number(aVal));
+      }
+
+      // Tie-breaker: Stable sort using ID if values are equal
+      if (comparison === 0) {
+        return a.id - b.id;
+      }
+      return comparison;
     });
   }, [data.ingredients, search, activeTab, sortConfig]);
 
@@ -122,12 +133,13 @@ export const Inventory = () => {
       <div className="surface-opaque rounded-2xl flex-1 flex flex-col overflow-hidden">
         {/* Desktop Header */}
         <div className="hidden md:flex items-center px-6 py-3 bg-gray-50/80 dark:bg-white/5 border-b border-gray-100 dark:border-white/10 text-[10px] font-bold text-gray-500 uppercase tracking-wider select-none shrink-0">
-          <SortHeader label="Item & Supplier" sortKey="name" className="w-[25%]" />
-          <SortHeader label="Pkg. Price" sortKey="packageCost" className="w-[15%]" align="right" />
-          <SortHeader label="Qty/Pack" sortKey="packageQty" className="w-[10%]" align="right" />
-          <SortHeader label="Shipping" sortKey="shippingFee" className="w-[10%]" align="right" />
-          <SortHeader label="Unit Cost" sortKey="cost" className="w-[15%]" align="right" />
-          <div className="w-[25%] pl-6">Stock Level</div>
+          <SortHeader label="Item & Supplier" sortKey="name" className="w-[22%]" />
+          <SortHeader label="Pkg. Price" sortKey="packageCost" className="w-[10%]" align="right" />
+          <SortHeader label="Qty/Pack" sortKey="packageQty" className="w-[8%]" align="right" />
+          <SortHeader label="Shipping" sortKey="shippingFee" className="w-[8%]" align="right" />
+          <SortHeader label="Unit Cost" sortKey="cost" className="w-[12%]" align="right" />
+          <SortHeader label="Min. Stock" sortKey="minStock" className="w-[10%]" align="center" />
+          <div className="w-[30%] pl-6">Stock Level</div>
         </div>
 
         {/* Table Body */}
@@ -146,63 +158,68 @@ export const Inventory = () => {
                   <div className="hidden md:flex items-center px-6 py-3 text-sm">
                     {inventoryEditMode ? (
                       <>
-                         <div className="w-[25%] pr-4 space-y-1">
+                         <div className="w-[22%] pr-4 space-y-1">
                             <input className="ios-input glass-input w-full px-2 py-1 text-xs font-medium" value={item.name} onChange={(e) => updateStockItem(item.id, 'name', e.target.value)} placeholder="Item Name" />
                             <input className="ios-input glass-input w-full px-2 py-1 text-xs text-gray-500" value={item.supplier} onChange={(e) => updateStockItem(item.id, 'supplier', e.target.value)} placeholder="Supplier" />
                          </div>
-                         <div className="w-[15%] pl-2 space-y-1">
+                         <div className="w-[10%] pl-2 space-y-1">
                             <div className="flex items-center gap-1">
-                              <span className="text-[9px] text-gray-400 w-8 text-right shrink-0">Price</span>
-                              <input type="number" className="ios-input glass-input w-full px-2 py-1 text-xs text-right" value={item.packageCost} onChange={(e) => updateStockItem(item.id, 'packageCost', e.target.value)} />
+                              <span className="text-[9px] text-gray-400 w-4 text-right shrink-0">P</span>
+                              <input type="number" className="ios-input glass-input w-full px-1 py-1 text-xs text-right" value={item.packageCost} onChange={(e) => updateStockItem(item.id, 'packageCost', e.target.value)} />
                             </div>
                             <div className="flex items-center gap-1">
-                              <span className="text-[9px] text-gray-400 w-8 text-right shrink-0">Buff%</span>
-                              <input type="number" className="ios-input glass-input w-full px-2 py-1 text-xs text-right text-blue-500" value={item.priceBuffer} onChange={(e) => updateStockItem(item.id, 'priceBuffer', e.target.value)} placeholder="0" />
+                              <span className="text-[9px] text-gray-400 w-4 text-right shrink-0">B%</span>
+                              <input type="number" className="ios-input glass-input w-full px-1 py-1 text-xs text-right text-blue-500" value={item.priceBuffer} onChange={(e) => updateStockItem(item.id, 'priceBuffer', e.target.value)} placeholder="0" />
                             </div>
                          </div>
-                         <div className="w-[10%] pl-2"><input type="number" className="ios-input glass-input w-full px-2 py-1 text-xs text-right" value={item.packageQty} onChange={(e) => updateStockItem(item.id, 'packageQty', e.target.value)} /></div>
-                         <div className="w-[10%] pl-2"><input type="number" className="ios-input glass-input w-full px-2 py-1 text-xs text-right" value={item.shippingFee} onChange={(e) => updateStockItem(item.id, 'shippingFee', e.target.value)} /></div>
-                         <div className="w-[15%] pl-4 flex items-center gap-1">
+                         <div className="w-[8%] pl-2"><input type="number" className="ios-input glass-input w-full px-1 py-1 text-xs text-right" value={item.packageQty} onChange={(e) => updateStockItem(item.id, 'packageQty', e.target.value)} /></div>
+                         <div className="w-[8%] pl-2"><input type="number" className="ios-input glass-input w-full px-1 py-1 text-xs text-right" value={item.shippingFee} onChange={(e) => updateStockItem(item.id, 'shippingFee', e.target.value)} /></div>
+                         <div className="w-[12%] pl-4 flex items-center gap-1">
                             <input type="number" className="ios-input glass-input w-full px-2 py-1 text-xs text-right" value={item.cost} disabled title="Calculated automatically" />
                             <span className="text-gray-400 text-xs whitespace-nowrap">/ {item.unit}</span>
                          </div>
-                         <div className="w-[25%] pl-6 flex items-center gap-2">
-                            <input type="number" className="ios-input glass-input w-20 px-2 py-1 text-xs text-right" value={item.stockQty} onChange={(e) => updateStockItem(item.id, 'stockQty', e.target.value)} />
-                            <button onClick={() => handleDelete(item.id, item.name)} className="text-red-500 hover:bg-red-100 p-1.5 rounded-lg transition-colors"><iconify-icon icon="lucide:trash-2" width="14"></iconify-icon></button>
+                         <div className="w-[10%] px-4">
+                            <input type="number" className="ios-input glass-input w-full px-2 py-1 text-xs text-center" value={item.minStock} onChange={(e) => updateStockItem(item.id, 'minStock', e.target.value)} placeholder="Min" />
+                         </div>
+                         <div className="w-[30%] pl-6 flex items-center gap-2">
+                            <input type="number" className="ios-input glass-input w-24 px-2 py-1 text-xs text-right font-bold" value={item.stockQty} onChange={(e) => updateStockItem(item.id, 'stockQty', e.target.value)} />
+                            <span className="text-xs text-gray-500">{item.unit}</span>
+                            <button onClick={() => handleDelete(item.id, item.name)} className="ml-auto text-red-500 hover:bg-red-100 p-1.5 rounded-lg transition-colors"><iconify-icon icon="lucide:trash-2" width="14"></iconify-icon></button>
                          </div>
                       </>
                     ) : (
                       <>
-                        <div className="w-[25%] pr-2 flex items-center justify-between group/edit">
+                        <div className="w-[22%] pr-2 flex items-center justify-between group/edit">
                           <div>
                             <div className="font-semibold text-gray-900 dark:text-white truncate" title={item.name}>{item.name}</div>
                             <div className="text-xs text-gray-400 truncate mt-0.5">{item.supplier}</div>
                           </div>
                         </div>
-                        <div className="w-[15%] text-right">
+                        <div className="w-[10%] text-right">
                           <div className="font-bold text-gray-900 dark:text-white">
-                            {item.packageCost ? `₱${bufferedPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
+                            {item.packageCost ? `₱${bufferedPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '-'}
                           </div>
-                          {hasBuffer && (
-                            <>
-                              <div className="text-[10px] text-[#007AFF] font-semibold mt-0.5">Buffered +{buffer}%</div>
-                              <div className="text-[9px] text-gray-400 mt-0.5">Orig: ₱{original.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                            </>
-                          )}
+                          {hasBuffer && <div className="text-[9px] text-[#007AFF] font-bold">+{buffer}%</div>}
                         </div>
-                        <div className="w-[10%] text-right text-gray-500">{item.packageQty ? safeNumber(item.packageQty).toLocaleString() : '-'}</div>
-                        <div className="w-[10%] text-right text-gray-500">{formatShipping(item.shippingFee)}</div>
-                        <div className="w-[15%] text-right">
-                          <span className="font-semibold text-gray-900 dark:text-white">₱{safeNumber(item.cost).toFixed(3)}</span>
-                          <span className="text-gray-400 ml-1 font-normal">/ {item.unit}</span>
+                        <div className="w-[8%] text-right text-gray-500 text-xs">{item.packageQty ? safeNumber(item.packageQty).toLocaleString() : '-'}</div>
+                        <div className="w-[8%] text-right text-gray-500 text-xs">{formatShipping(item.shippingFee)}</div>
+                        <div className="w-[12%] text-right">
+                          <span className="font-semibold text-gray-900 dark:text-white">₱{safeNumber(item.cost).toFixed(2)}</span>
+                          <span className="text-gray-400 ml-1 font-normal text-xs">/ {item.unit}</span>
                         </div>
-                        <div className="w-[25%] pl-6">
+                        <div className="w-[10%] text-center text-xs font-medium text-gray-400">
+                            {item.minStock ? item.minStock.toLocaleString() : '-'}
+                        </div>
+                        <div className="w-[30%] pl-6">
                           <div className="flex items-center justify-between mb-1.5">
-                            <span className={`text-[10px] font-bold ${status.textClass}`}>{status.label} STOCK</span>
-                            <span className="text-[10px] text-gray-400">{safeNumber(item.stockQty).toLocaleString()} {item.unit}</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${status.bgClass} ${status.textClass}`}>{status.label}</span>
+                            <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300">{safeNumber(item.stockQty).toLocaleString()} {item.unit}</span>
                           </div>
-                          <div className="w-full h-1.5 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full transition-all duration-500 ${status.colorClass}`} style={{ width: `${status.width}%` }}></div>
+                          <div className="w-full h-2 bg-gray-100 dark:bg-white/5 rounded-full overflow-hidden relative">
+                             {/* Optional: Marker for Min Stock if we want to be fancy, but simple bar is cleaner */}
+                            <div className={`h-full rounded-full transition-all duration-500 relative ${status.colorClass}`} style={{ width: `${status.width}%` }}>
+                                <div className="absolute inset-0 bg-white/20"></div>
+                            </div>
                           </div>
                         </div>
                       </>

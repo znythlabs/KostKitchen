@@ -124,6 +124,17 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       else setLoading(false);
     });
 
+    // Realtime Subscription
+    const channel = supabase.channel('db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, () => {
+         // Debounce or just refresh for now. 
+         // For a perfect UX, we should merge the payload, but refreshData is safer for consistency.
+         refreshData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recipes' }, () => refreshData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => refreshData())
+      .subscribe();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN') refreshData();
       if (event === 'SIGNED_OUT') {
@@ -132,7 +143,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Theme Logic
@@ -492,14 +506,25 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   };
 
   const getStockStatus = (item: Ingredient) => {
-    const pct = (item.stockQty / (item.minStock * 3)) * 100;
-    let label = "GOOD", colorClass = "bg-[#34c759]", bgClass = "bg-green-100 dark:bg-green-900/40", textClass = "text-[#34c759] dark:text-[#4ade80]";
-    if (item.stockQty <= item.minStock) {
-      label = "LOW"; colorClass = "bg-[#ff3b30]"; bgClass = "bg-red-100 dark:bg-red-900/40"; textClass = "text-[#ff3b30] dark:text-[#ff6b60]";
-    } else if (item.stockQty <= item.minStock * 2) {
-      label = "MEDIUM"; colorClass = "bg-[#ffcc00]"; bgClass = "bg-yellow-100 dark:bg-yellow-900/40"; textClass = "text-[#e6b800] dark:text-[#fcc419]";
+    // If minStock is not set (0), treat as untracked/good unless 0 stock
+    if (!item.minStock || item.minStock <= 0) {
+        if (item.stockQty <= 0) return { label: "OUT OF STOCK", colorClass: "bg-gray-400", textClass: "text-gray-400", bgClass: "bg-gray-100", width: 0 };
+        return { label: "IN STOCK", colorClass: "bg-[#34c759]", textClass: "text-[#34c759]", bgClass: "bg-green-100", width: 100 };
     }
-    return { label, colorClass, textClass, bgClass, width: Math.min(pct, 100) };
+
+    const pct = (item.stockQty / (item.minStock * 2)) * 100;
+    
+    if (item.stockQty <= 0) {
+        return { label: "OUT OF STOCK", colorClass: "bg-gray-900 dark:bg-gray-600", textClass: "text-gray-900 dark:text-gray-400", bgClass: "bg-gray-200", width: 0 };
+    }
+    if (item.stockQty <= item.minStock) {
+        return { label: "LOW STOCK", colorClass: "bg-[#ff3b30]", textClass: "text-[#ff3b30]", bgClass: "bg-red-100", width: Math.max(pct, 10) };
+    }
+    if (item.stockQty <= item.minStock * 1.5) {
+        return { label: "REORDER SOON", colorClass: "bg-[#ffcc00]", textClass: "text-[#ffcc00]", bgClass: "bg-yellow-100", width: Math.min(pct, 100) };
+    }
+    
+    return { label: "GOOD", colorClass: "bg-[#34c759]", textClass: "text-[#34c759]", bgClass: "bg-green-100", width: 100 };
   };
 
   const loadRecipeToBuilder = (id: number) => {
