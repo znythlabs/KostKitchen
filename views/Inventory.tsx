@@ -248,7 +248,7 @@ export const Inventory = () => {
                 </button>
             )}
 
-            <button onClick={() => openModal('stock')} className="whitespace-nowrap px-4 py-2.5 bg-[#007AFF] text-white text-sm font-semibold rounded-full shadow-sm active-scale flex items-center gap-2">
+            <button onClick={() => openModal('stock', undefined, activeTab)} className="whitespace-nowrap px-4 py-2.5 bg-[#007AFF] text-white text-sm font-semibold rounded-full shadow-sm active-scale flex items-center gap-2">
               <iconify-icon icon="lucide:plus" width="16"></iconify-icon> Add
             </button>
             <button 

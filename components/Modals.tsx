@@ -173,9 +173,9 @@ export const Modals = () => {
     } else if (activeModal === 'stock') {
       // Reset
       setShowDeleteConfirm(false);
-      setStockForm({ name: '', cost: '', unit: 'g', qty: '', min: '', supplier: '', packageCost: '', packageQty: '', shippingFee: '', priceBuffer: '', type: 'ingredient' });
+      setStockForm({ name: '', cost: '', unit: 'g', qty: '', min: '', supplier: '', packageCost: '', packageQty: '', shippingFee: '', priceBuffer: '', type: pickerFilter || 'ingredient' });
     }
-  }, [activeModal, editingStockItem]);
+  }, [activeModal, editingStockItem, pickerFilter]);
 
   const handleDelete = () => {
     if (editingStockItem) {

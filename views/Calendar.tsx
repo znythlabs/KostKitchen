@@ -548,28 +548,6 @@ export const Calendar = () => {
                                 </div>
                             </div>
 
-                            {/* Stock Alerts */}
-                            {selectedDay.stockAlerts && selectedDay.stockAlerts.length > 0 && (
-                                <div>
-                                    <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                                        <iconify-icon icon="lucide:alert-triangle" width="16" className="text-red-500"></iconify-icon> Low Stock
-                                    </h4>
-                                    <div className="space-y-2">
-                                        {selectedDay.stockAlerts.map(alert => (
-                                            <div key={alert.ingredientId} className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl">
-                                                <p className="text-sm font-semibold text-gray-900 dark:text-white">{alert.ingredientName}</p>
-                                                <p className="text-xs font-bold text-red-600 dark:text-red-400">{alert.stockQty} left</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-
             {/* Weekly Summary Modal - rendered via portal to escape relative parent */}
             {selectedWeek && createPortal(
                 <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center">
