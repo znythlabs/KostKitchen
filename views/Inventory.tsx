@@ -229,7 +229,7 @@ export const Inventory = () => {
                 >
                   <div className="relative">
                     <iconify-icon icon="lucide:sparkles" width="16" class="text-purple-500 animate-pulse"></iconify-icon>
-                    <div className="absolute inset-0 bg-purple-500 blur-sm opacity-50 animate-pulse"></div>
+                    <div className="absolute inset-0 blur-sm animate-pulse"></div>
                   </div>
                   <span className="hidden md:inline bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent font-extrabold">AI Procurement</span>
                   {lowStockCount > 0 && (
