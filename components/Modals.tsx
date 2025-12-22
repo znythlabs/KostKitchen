@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../AppContext';
+import { CustomSelect } from './CustomSelect';
 
 const ConfirmationModal = () => {
   const { confirmModal, closeConfirmation } = useApp();
@@ -371,25 +372,20 @@ export const Modals = () => {
                 <input type="number" step="0.001" value={stockForm.cost} onChange={e=>setStockForm({...stockForm, cost: e.target.value})} className="ios-input w-full mt-1 p-3 text-sm font-semibold bg-gray-50 dark:bg-[#2C2C2E] text-[#007AFF] dark:text-[#0A84FF]" placeholder="0" required />
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Unit</label>
-                <div className="relative mt-1">
-                  <select 
-                    value={stockForm.unit} 
-                    onChange={e=>setStockForm({...stockForm, unit: e.target.value})} 
-                    className="ios-input w-full py-3 px-3 text-sm bg-gray-50 dark:bg-[#2C2C2E] text-gray-900 dark:text-white appearance-none"
-                    required 
-                  >
-                    {!['g', 'kg', 'oz', 'lbs', 'mg', 'mL', 'L', 'fl oz', 'tsp', 'tbsp', 'cup', 'pint', 'quart', 'gallon', 'unit', 'dozen', 'pack', 'bottle', 'can', 'box', 'jar', 'bag', 'piece', 'tray'].includes(stockForm.unit) && stockForm.unit && (
-                      <option value={stockForm.unit}>{stockForm.unit}</option>
-                    )}
-                    {['g', 'kg', 'oz', 'lbs', 'mg', 'mL', 'L', 'fl oz', 'tsp', 'tbsp', 'cup', 'pint', 'quart', 'gallon', 'unit', 'dozen', 'pack', 'bottle', 'can', 'box', 'jar', 'bag', 'piece', 'tray']
-                      .map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                  <div className="absolute right-3 top-3.5 pointer-events-none">
-                    <iconify-icon icon="lucide:chevrons-up-down" width="14" class="text-gray-400"></iconify-icon>
+                  <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Unit</label>
+                  <div className="relative mt-1">
+                    <CustomSelect
+                      value={stockForm.unit}
+                      onChange={val=>setStockForm({...stockForm, unit: val})}
+                      options={['g', 'kg', 'oz', 'lbs', 'mg', 'mL', 'L', 'fl oz', 'tsp', 'tbsp', 'cup', 'pint', 'quart', 'gallon', 'unit', 'dozen', 'pack', 'bottle', 'can', 'box', 'jar', 'bag', 'piece', 'tray']}
+                      className="ios-input w-full h-[46px] px-3 text-sm bg-gray-50 dark:bg-[#2C2C2E] text-gray-900 dark:text-white flex items-center"
+                      placeholder="Select Unit"
+                    />
+                    <div className="absolute right-3 top-3.5 pointer-events-none">
+                      <iconify-icon icon="lucide:chevrons-up-down" width="14" class="text-gray-400"></iconify-icon>
+                    </div>
                   </div>
                 </div>
-              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

@@ -8,6 +8,8 @@ import { Ingredient } from '../types';
 type SortKey = 'name' | 'supplier' | 'packageCost' | 'packageQty' | 'shippingFee' | 'unit' | 'cost' | 'stockQty' | 'minStock';
 type TabType = 'ingredient' | 'other';
 
+import { CustomSelect } from '../components/CustomSelect';
+
 const UNITS = ['g', 'kg', 'oz', 'lbs', 'mg', 'mL', 'L', 'fl oz', 'tsp', 'tbsp', 'cup', 'pint', 'quart', 'gallon', 'unit', 'dozen', 'pack', 'bottle', 'can', 'box', 'jar', 'bag', 'piece', 'tray'];
 
 export const Inventory = () => {
@@ -358,15 +360,14 @@ export const Inventory = () => {
                          <div className="flex flex-col gap-2">
                             <div className="flex items-center inv-field p-0 overflow-hidden bg-white dark:bg-white/5 border-gray-200 dark:border-white/10">
                                 <input type="number" step="0.01" className="bg-transparent border-none outline-none text-right w-full py-1.5 pl-2 text-sm font-bold text-gray-900 dark:text-white focus:ring-0" value={item.stockQty} onChange={(e) => updateStockItem(item.id, 'stockQty', e.target.value)} />
-                                <div className="relative h-8 w-16 border-l border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/10">
-                                    <select 
-                                        className="w-full h-full bg-transparent text-[10px] font-semibold text-gray-400 text-center focus:outline-none focus:bg-white dark:focus:bg-[#2C2C2E] focus:text-gray-900 dark:focus:text-white transition-colors p-0 cursor-pointer appearance-none" 
-                                        value={item.unit} 
-                                        onChange={(e) => updateStockItem(item.id, 'unit', e.target.value)} 
-                                    >
-                                        {!UNITS.includes(item.unit) && item.unit && <option value={item.unit}>{item.unit}</option>}
-                                        {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                                    </select>
+                                <div className="relative h-8 w-16 border-l border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/10 flex items-center justify-center">
+                                    <CustomSelect 
+                                        options={UNITS}
+                                        value={item.unit}
+                                        onChange={(val) => updateStockItem(item.id, 'unit', val)}
+                                        className="w-full h-full text-[10px] font-semibold text-gray-400 text-center flex items-center justify-center px-1"
+                                        placeholder="Unit"
+                                    />
                                 </div>
                             </div>
                          </div>
@@ -530,14 +531,13 @@ export const Inventory = () => {
                           <div className="col-span-1">
                             <label className="text-[10px] uppercase text-gray-400 font-bold">Unit</label>
                             <div className="relative mt-1">
-                              <select 
-                                className="inv-field w-full text-xs appearance-none pr-6" 
-                                value={item.unit} 
-                                onChange={(e) => updateStockItem(item.id, 'unit', e.target.value)} 
-                              >
-                                {!UNITS.includes(item.unit) && item.unit && <option value={item.unit}>{item.unit}</option>}
-                                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                              </select>
+                              <CustomSelect 
+                                options={UNITS}
+                                value={item.unit}
+                                onChange={(val) => updateStockItem(item.id, 'unit', val)}
+                                className="inv-field w-full text-xs pr-6 flex items-center h-[38px] px-3 bg-gray-50 dark:bg-white/10"
+                                placeholder="Select Unit"
+                              />
                               <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <iconify-icon icon="lucide:chevrons-up-down" width="12" class="text-gray-400"></iconify-icon>
                               </div>
