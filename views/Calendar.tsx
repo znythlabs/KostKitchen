@@ -547,6 +547,11 @@ export const Calendar = () => {
                                     ))}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
 
             {/* Weekly Summary Modal - rendered via portal to escape relative parent */}
             {selectedWeek && createPortal(
