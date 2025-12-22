@@ -373,18 +373,18 @@ export const Modals = () => {
               <div>
                 <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Unit</label>
                 <div className="relative mt-1">
-                  <input 
-                    list="units" 
+                  <select 
                     value={stockForm.unit} 
                     onChange={e=>setStockForm({...stockForm, unit: e.target.value})} 
-                    className="ios-input w-full py-3 px-3 text-sm bg-gray-50 dark:bg-[#2C2C2E] text-gray-900 dark:text-white" 
-                    placeholder="Select or type" 
+                    className="ios-input w-full py-3 px-3 text-sm bg-gray-50 dark:bg-[#2C2C2E] text-gray-900 dark:text-white appearance-none"
                     required 
-                  />
-                  <datalist id="units">
-                    {['g','kg','mL','L','mg','oz','lbs','tsp','tbsp','fl oz','cup','pint','quart','gallon','pc','set','bottle','can','jar','box','pack','bag','tray','dozen']
-                      .map(u => <option key={u} value={u} />)}
-                  </datalist>
+                  >
+                    {!['g', 'kg', 'oz', 'lbs', 'mg', 'mL', 'L', 'fl oz', 'tsp', 'tbsp', 'cup', 'pint', 'quart', 'gallon', 'unit', 'dozen', 'pack', 'bottle', 'can', 'box', 'jar', 'bag', 'piece', 'tray'].includes(stockForm.unit) && stockForm.unit && (
+                      <option value={stockForm.unit}>{stockForm.unit}</option>
+                    )}
+                    {['g', 'kg', 'oz', 'lbs', 'mg', 'mL', 'L', 'fl oz', 'tsp', 'tbsp', 'cup', 'pint', 'quart', 'gallon', 'unit', 'dozen', 'pack', 'bottle', 'can', 'box', 'jar', 'bag', 'piece', 'tray']
+                      .map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
                   <div className="absolute right-3 top-3.5 pointer-events-none">
                     <iconify-icon icon="lucide:chevrons-up-down" width="14" class="text-gray-400"></iconify-icon>
                   </div>

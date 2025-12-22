@@ -91,10 +91,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
-      // BYPASS FOR AUDIT
-      setIsLoggedIn(true);
-      setUser({ email: 'audit@local.com' });
-      setData(INITIAL_DATA);
+      setIsLoggedIn(false);
+      setUser(null);
+      setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [] });
       setLoading(false);
       return;
     }
@@ -299,7 +298,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const payload = {
+    const payload: any = {
       user_id: user.id,
       name: item.name,
       unit: item.unit,
@@ -314,12 +313,12 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       type: item.type
     };
 
-    if (item.id && item.id > 100000) { // Assume > 100k is temp ID from frontend
-       // Insert
-       const { error } = await supabase.from('ingredients').insert(payload);
-       if (error) alert("Failed to add: " + error.message);
+    if (item.id && item.id < 100000) {
+       // Update existing item
+       const { error } = await supabase.from('ingredients').update(payload).eq('id', item.id);
+       if (error) alert("Failed to update: " + error.message);
     } else {
-       // It might be an update if ID exists, but addStockItem usually implies new
+       // Insert new item
        const { error } = await supabase.from('ingredients').insert(payload);
        if (error) alert("Failed to add: " + error.message);
     }

@@ -125,7 +125,7 @@ export const MenuEngineering = () => {
                 
                 {/* LEFT COLUMN: MATRIX CHART */}
                 <div className="lg:col-span-7 flex flex-col gap-6">
-                    <div className="bg-white dark:bg-[#1C1C1E] rounded-[32px] p-6 shadow-sm border border-gray-100 dark:border-white/5 relative overflow-hidden">
+                    <div className="bg-white dark:bg-[#1C1C1E] rounded-[32px] p-6 shadow-sm border border-gray-100 dark:border-white/5 relative">
                         
                         {/* Header within Chart Card */}
                         <div className="flex justify-between items-center mb-6 px-2">
@@ -187,7 +187,7 @@ export const MenuEngineering = () => {
                                     <div 
                                         key={item.id}
                                         onClick={() => setSelectedCategory(item.category)}
-                                        className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500 cursor-pointer group z-10 ${isSelected ? 'opacity-100 scale-100 grayscale-0' : 'opacity-20 scale-75 grayscale'}`}
+                                        className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500 cursor-pointer group z-10 hover:z-[60] ${isSelected ? 'opacity-100 scale-100 grayscale-0' : 'opacity-20 scale-75 grayscale'}`}
                                         style={{ left: `${Math.min(Math.max(x, 2), 98)}%`, top: `${Math.min(Math.max(y, 2), 98)}%` }}
                                     >
                                         <div className={`w-4 h-4 md:w-5 md:h-5 rounded-full ${config.bg} shadow-lg shadow-black/10 border-2 border-white dark:border-[#1C1C1E] group-hover:scale-125 transition-transform`}></div>

@@ -8,6 +8,8 @@ import { Ingredient } from '../types';
 type SortKey = 'name' | 'supplier' | 'packageCost' | 'packageQty' | 'shippingFee' | 'unit' | 'cost' | 'stockQty' | 'minStock';
 type TabType = 'ingredient' | 'other';
 
+const UNITS = ['g', 'kg', 'oz', 'lbs', 'mg', 'mL', 'L', 'fl oz', 'tsp', 'tbsp', 'cup', 'pint', 'quart', 'gallon', 'unit', 'dozen', 'pack', 'bottle', 'can', 'box', 'jar', 'bag', 'piece', 'tray'];
+
 export const Inventory = () => {
   const { 
     data, getStockStatus, inventoryEditMode, toggleInventoryEdit, 
@@ -195,7 +197,7 @@ export const Inventory = () => {
            </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-1 md:justify-end overflow-hidden">
+        <div className="flex items-center gap-2 flex-1 md:justify-end">
           <div className="relative flex-1 md:max-w-[240px]">
             <iconify-icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="16"></iconify-icon>
             <input 
@@ -206,7 +208,7 @@ export const Inventory = () => {
               className="ios-input glass-input w-full pl-9 py-2.5 text-sm text-gray-900 dark:text-white" 
             />
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
+          <div className="flex items-center gap-2 overflow-x-auto p-3 -m-1 no-scrollbar">
             {selectionMode && selectedItems.size > 0 && (
                 <button onClick={handleBulkDelete} className="whitespace-nowrap px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-full shadow-sm active-scale flex items-center gap-2 animate-in fade-in zoom-in duration-200">
                   <iconify-icon icon="lucide:trash-2" width="16"></iconify-icon> Delete ({selectedItems.size})
@@ -233,7 +235,7 @@ export const Inventory = () => {
                   </div>
                   <span className="hidden md:inline bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent font-extrabold">AI Procurement</span>
                   {lowStockCount > 0 && (
-                      <span className="absolute my-1 -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-[#1C1C1E] animate-bounce z-10">
+                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-[#1C1C1E] animate-bounce z-10">
                           {lowStockCount}
                       </span>
                   )}
@@ -356,7 +358,16 @@ export const Inventory = () => {
                          <div className="flex flex-col gap-2">
                             <div className="flex items-center inv-field p-0 overflow-hidden bg-white dark:bg-white/5 border-gray-200 dark:border-white/10">
                                 <input type="number" step="0.01" className="bg-transparent border-none outline-none text-right w-full py-1.5 pl-2 text-sm font-bold text-gray-900 dark:text-white focus:ring-0" value={item.stockQty} onChange={(e) => updateStockItem(item.id, 'stockQty', e.target.value)} />
-                                <span className="text-[10px] font-semibold text-gray-400 px-2 bg-gray-50 dark:bg-white/10 h-8 flex items-center justify-center border-l border-gray-100 dark:border-white/5">{item.unit}</span>
+                                <div className="relative h-8 w-16 border-l border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/10">
+                                    <select 
+                                        className="w-full h-full bg-transparent text-[10px] font-semibold text-gray-400 text-center focus:outline-none focus:bg-white dark:focus:bg-[#2C2C2E] focus:text-gray-900 dark:focus:text-white transition-colors p-0 cursor-pointer appearance-none" 
+                                        value={item.unit} 
+                                        onChange={(e) => updateStockItem(item.id, 'unit', e.target.value)} 
+                                    >
+                                        {!UNITS.includes(item.unit) && item.unit && <option value={item.unit}>{item.unit}</option>}
+                                        {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select>
+                                </div>
                             </div>
                          </div>
                       </>
@@ -518,7 +529,19 @@ export const Inventory = () => {
                           </div>
                           <div className="col-span-1">
                             <label className="text-[10px] uppercase text-gray-400 font-bold">Unit</label>
-                            <input className="inv-field w-full text-xs mt-1" value={item.unit} onChange={(e) => updateStockItem(item.id, 'unit', e.target.value)} />
+                            <div className="relative mt-1">
+                              <select 
+                                className="inv-field w-full text-xs appearance-none pr-6" 
+                                value={item.unit} 
+                                onChange={(e) => updateStockItem(item.id, 'unit', e.target.value)} 
+                              >
+                                {!UNITS.includes(item.unit) && item.unit && <option value={item.unit}>{item.unit}</option>}
+                                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                              </select>
+                              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <iconify-icon icon="lucide:chevrons-up-down" width="12" class="text-gray-400"></iconify-icon>
+                              </div>
+                            </div>
                           </div>
                           <div className="col-span-1">
                             <label className="text-[10px] uppercase text-gray-400 font-bold">Unit Cost</label>
