@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../AppContext';
 
-type MatrixCategory = 'Star' | 'Plowhorse' | 'Puzzle' | 'Dog';
+type MatrixCategory = 'Winner' | 'Staple' | 'Opportunity' | 'Underperformer';
 
 interface MatrixItem {
     id: number;
@@ -13,51 +13,64 @@ interface MatrixItem {
     category: MatrixCategory;
 }
 
-const CATEGORY_CONFIG: Record<MatrixCategory, { 
-    color: string; 
-    bg: string; 
-    lightBg: string;
-    desc: string; 
+const CATEGORY_CONFIG: Record<MatrixCategory, {
+    label: string;
+    alias?: string;
+    color: string;
+    bg: string;
+    lightBg: string; // Used for badges
+    zoneBg: string; // Used for chart quadrants
+    desc: string;
     strategy: string;
     icon: string;
 }> = {
-    'Star': { 
-        color: 'text-green-500', 
-        bg: 'bg-green-500', 
-        lightBg: 'bg-green-50 dark:bg-green-900/10',
+    'Winner': {
+        label: 'Winners',
+        color: 'text-emerald-500',
+        bg: 'bg-emerald-500',
+        lightBg: 'bg-emerald-50 dark:bg-emerald-500/20',
+        zoneBg: 'bg-emerald-500/10 dark:bg-emerald-500/10',
         desc: 'High Profit, High Volume',
-        strategy: 'Maintain quality and consistency. Do not alter significantly. Promote visibility.',
-        icon: 'lucide:star'
+        strategy: 'Promote significantly. Ensure consistent quality.',
+        icon: 'lucide:trophy'
     },
-    'Plowhorse': { 
-        color: 'text-orange-500', 
-        bg: 'bg-orange-500', 
-        lightBg: 'bg-orange-50 dark:bg-orange-900/10',
+    'Staple': {
+        label: 'Staples',
+        color: 'text-yellow-500',
+        bg: 'bg-yellow-500',
+        lightBg: 'bg-yellow-50 dark:bg-yellow-500/20',
+        zoneBg: 'bg-yellow-500/10 dark:bg-yellow-500/10',
         desc: 'Low Profit, High Volume',
-        strategy: 'Increase price slightly or reduce food cost. Create combo meals with high-margin items.',
-        icon: 'lucide:activity'
+        strategy: 'Reprice carefully or lower costs.',
+        icon: 'lucide:anchor'
     },
-    'Puzzle': { 
-        color: 'text-blue-500', 
-        bg: 'bg-blue-500', 
-        lightBg: 'bg-blue-50 dark:bg-blue-900/10',
+    'Opportunity': {
+        label: 'Opportunities',
+        color: 'text-blue-500',
+        bg: 'bg-blue-500',
+        lightBg: 'bg-blue-50 dark:bg-blue-500/20',
+        zoneBg: 'bg-blue-500/10 dark:bg-blue-500/10',
         desc: 'High Profit, Low Volume',
-        strategy: 'Invest in marketing. Rename or rewrite description. Move to high-visibility menu area.',
-        icon: 'lucide:help-circle'
+        strategy: 'Market aggressively. Increase visibility.',
+        icon: 'lucide:sparkles'
     },
-    'Dog': { 
-        color: 'text-red-500', 
-        bg: 'bg-red-500', 
-        lightBg: 'bg-red-50 dark:bg-red-900/10',
+    'Underperformer': {
+        label: 'Needs Attention',
+        alias: 'Problem',
+        color: 'text-red-500',
+        bg: 'bg-red-500',
+        lightBg: 'bg-red-50 dark:bg-red-500/20',
+        zoneBg: 'bg-red-500/10 dark:bg-red-500/10',
         desc: 'Low Profit, Low Volume',
-        strategy: 'Remove from menu or completely re-engineer. Stop promoting immediately.',
-        icon: 'lucide:alert-circle'
+        strategy: 'Reinvent or remove from menu.',
+        icon: 'lucide:alert-octagon'
     }
 };
 
 export const MenuEngineering = () => {
     const { data } = useApp();
     const [selectedCategory, setSelectedCategory] = useState<MatrixCategory | 'All'>('All');
+    const [hoveredItem, setHoveredItem] = useState<number | null>(null);
 
     const matrixData = useMemo(() => {
         const recipes = data.recipes;
@@ -65,7 +78,6 @@ export const MenuEngineering = () => {
 
         // 1. Calculate Individual Metrics
         const tempItems = recipes.map(r => {
-            // Profit (Contribution) = Price * (Margin / 100)
             const contribution = r.price * (r.margin / 100);
             const cost = r.price - contribution;
             const volume = r.dailyVolume || 0;
@@ -75,7 +87,7 @@ export const MenuEngineering = () => {
         // 2. Calculate Averages
         const totalVolume = tempItems.reduce((sum, i) => sum + i.volume, 0);
         const avgPop = totalVolume / (tempItems.length || 1);
-        
+
         const totalProfit = tempItems.reduce((sum, i) => sum + i.contribution, 0);
         const avgProf = totalProfit / (tempItems.length || 1);
 
@@ -83,12 +95,12 @@ export const MenuEngineering = () => {
         const items: MatrixItem[] = tempItems.map(i => {
             const isHighPop = i.volume >= avgPop;
             const isHighProf = i.contribution >= avgProf;
-            
-            let category: MatrixCategory = 'Dog';
-            if (isHighPop && isHighProf) category = 'Star';
-            else if (isHighPop && !isHighProf) category = 'Plowhorse';
-            else if (!isHighPop && isHighProf) category = 'Puzzle';
-            
+
+            let category: MatrixCategory = 'Underperformer';
+            if (isHighPop && isHighProf) category = 'Winner';
+            else if (isHighPop && !isHighProf) category = 'Staple';
+            else if (!isHighPop && isHighProf) category = 'Opportunity';
+
             return {
                 id: i.id,
                 name: i.name,
@@ -100,220 +112,287 @@ export const MenuEngineering = () => {
             };
         });
 
-        return { items, avgPop, avgProf };
+        // Sort: Best (Winner, Opportunity, Staple) to Poorest (Underperformer)
+        const priority: Record<MatrixCategory, number> = { 'Winner': 4, 'Opportunity': 3, 'Staple': 2, 'Underperformer': 1 };
+
+        const sortedItems = items.sort((a, b) => {
+            if (priority[a.category] !== priority[b.category]) {
+                return priority[b.category] - priority[a.category]; // Descending Rank
+            }
+            return b.contribution - a.contribution; // Descending Profit
+        });
+
+        return { items: sortedItems, avgPop, avgProf };
     }, [data.recipes]);
 
     // Scales for Chart
-    // Use 1.2x max as the ceiling to add padding
     const maxPop = Math.max(...matrixData.items.map(i => i.volume), matrixData.avgPop * 1.5, 10);
     const maxProf = Math.max(...matrixData.items.map(i => i.contribution), matrixData.avgProf * 1.5, 10);
 
-    const filteredItems = selectedCategory === 'All' 
-        ? matrixData.items 
+    const filteredItems = selectedCategory === 'All'
+        ? matrixData.items
         : matrixData.items.filter(i => i.category === selectedCategory);
 
     return (
-        <div className="space-y-8 pb-20 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Menu Engineering</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Optimize your menu profitability and popularity.</p>
+        <div className="space-y-8 pb-20 fade-enter">
+            {/* 1. HEADER & SUMMARY CARDS (Top Row) */}
+            <div>
+                <header className="mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
+                        Menu Engineering
+                        <span className="px-3 py-1 bg-gray-100 dark:bg-white/10 rounded-full text-xs font-semibold text-gray-500 uppercase tracking-wider">Matrix</span>
+                    </h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Analyze profitability vs. popularity to optimize your menu mix.
+                    </p>
+                </header>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {(Object.keys(CATEGORY_CONFIG) as MatrixCategory[]).map(cat => {
+                        const config = CATEGORY_CONFIG[cat];
+                        const count = matrixData.items.filter(i => i.category === cat).length;
+                        const isActive = selectedCategory === cat;
+
+                        return (
+                            <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(isActive ? 'All' : cat)}
+                                className={`
+                                    relative p-4 rounded-2xl border text-left transition-all duration-300
+                                    ${isActive
+                                        ? `bg-white dark:bg-[#1C1C1E] ring-2 ring-inset ring-${config.color.split('-')[1]}-500 border-transparent shadow-lg transform scale-[1.02] z-10`
+                                        : 'bg-white dark:bg-[#1C1C1E] border-gray-200/50 dark:border-white/5 hover:border-gray-300 hover:shadow-md'
+                                    }
+                                `}
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className={`w-10 h-10 rounded-xl ${config.lightBg} flex items-center justify-center ${config.color}`}>
+                                        <iconify-icon icon={config.icon} width="20"></iconify-icon>
+                                    </div>
+                                    <span className="text-3xl font-bold text-gray-900 dark:text-white tracking-tighter">{count}</span>
+                                </div>
+                                <div className={`text-sm font-bold uppercase tracking-wide ${config.color}`}>{config.label}</div>
+                                <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 truncate">{config.desc}</div>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                
-                {/* LEFT COLUMN: MATRIX CHART */}
-                <div className="lg:col-span-7 flex flex-col gap-6">
-                    <div className="bg-white dark:bg-[#1C1C1E] rounded-[32px] p-6 shadow-sm border border-gray-100 dark:border-white/5 relative">
-                        
-                        {/* Header within Chart Card */}
-                        <div className="flex justify-between items-center mb-6 px-2">
-                            <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <iconify-icon icon="lucide:scatter-chart" width="20" class="text-[#007AFF]"></iconify-icon>
-                                Performance Matrix
-                            </h3>
-                            <div className="flex gap-4 text-[10px] font-medium text-gray-400">
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2 h-0.5 bg-gray-300 dark:bg-gray-600 border-t border-dashed"></div>
-                                    <span>Avg Volume ({matrixData.avgPop.toFixed(1)})</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-0.5 h-2 bg-gray-300 dark:bg-gray-600 border-l border-dashed"></div>
-                                    <span>Avg Profit (₱{matrixData.avgProf.toFixed(2)})</span>
-                                </div>
-                            </div>
-                        </div>
+            {/* 2. MAIN CONTENT (Split Layout) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start h-auto lg:h-[600px]">
 
-                        {/* The Chart */}
-                        <div className="aspect-[5/4] sm:aspect-[16/9] w-full relative bg-gray-50/50 dark:bg-black/20 rounded-2xl border border-gray-100 dark:border-white/5 mx-auto">
-                            
-                            {/* Quadrant Labels */}
-                            <div className="absolute top-4 right-4 text-right pointer-events-none opacity-60">
-                                <div className="text-xs font-black text-green-500 uppercase tracking-widest">Star</div>
-                                <div className="text-[10px] font-medium text-green-500/80">Keep & Promote</div>
-                            </div>
-                            <div className="absolute top-4 left-4 text-left pointer-events-none opacity-60">
-                                <div className="text-xs font-black text-orange-400 uppercase tracking-widest">Plowhorse</div>
-                                <div className="text-[10px] font-medium text-orange-400/80">Reprice</div>
-                            </div>
-                            <div className="absolute bottom-4 right-4 text-right pointer-events-none opacity-60">
-                                <div className="text-xs font-black text-blue-400 uppercase tracking-widest">Puzzle</div>
-                                <div className="text-[10px] font-medium text-blue-400/80">Market</div>
-                            </div>
-                            <div className="absolute bottom-4 left-4 text-left pointer-events-none opacity-60">
-                                <div className="text-xs font-black text-red-400 uppercase tracking-widest">Dog</div>
-                                <div className="text-[10px] font-medium text-red-400/80">Remove</div>
+                {/* LEFT: THE MATRIX CHART */}
+                <div className="lg:col-span-7 h-full flex flex-col">
+                    <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl p-1 shadow-sm border border-gray-200/50 dark:border-white/5 h-full relative overflow-hidden flex flex-col">
+
+                        {/* CHART CONTAINER */}
+                        <div className="relative flex-1 w-full h-full min-h-[400px] rounded-[20px] overflow-hidden">
+
+                            {/* COLORED ZONES (Background) */}
+                            <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
+                                {/* Top Left: Staples (High Vol, Low Profit) */}
+                                <div id="eng-quad-staple" className={`${CATEGORY_CONFIG['Staple'].zoneBg} border-r border-b border-white/50 dark:border-white/5 relative group`}>
+                                    <div className="absolute top-4 left-4 opacity-50 transition-opacity group-hover:opacity-100">
+                                        <span className={`text-xs font-bold uppercase tracking-widest ${CATEGORY_CONFIG['Staple'].color}`}>Staples</span>
+                                    </div>
+                                </div>
+                                {/* Top Right: Winners (High Vol, High Profit) */}
+                                <div id="eng-quad-winner" className={`${CATEGORY_CONFIG['Winner'].zoneBg} border-b border-white/50 dark:border-white/5 relative group`}>
+                                    <div className="absolute top-4 right-4 text-right opacity-50 transition-opacity group-hover:opacity-100">
+                                        <span className={`text-xs font-bold uppercase tracking-widest ${CATEGORY_CONFIG['Winner'].color}`}>Winners</span>
+                                    </div>
+                                </div>
+                                {/* Bottom Left: Needs Attention (Low Vol, Low Profit) */}
+                                <div id="eng-quad-problem" className={`${CATEGORY_CONFIG['Underperformer'].zoneBg} border-r border-white/50 dark:border-white/5 relative group`}>
+                                    <div className="absolute bottom-4 left-4 opacity-50 transition-opacity group-hover:opacity-100">
+                                        <span className={`text-xs font-bold uppercase tracking-widest ${CATEGORY_CONFIG['Underperformer'].color}`}>Needs Attention</span>
+                                    </div>
+                                </div>
+                                {/* Bottom Right: Opportunities (Low Vol, High Profit) */}
+                                <div id="eng-quad-opp" className={`${CATEGORY_CONFIG['Opportunity'].zoneBg} relative group`}>
+                                    <div className="absolute bottom-4 right-4 text-right opacity-50 transition-opacity group-hover:opacity-100">
+                                        <span className={`text-xs font-bold uppercase tracking-widest ${CATEGORY_CONFIG['Opportunity'].color}`}>Opportunities</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Axis Lines */}
-                            <div 
-                                className="absolute top-0 bottom-0 w-px bg-gray-300 dark:bg-white/20 border-l border-dashed z-0"
+                            {/* AVERAGE LINES */}
+                            <div
+                                className="absolute top-0 bottom-0 w-px bg-gray-400 dark:bg-white/30 z-0 transition-all duration-700 ease-out"
                                 style={{ left: `${(matrixData.avgProf / maxProf) * 100}%` }}
-                            />
-                            <div 
-                                className="absolute left-0 right-0 h-px bg-gray-300 dark:bg-white/20 border-t border-dashed z-0"
+                            >
+                                <div className="absolute top-2 -translate-x-1/2 bg-white/80 dark:bg-black/80 px-1 py-0.5 rounded text-[9px] font-mono text-gray-500 whitespace-nowrap backdrop-blur-sm border border-gray-200 dark:border-white/10">Avg Profit</div>
+                            </div>
+                            <div
+                                className="absolute left-0 right-0 h-px bg-gray-400 dark:bg-white/30 z-0 transition-all duration-700 ease-out"
                                 style={{ top: `${100 - (matrixData.avgPop / maxPop) * 100}%` }}
-                            />
+                            >
+                                <div className="absolute right-2 -translate-y-1/2 bg-white/80 dark:bg-black/80 px-1 py-0.5 rounded text-[9px] font-mono text-gray-500 whitespace-nowrap backdrop-blur-sm border border-gray-200 dark:border-white/10">Avg Vol</div>
+                            </div>
 
-                            {/* Bubbles */}
+                            {/* BUBBLES */}
                             {matrixData.items.map(item => {
-                                 const x = (item.contribution / maxProf) * 100;
-                                 const y = 100 - (item.volume / maxPop) * 100;
-                                 const config = CATEGORY_CONFIG[item.category];
-                                 const isSelected = selectedCategory === 'All' || selectedCategory === item.category;
+                                // Clamp values inside chart 
+                                const xRaw = (item.contribution / maxProf) * 100;
+                                const yRaw = 100 - (item.volume / maxPop) * 100;
+                                const x = Math.min(Math.max(xRaw, 4), 96);
+                                const y = Math.min(Math.max(yRaw, 4), 96);
 
-                                 return (
-                                    <div 
+                                const config = CATEGORY_CONFIG[item.category];
+                                const isSelected = selectedCategory === 'All' || selectedCategory === item.category;
+                                const isHovered = hoveredItem === item.id;
+                                const isDimmed = (selectedCategory !== 'All' && selectedCategory !== item.category) || (hoveredItem !== null && hoveredItem !== item.id);
+
+                                return (
+                                    <div
                                         key={item.id}
-                                        onClick={() => setSelectedCategory(item.category)}
-                                        className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500 cursor-pointer group z-10 hover:z-[60] ${isSelected ? 'opacity-100 scale-100 grayscale-0' : 'opacity-20 scale-75 grayscale'}`}
-                                        style={{ left: `${Math.min(Math.max(x, 2), 98)}%`, top: `${Math.min(Math.max(y, 2), 98)}%` }}
+                                        onClick={() => setSelectedCategory(item.category === selectedCategory ? 'All' : item.category)}
+                                        onMouseEnter={() => setHoveredItem(item.id)}
+                                        onMouseLeave={() => setHoveredItem(null)}
+                                        className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-500 cursor-pointer z-10 
+                                            ${isHovered ? 'z-[100] scale-110' : 'hover:z-50'}
+                                            ${isDimmed ? 'opacity-30 blur-[1px] saturate-0' : 'opacity-100'}
+                                        `}
+                                        style={{ left: `${x}%`, top: `${y}%` }}
                                     >
-                                        <div className={`w-4 h-4 md:w-5 md:h-5 rounded-full ${config.bg} shadow-lg shadow-black/10 border-2 border-white dark:border-[#1C1C1E] group-hover:scale-125 transition-transform`}></div>
-                                        
-                                        {/* Tooltip */}
-                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-4 py-3 bg-white dark:bg-[#2C2C2E] text-gray-900 dark:text-white text-xs rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all scale-95 group-hover:scale-100 origin-bottom shadow-xl border border-gray-100 dark:border-white/10 z-50 min-w-[140px]">
+                                        <div className={`
+                                            w-5 h-5 md:w-8 md:h-8 rounded-full shadow-lg 
+                                            ${config.bg} border-[3px] border-white dark:border-[#2C2C2E]
+                                            transition-transform duration-300 hover:scale-110
+                                            flex items-center justify-center
+                                            text-white font-bold text-[10px] md:text-xs
+                                        `}>
+                                            {/* Optional: Show initial or compact volume number if space permits */}
+                                        </div>
+
+                                        {/* Dynamic Tooltip */}
+                                        <div className={`
+                                            absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-4 py-3 
+                                            bg-white dark:bg-[#2C2C2E] text-gray-900 dark:text-white rounded-xl 
+                                            shadow-xl border border-gray-100 dark:border-white/10 
+                                            min-w-[180px] z-50 pointer-events-none transition-all duration-200 origin-bottom
+                                            ${isHovered ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 translate-y-2'}
+                                        `}>
                                             <div className="font-bold text-sm mb-1">{item.name}</div>
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-gray-500 dark:text-gray-400">
-                                                <span>Volume:</span> <span className="font-mono font-medium text-gray-900 dark:text-white text-right">{item.volume}</span>
-                                                <span>Profit:</span> <span className="font-mono font-medium text-gray-900 dark:text-white text-right">₱{item.contribution.toFixed(2)}</span>
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-white/5 pt-2 mt-1">
+                                                <span>Daily Volume</span> <span className="font-mono font-medium text-gray-900 dark:text-white text-right">{item.volume}</span>
+                                                <span>Unit Profit</span> <span className="font-mono font-medium text-gray-900 dark:text-white text-right">₱{item.contribution.toFixed(0)}</span>
                                             </div>
-                                            <div className={`mt-2 text-[10px] font-bold uppercase tracking-wider ${config.color}`}>{item.category}</div>
+                                            <div className={`mt-2 text-[10px] font-bold uppercase tracking-wider ${config.color} flex items-center gap-1`}>
+                                                <iconify-icon icon={config.icon} width="12"></iconify-icon>
+                                                {config.label}
+                                            </div>
                                             {/* Arrow */}
-                                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-white dark:border-t-[#2C2C2E]"></div>
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px w-3 h-3 bg-white dark:bg-[#2C2C2E] rotate-45 border-r border-b border-gray-100 dark:border-white/10"></div>
                                         </div>
                                     </div>
-                                 );
+                                );
                             })}
                         </div>
-                        
-                        {/* Axis Labels */}
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 -rotate-90 text-[9px] font-bold text-gray-400 uppercase tracking-widest origin-left pointer-events-none flex items-center gap-2">
+
+                        {/* AXIS LABELS - OVERLAY */}
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] font-bold text-gray-400 uppercase tracking-widest pointer-events-none flex items-center gap-2 mix-blend-multiply dark:mix-blend-color-dodge">
                             <span>Popularity (Volume)</span>
-                            <iconify-icon icon="lucide:arrow-right" width="10"></iconify-icon>
+                            <iconify-icon icon="lucide:arrow-right" width="12"></iconify-icon>
                         </div>
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-[9px] font-bold text-gray-400 uppercase tracking-widest pointer-events-none flex items-center gap-2">
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-gray-400 uppercase tracking-widest pointer-events-none flex items-center gap-2 mix-blend-multiply dark:mix-blend-color-dodge">
                             <span>Profitability (Contribution)</span>
-                            <iconify-icon icon="lucide:arrow-right" width="10"></iconify-icon>
+                            <iconify-icon icon="lucide:arrow-right" width="12"></iconify-icon>
                         </div>
-                    </div>
-
-                    {/* Category Filter Cards */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        {(Object.keys(CATEGORY_CONFIG) as MatrixCategory[]).map(cat => {
-                            const config = CATEGORY_CONFIG[cat];
-                            const count = matrixData.items.filter(i => i.category === cat).length;
-                            const isActive = selectedCategory === cat;
-
-                            return (
-                                <button 
-                                    key={cat}
-                                    onClick={() => setSelectedCategory(isActive ? 'All' : cat)}
-                                    className={`relative p-4 rounded-2xl border text-left transition-all duration-300 ${isActive ? `bg-white dark:bg-[#1C1C1E] border-${config.color.split('-')[1]}-500 ring-1 ring-${config.color.split('-')[1]}-500 shadow-md` : 'bg-white dark:bg-[#1C1C1E] border-gray-100 dark:border-white/5 hover:border-gray-200 dark:hover:border-white/10 opacity-70 hover:opacity-100'}`}
-                                >
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className={`w-8 h-8 rounded-full ${config.lightBg} flex items-center justify-center ${config.color}`}>
-                                            <iconify-icon icon={config.icon} width="16"></iconify-icon>
-                                        </div>
-                                        <span className="text-2xl font-bold text-gray-900 dark:text-white">{count}</span>
-                                    </div>
-                                    <div className={`text-xs font-bold uppercase tracking-wider mb-0.5 ${config.color}`}>{cat}</div>
-                                    <div className="text-[10px] text-gray-400 truncate">{config.desc}</div>
-                                </button>
-                            );
-                        })}
                     </div>
                 </div>
 
-                {/* RIGHT COLUMN: DETAILED ANALYSIS */}
-                <div className="lg:col-span-5 flex flex-col h-full min-h-[500px]">
-                    <div className="bg-white dark:bg-[#1C1C1E] rounded-[32px] shadow-sm border border-gray-100 dark:border-white/5 flex flex-col h-full overflow-hidden">
-                        
-                        {/* Panel Header */}
-                        <div className="p-6 border-b border-gray-100 dark:border-white/5 shrink-0">
+                {/* RIGHT: DETAILED LIST */}
+                <div className="lg:col-span-5 h-full flex flex-col min-h-[500px]">
+                    <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-sm border border-gray-200/50 dark:border-white/5 flex flex-col h-full overflow-hidden">
+
+                        <div className="p-5 border-b border-gray-100 dark:border-white/5 shrink-0 bg-gray-50/50 dark:bg-white/5 backdrop-blur-sm">
                             <div className="flex justify-between items-center mb-1">
                                 <h3 className="font-bold text-lg text-gray-900 dark:text-white">Analysis & Strategy</h3>
-                                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 text-gray-500">
-                                    {filteredItems.length} Items
-                                </span>
+                                {selectedCategory !== 'All' && (
+                                    <button
+                                        onClick={() => setSelectedCategory('All')}
+                                        className="w-6 h-6 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center text-gray-500 hover:bg-gray-300 dark:hover:bg-white/20 transition-colors"
+                                    >
+                                        <iconify-icon icon="lucide:x" width="14"></iconify-icon>
+                                    </button>
+                                )}
                             </div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {selectedCategory === 'All' ? 'Select a category to see strategic recommendations.' : CATEGORY_CONFIG[selectedCategory as MatrixCategory].strategy}
+                            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                {selectedCategory === 'All'
+                                    ? 'Select a category (Cards or Graph) to filter items and see recommendations.'
+                                    : CATEGORY_CONFIG[selectedCategory as MatrixCategory].strategy}
                             </p>
                         </div>
 
-                        {/* List */}
-                        <div className="overflow-y-auto flex-1 p-0">
+                        <div className="overflow-y-auto flex-1 p-0 scrollbar-thin">
                             {filteredItems.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-center p-8 text-gray-400">
-                                    <iconify-icon icon="lucide:search-x" width="48" class="mb-4 opacity-20"></iconify-icon>
-                                    <p className="text-sm">No items found in this category.</p>
+                                    <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center mb-4 text-gray-300">
+                                        <iconify-icon icon="lucide:search" width="32"></iconify-icon>
+                                    </div>
+                                    <p className="text-sm">No items found for this filter.</p>
                                 </div>
                             ) : (
                                 <div className="divide-y divide-gray-100 dark:divide-white/5">
                                     {filteredItems.map(item => {
                                         const config = CATEGORY_CONFIG[item.category];
                                         return (
-                                            <div key={item.id} className="p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
+                                            <div
+                                                key={item.id}
+                                                onMouseEnter={() => setHoveredItem(item.id)}
+                                                onMouseLeave={() => setHoveredItem(null)}
+                                                className={`p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-all duration-200 group cursor-default border-l-4 border-transparent ${hoveredItem === item.id ? `border-${config.color.split('-')[1]}-500 bg-gray-50 dark:bg-white/5` : ''}`}
+                                            >
                                                 <div className="flex items-start justify-between mb-2">
                                                     <div>
-                                                        <div className="font-bold text-sm text-gray-900 dark:text-white">{item.name}</div>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${config.lightBg} ${config.color}`}>
-                                                                {item.category}
+                                                        <div className="font-bold text-base text-gray-900 dark:text-white">{item.name}</div>
+                                                        <div className="flex items-center gap-2 mt-1.5">
+                                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${config.lightBg} ${config.color} flex items-center gap-1`}>
+                                                                <iconify-icon icon={config.icon} width="10"></iconify-icon>
+                                                                {config.label}
                                                             </span>
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-sm font-bold text-gray-900 dark:text-white">₱{item.contribution.toFixed(2)}</div>
-                                                        <div className="text-[10px] text-gray-400">Profit / serving</div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-50 dark:border-white/5">
-                                                    <div>
-                                                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Volume</div>
-                                                        <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mt-0.5">{item.volume} / day</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Cost</div>
-                                                        <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mt-0.5">₱{item.cost.toFixed(2)}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Price</div>
-                                                        <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mt-0.5">₱{item.price.toFixed(2)}</div>
+                                                        <div className="text-base font-mono font-bold text-gray-900 dark:text-white">₱{item.contribution.toFixed(0)}</div>
+                                                        <div className="text-[10px] text-gray-400">Margin</div>
                                                     </div>
                                                 </div>
 
-                                                {/* Strategic Hint */}
-                                                <div className="mt-3 text-[11px] text-gray-500 italic border-l-2 border-gray-200 dark:border-white/10 pl-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    Suggestion: {
-                                                        item.category === 'Plowhorse' ? 'Raise price by ₱' + (item.price * 0.05).toFixed(0) + ' or reduce portion size.' :
-                                                        item.category === 'Puzzle' ? 'Run a promo or place on table tent.' :
-                                                        item.category === 'Dog' ? 'Remove from menu or re-invent.' :
-                                                        'Keep consistent.'
-                                                    }
+                                                <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-white/5">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-500">
+                                                            <iconify-icon icon="lucide:shopping-bag" width="14"></iconify-icon>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Volume</div>
+                                                            <div className="text-sm font-medium text-gray-900 dark:text-white">{item.volume}/day</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-500">
+                                                            <iconify-icon icon="lucide:coins" width="14"></iconify-icon>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-[9px] text-gray-400 uppercase tracking-wider font-bold">Cost %</div>
+                                                            <div className="text-sm font-medium text-gray-900 dark:text-white">{((item.cost / item.price) * 100).toFixed(0)}%</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Actionable Hint */}
+                                                <div className={`mt-3 text-xs italic flex items-start gap-1.5 ${hoveredItem === item.id ? 'opacity-100' : 'opacity-70'}`}>
+                                                    <iconify-icon icon="lucide:lightbulb" class="text-amber-500 shrink-0 mt-0.5" width="14"></iconify-icon>
+                                                    <span className="text-gray-600 dark:text-gray-400">
+                                                        {
+                                                            item.category === 'Staple' ? 'High popularity but low margin. Try slightly increasing price.' :
+                                                                item.category === 'Opportunity' ? 'Great margin but low sales. Improve visibility or photos.' :
+                                                                    item.category === 'Underperformer' ? 'Low margin and sales. Consider removing.' :
+                                                                        'Star performer! Maintain stock and quality.'
+                                                        }
+                                                    </span>
                                                 </div>
                                             </div>
                                         );

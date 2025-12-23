@@ -43,14 +43,22 @@
 
     /* --- LIQUID GLASS BACKGROUND SYSTEM --- */
     @keyframes gradient-flow {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
     }
 
     .liquid-bg {
       /* Light Mode: Cinematic Mesh */
-      background: 
+      background:
         radial-gradient(circle at 15% 50%, rgba(0, 122, 255, 0.08), transparent 25%),
         radial-gradient(circle at 85% 30%, rgba(52, 199, 89, 0.08), transparent 25%),
         radial-gradient(circle at 50% 80%, rgba(255, 149, 0, 0.05), transparent 30%),
@@ -62,7 +70,7 @@
 
     .dark .liquid-bg {
       /* Dark Mode: Deep Space Mesh */
-      background: 
+      background:
         radial-gradient(circle at 15% 50%, rgba(10, 132, 255, 0.12), transparent 35%),
         radial-gradient(circle at 85% 30%, rgba(48, 209, 88, 0.08), transparent 35%),
         radial-gradient(circle at 50% 90%, rgba(255, 69, 58, 0.05), transparent 40%),
@@ -74,7 +82,7 @@
 
     .midnight .liquid-bg {
       /* Midnight Mode: Deep Blue/Purple */
-      background: 
+      background:
         radial-gradient(circle at 20% 50%, rgba(88, 86, 214, 0.15), transparent 40%),
         radial-gradient(circle at 80% 30%, rgba(175, 82, 222, 0.1), transparent 40%),
         linear-gradient(180deg, #050508 0%, #0a0a12 100%);
@@ -88,12 +96,14 @@
       background: #000000;
       animation: none;
     }
-    
-    .oled .glass-regular, .oled .glass-thin, .oled .glass-ultra-thin {
-        background: #000000 !important;
-        border: 1px solid #333 !important;
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
+
+    .oled .glass-regular,
+    .oled .glass-thin,
+    .oled .glass-ultra-thin {
+      background: #000000 !important;
+      border: 1px solid #333 !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
 
     /* --- MATERIAL SYSTEM --- */
@@ -138,6 +148,7 @@
       border: 1px solid rgba(255, 255, 255, 0.4);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
+
     .dark .material-thin {
       background: rgba(40, 40, 40, 0.55);
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -180,6 +191,7 @@
     .shadow-glass-sm {
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
+
     .dark .shadow-glass-sm {
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
@@ -209,21 +221,24 @@
     /* Special Inventory Inputs */
     .inv-field {
       background: white;
-      border: 1px solid rgba(0,0,0,0.1);
+      border: 1px solid rgba(0, 0, 0, 0.1);
       padding: 6px 8px;
       border-radius: 6px;
       transition: 0.2s;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
     }
+
     .dark .inv-field {
       background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255,255,255,0.08);
+      border-color: rgba(255, 255, 255, 0.08);
     }
+
     .inv-field:focus {
       border-color: #007AFF;
       box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
       outline: none;
     }
+
     .inv-input-ghost {
       background: transparent;
       border: 1px solid transparent;
@@ -231,12 +246,16 @@
       border-radius: 4px;
       transition: 0.2s;
     }
-    .inv-input-ghost:hover, .inv-input-ghost:focus {
+
+    .inv-input-ghost:hover,
+    .inv-input-ghost:focus {
       background: rgba(120, 120, 128, 0.08);
       padding-left: 6px;
       padding-right: 6px;
     }
-    .dark .inv-input-ghost:hover, .dark .inv-input-ghost:focus {
+
+    .dark .inv-input-ghost:hover,
+    .dark .inv-input-ghost:focus {
       background: rgba(255, 255, 255, 0.1);
     }
 
@@ -309,13 +328,13 @@
     }
 
     .fade-enter {
-      animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+      animation: fadeIn 0.1s ease-out;
     }
 
     @keyframes fadeIn {
       from {
-        opacity: 0;
-        transform: translateY(8px);
+        opacity: 0.8;
+        transform: translateY(2px);
       }
 
       to {

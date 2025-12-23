@@ -22,6 +22,16 @@ declare global {
 
 export type View = 'dashboard' | 'recipes' | 'inventory' | 'finance' | 'calendar' | 'profile' | 'engineering';
 
+export interface TourStep {
+  targetId: string;
+  title: string;
+  content: string;
+  view?: View;
+  position?: 'top' | 'bottom' | 'left' | 'right' | 'center';
+  action?: 'resetBuilder' | 'openBuilder' | 'selectFirstRecipe' | 'clearSelection' | 'none';
+}
+
+
 export type Theme = 'light' | 'dark' | 'midnight' | 'oled';
 
 export interface Ingredient {
@@ -129,6 +139,7 @@ export interface AppContextType {
   view: View;
   setView: (v: View) => void;
   isLoggedIn: boolean;
+  isLoading: boolean; // True when fetching data
   login: () => void;
   logout: () => void;
   theme: Theme;
@@ -157,9 +168,10 @@ export interface AppContextType {
   duplicateRecipe: (id: number) => void;
   resetBuilder: () => void;
 
-  // Recipe List State
   selectedRecipeId: number | null;
   setSelectedRecipeId: (id: number | null) => void;
+  newlyAddedId: number | null;
+  selectFirstRecipe: () => void;
 
   // Inventory
   inventoryEditMode: boolean;
@@ -179,13 +191,20 @@ export interface AppContextType {
   confirmModal: { title: string; message: string; onConfirm: () => void; isDestructive?: boolean; isOpen: boolean };
   askConfirmation: (options: { title: string; message: string; onConfirm: () => void; isDestructive?: boolean; }) => void;
   closeConfirmation: () => void;
-  
+
   // Cook Mode
   cookModal: { isOpen: boolean; recipeId: number | null; recipeName: string };
   openCookModal: (recipeId: number, recipeName: string) => void;
   closeCookModal: () => void;
   cookRecipe: (recipeId: number, portions: number) => Promise<void>;
-  
+  // Tour
+  isTourActive: boolean;
+  currentStepIndex: number;
+  startTour: () => void;
+  endTour: () => void;
+  nextStep: () => void;
+  prevStep: () => void;
+
   // User
   user: { email?: string } | null;
 }

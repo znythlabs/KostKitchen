@@ -4,6 +4,8 @@ import { SoundProvider } from './SoundContext';
 import { AuthLayer } from './components/AuthLayer';
 import { MobileNav, DesktopSidebar, Header } from './components/Layout';
 import { Modals } from './components/Modals';
+import { TourGuide } from './components/TourGuide';
+import { LoadingToast } from './components/LoadingToast';
 
 // Views
 import { Dashboard } from './views/Dashboard';
@@ -22,7 +24,7 @@ const MainContent = () => {
   }
 
   return (
-    <div id="app-wrapper" className="flex w-full h-full opacity-100 transition-opacity duration-500">
+    <div id="app-wrapper" className="flex w-full h-full">
       <MobileNav />
       <DesktopSidebar />
       <main className="flex-1 h-full overflow-y-auto relative bg-[#F2F2F7] dark:bg-black scroll-smooth transition-colors duration-300" id="main-scroll">
@@ -47,9 +49,12 @@ const App = () => {
     <AppProvider>
       <SoundProvider>
         <MainContent />
+        <TourGuide />
+        <LoadingToast />
       </SoundProvider>
     </AppProvider>
   );
 };
 
 export default App;
+

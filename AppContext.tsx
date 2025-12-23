@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, PropsWithChildren } from 'react';
 import { supabase } from './lib/supabase';
-import { AppData, View, BuilderState, Ingredient, Recipe, Expense, AppContextType, DailySnapshot, WeeklySummary, MonthlySummary } from './types';
-import { INITIAL_DATA, INITIAL_BUILDER } from './constants';
+import { AppData, View, BuilderState, Ingredient, Recipe, Expense, AppContextType, DailySnapshot, WeeklySummary, MonthlySummary, Theme } from './types';
+import { INITIAL_DATA, INITIAL_BUILDER, TOUR_STEPS } from './constants';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -16,7 +16,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove('dark', 'midnight', 'oled');
-    
+
     if (theme === 'dark') {
       root.classList.add('dark');
     } else if (theme === 'midnight') {
@@ -25,7 +25,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       root.classList.add('dark', 'oled');
     }
   }, [theme]);
-  
+
   // Data State
   const [data, setData] = useState<AppData>({
     settings: INITIAL_DATA.settings,
@@ -33,16 +33,28 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     recipes: [],
     dailySnapshots: []
   });
-  
+
   const [builder, setBuilder] = useState<BuilderState>(INITIAL_BUILDER);
   const [selectedRecipeId, setSelectedRecipeId] = useState<number | null>(null);
+  const [newlyAddedId, setNewlyAddedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (newlyAddedId) {
+      const t = setTimeout(() => setNewlyAddedId(null), 3000); // 3s flash
+      return () => clearTimeout(t);
+    }
+  }, [newlyAddedId]);
+
+  const selectFirstRecipe = () => {
+    if (data.recipes.length > 0) setSelectedRecipeId(data.recipes[0].id);
+  };
 
   const [inventoryEditMode, setInventoryEditMode] = useState(false);
   const [activeModal, setActiveModal] = useState<'picker' | 'stock' | null>(null);
   const [pickerFilter, setPickerFilter] = useState<'ingredient' | 'other' | null>(null);
   const [editingStockItem, setEditingStockItem] = useState<Ingredient | null>(null);
 
-  const [confirmModal, setConfirmModal] = useState<{ title: string; message: string; onConfirm: () => void; isDestructive?: boolean; isOpen: boolean }>({ 
+  const [confirmModal, setConfirmModal] = useState<{ title: string; message: string; onConfirm: () => void; isDestructive?: boolean; isOpen: boolean }>({
     isOpen: false,
     title: '',
     message: '',
@@ -51,6 +63,38 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   });
 
   const [cookModal, setCookModal] = useState<{ isOpen: boolean; recipeId: number | null; recipeName: string }>({ isOpen: false, recipeId: null, recipeName: '' });
+
+  // Tour State
+  const [isTourActive, setIsTourActive] = useState(false);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  const startTour = () => {
+    setIsTourActive(true);
+    setCurrentStepIndex(0);
+    localStorage.setItem('hasSeenTour', 'true');
+  };
+
+  const endTour = () => {
+    setIsTourActive(false);
+    setCurrentStepIndex(0);
+  };
+
+  const nextStep = () => {
+    if (currentStepIndex < TOUR_STEPS.length - 1) {
+      setCurrentStepIndex(prev => prev + 1);
+    } else {
+      endTour();
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(prev => prev - 1);
+    }
+  };
+
+  // Tour is now triggered from login() instead of mount
+  // This ensures tour only starts after successful login for new users
 
   const openCookModal = (recipeId: number, recipeName: string) => setCookModal({ isOpen: true, recipeId, recipeName });
   const closeCookModal = () => setCookModal({ isOpen: false, recipeId: null, recipeName: '' });
@@ -64,32 +108,32 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     const updates: { id: number, stockQty: number }[] = [];
 
     for (const ri of recipe.ingredients) {
-        const ingredient = data.ingredients.find(i => i.id === ri.id);
-        if (ingredient) {
-            const amountNeeded = ri.qty * ratio;
-            const newStock = ingredient.stockQty - amountNeeded;
-            updates.push({ id: ingredient.id, stockQty: newStock });
-        }
+      const ingredient = data.ingredients.find(i => i.id === ri.id);
+      if (ingredient) {
+        const amountNeeded = ri.qty * ratio;
+        const newStock = ingredient.stockQty - amountNeeded;
+        updates.push({ id: ingredient.id, stockQty: newStock });
+      }
     }
 
     // Optimistic Update
     const newIngredients = data.ingredients.map(i => {
-        const update = updates.find(u => u.id === i.id);
-        return update ? { ...i, stockQty: update.stockQty } : i;
+      const update = updates.find(u => u.id === i.id);
+      return update ? { ...i, stockQty: update.stockQty } : i;
     });
     setData(prev => ({ ...prev, ingredients: newIngredients }));
 
     // Database Update
     for (const u of updates) {
-        await supabase.from('ingredients').update({ stock_qty: u.stockQty }).eq('id', u.id);
+      await supabase.from('ingredients').update({ stock_qty: u.stockQty }).eq('id', u.id);
     }
   };
 
   // --- SUPABASE DATA FETCHING ---
-  const refreshData = async () => {
-    setLoading(true);
+  const refreshData = async (silent = false) => {
+    if (!silent) setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
       setIsLoggedIn(false);
       setUser(null);
@@ -105,7 +149,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       // Parallel Fetch
       const [ingRes, recRes, recIngRes, settingsRes, expRes, snapRes] = await Promise.all([
         supabase.from('ingredients').select('*').order('name'),
-        supabase.from('recipes').select('*').order('name'),
+        supabase.from('recipes').select('*').order('id', { ascending: false }),
         supabase.from('recipe_ingredients').select('*'),
         supabase.from('settings').select('*').single(),
         supabase.from('expenses').select('*'),
@@ -180,17 +224,17 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     // Realtime Subscription
     const channel = supabase.channel('db-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, (payload) => {
-         console.log('Realtime Event received:', payload);
-         refreshData();
+        console.log('Realtime Event received:', payload);
+        refreshData(true);
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recipes' }, () => refreshData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => refreshData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recipes' }, () => refreshData(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => refreshData(true))
       .subscribe((status) => {
         console.log("Realtime Connection Status:", status);
       });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') refreshData();
+      if (event === 'SIGNED_IN') refreshData(true);
       if (event === 'SIGNED_OUT') {
         setIsLoggedIn(false);
         setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [] });
@@ -203,11 +247,19 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     };
   }, []);
 
-  const login = () => { refreshData(); }; // Handled by AuthLayer + Subscription
-  const logout = async () => { 
+  const login = () => {
+    refreshData();
+    // Start tour for new users who haven't seen it yet
+    const hasSeen = localStorage.getItem('hasSeenTour');
+    if (!hasSeen) {
+      // Delay to allow data load and UI render
+      setTimeout(() => startTour(), 2000);
+    }
+  };
+  const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    window.location.reload(); 
+    window.location.reload();
   };
 
   const getIngredient = (id: number) => data.ingredients.find(i => i.id === id);
@@ -298,6 +350,20 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // For NEW items, generate optimistic ID
+    const isNew = !item.id || item.id >= 100000;
+    const optimisticId = isNew ? Date.now() : item.id;
+
+    // Optimistic Update (Immediately show in UI)
+    if (isNew) {
+      setData(prev => ({
+        ...prev,
+        ingredients: [...prev.ingredients, { ...item, id: optimisticId }]
+      }));
+    } else {
+      // For updates, we already have optimistic updates in updateStockItem
+    }
+
     const payload: any = {
       user_id: user.id,
       name: item.name,
@@ -314,15 +380,23 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     };
 
     if (item.id && item.id < 100000) {
-       // Update existing item
-       const { error } = await supabase.from('ingredients').update(payload).eq('id', item.id);
-       if (error) alert("Failed to update: " + error.message);
+      // Update existing item
+      const { error } = await supabase.from('ingredients').update(payload).eq('id', item.id);
+      if (error) {
+        alert("Failed to update: " + error.message);
+        refreshData(); // Revert
+      }
     } else {
-       // Insert new item
-       const { error } = await supabase.from('ingredients').insert(payload);
-       if (error) alert("Failed to add: " + error.message);
+      // Insert new item
+      const { error } = await supabase.from('ingredients').insert(payload);
+      if (error) {
+        alert("Failed to add: " + error.message);
+        refreshData(); // Revert
+      } else {
+        // Background sync to get real ID
+        refreshData();
+      }
     }
-    refreshData();
   };
 
   const updateStockItem = async (id: number, field: string, value: any) => {
@@ -334,15 +408,19 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       ingredients: prev.ingredients.map(i => {
         if (i.id !== id) return i;
         const updated = { ...i, [field]: value };
+
         // Logic for auto-calc
         if (['packageCost', 'packageQty', 'shippingFee', 'priceBuffer'].includes(field)) {
-          const pc = field === 'packageCost' ? Number(value) : (updated.packageCost || 0);
-          const pq = field === 'packageQty' ? Number(value) : (updated.packageQty || 0);
-          const sf = field === 'shippingFee' ? Number(value) : (updated.shippingFee || 0);
-          const bf = field === 'priceBuffer' ? Number(value) : (updated.priceBuffer || 0);
+          const pc = Number(field === 'packageCost' ? value : (updated.packageCost || 0));
+          const pq = Number(field === 'packageQty' ? value : (updated.packageQty || 0));
+          const sf = Number(field === 'shippingFee' ? value : (updated.shippingFee || 0));
+          const bf = Number(field === 'priceBuffer' ? value : (updated.priceBuffer || 0));
+
           if (pq > 0) {
             const bufferedPackageCost = pc * (1 + (bf / 100));
-            updated.cost = (bufferedPackageCost + sf) / pq;
+            // Ensure cost considers shipping fee (Explicitly cast to Number to avoid string concatenation)
+            const shipping = Number(sf);
+            updated.cost = (bufferedPackageCost + shipping) / pq;
             calculatedCost = updated.cost;
           }
         }
@@ -355,7 +433,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       stockQty: 'stock_qty', minStock: 'min_stock', packageCost: 'package_cost',
       packageQty: 'package_qty', shippingFee: 'shipping_fee', priceBuffer: 'price_buffer'
     };
-    
+
     const dbField = mapField[field] || field;
     const payload: any = { [dbField]: value };
 
@@ -363,7 +441,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     if (calculatedCost !== undefined) {
       payload.cost = calculatedCost;
     }
-    
+
     const { error } = await supabase.from('ingredients').update(payload).eq('id', id);
     if (error) {
       console.error("Update failed", error);
@@ -372,16 +450,25 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   };
 
   const deleteStockItem = async (id: number) => {
+    // Optimistic Update (Immediately remove from UI)
+    setData(prev => ({
+      ...prev,
+      ingredients: prev.ingredients.filter(i => i.id !== id)
+    }));
+
     // First delete references in recipe_ingredients to avoid foreign key constraint violation
     const { error: relError } = await supabase.from('recipe_ingredients').delete().eq('ingredient_id', id);
     if (relError) {
       alert("Failed to delete related recipe ingredients: " + relError.message);
+      refreshData(); // Revert
       return;
     }
 
     const { error } = await supabase.from('ingredients').delete().eq('id', id);
-    if (error) alert("Failed to delete: " + error.message);
-    else refreshData();
+    if (error) {
+      alert("Failed to delete: " + error.message);
+      refreshData(); // Revert
+    }
   };
 
   const saveCurrentRecipe = async () => {
@@ -410,10 +497,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       // Update
       const { error } = await supabase.from('recipes').update(recipePayload).eq('id', builder.id);
       if (error) { alert("Error saving recipe"); return; }
-      
+
       // Update Ingredients (Delete all, re-insert)
       await supabase.from('recipe_ingredients').delete().eq('recipe_id', builder.id);
-      
+
       const ingPayload = builder.ingredients.map(ri => ({
         recipe_id: builder.id,
         ingredient_id: ri.id,
@@ -426,7 +513,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       // Insert
       const { data: newRecipe, error } = await supabase.from('recipes').insert(recipePayload).select().single();
       if (error || !newRecipe) { alert("Error creating recipe"); return; }
-      
+
       const ingPayload = builder.ingredients.map(ri => ({
         recipe_id: newRecipe.id,
         ingredient_id: ri.id,
@@ -435,26 +522,110 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       if (ingPayload.length > 0) {
         await supabase.from('recipe_ingredients').insert(ingPayload);
       }
+
+      // Optimistic Update (Immediately show in UI)
+      const optimisticRecipe: Recipe = {
+        id: newRecipe.id,
+        name: newRecipe.name,
+        category: newRecipe.category,
+        margin: newRecipe.margin,
+        price: newRecipe.price,
+        dailyVolume: newRecipe.daily_volume,
+        image: newRecipe.image,
+        batchSize: newRecipe.batch_size,
+        ingredients: builder.ingredients.map(ri => ({ id: ri.id, qty: ri.qty }))
+      };
+      setData(prev => ({
+        ...prev,
+        recipes: [optimisticRecipe, ...prev.recipes] // Prepend for visibility
+      }));
+      setNewlyAddedId(optimisticRecipe.id);
     }
-    
+
+    // Background refresh
     refreshData();
     setBuilder({ ...INITIAL_BUILDER, showBuilder: false });
     setView('recipes');
   };
 
   const deleteRecipe = async (id: number) => {
-    if (window.confirm("Are you sure?")) {
-      const { error } = await supabase.from('recipes').delete().eq('id', id);
-      if (error) alert("Error deleting");
-      else refreshData();
+    // Optimistic Update (No Confirmation)
+    setData(prev => ({
+      ...prev,
+      recipes: prev.recipes.filter(r => r.id !== id)
+    }));
+
+    const { error } = await supabase.from('recipes').delete().eq('id', id);
+    if (error) {
+      alert("Error deleting");
+      refreshData(); // Revert
     }
   };
 
   const duplicateRecipe = async (id: number) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     const r = data.recipes.find(x => x.id === id);
     if (!r) return;
-    setBuilder({ ...r, id: null, name: `${r.name} (Copy)`, showBuilder: true });
-    setView('recipes');
+
+    const newName = `${r.name} (Copy)`;
+
+    // 1. Create Recipe
+    const { data: newRecipe, error } = await supabase.from('recipes').insert({
+      user_id: user.id,
+      name: newName,
+      category: r.category,
+      margin: r.margin,
+      price: r.price,
+      daily_volume: r.dailyVolume,
+      image: r.image,
+      batch_size: r.batchSize
+    }).select().single();
+
+    if (error || !newRecipe) {
+      alert("Failed to duplicate recipe");
+      return;
+    }
+
+    // 2. Duplicate Ingredients
+    if (r.ingredients.length > 0) {
+      const ingPayload = r.ingredients.map(ri => ({
+        recipe_id: newRecipe.id,
+        ingredient_id: ri.id,
+        qty: ri.qty
+      }));
+      await supabase.from('recipe_ingredients').insert(ingPayload);
+    }
+
+    // 3. Optimistic Update (Instant Feedback)
+    // We can't know the real ID yet, but we can fake it for a second or just wait for refresh?
+    // User asked for "Instant Respond".
+    // Since we need the ID for ingredients insert, we actually HAVE to wait for the insert to return the ID.
+    // However, the `insert` is fast. `refreshData` is slow because it refetches EVERYTHING.
+    // Instead of full refreshData(), let's just push the new recipe to state.
+
+    // Construct local object
+    const optimisticRecipe: Recipe = {
+      id: newRecipe.id,
+      name: newRecipe.name,
+      category: newRecipe.category,
+      margin: newRecipe.margin,
+      price: newRecipe.price,
+      dailyVolume: newRecipe.daily_volume,
+      image: newRecipe.image,
+      batchSize: newRecipe.batch_size,
+      ingredients: r.ingredients.map(ri => ({ ...ri, qty: ri.qty })) // Assuming ingredient structure matches
+    };
+
+    setData(prev => ({
+      ...prev,
+      recipes: [optimisticRecipe, ...prev.recipes] // Prepend
+    }));
+    setNewlyAddedId(optimisticRecipe.id);
+
+    // Background refresh to be safe
+    refreshData();
   };
 
   const captureDailySnapshot = async () => {
@@ -509,19 +680,19 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     const weekStartStr = weekStart.toISOString().split('T')[0];
     const weekEndStr = weekEnd.toISOString().split('T')[0];
     const weekSnapshots = data.dailySnapshots.filter(s => s.date >= weekStartStr && s.date <= weekEndStr);
-    
+
     if (weekSnapshots.length === 0) return { weekStart: weekStartStr, weekEnd: weekEndStr, totalRevenue: 0, totalNetProfit: 0, avgDailyProfit: 0, bestDay: { date: weekStartStr, profit: 0 }, worstDay: { date: weekStartStr, profit: 0 }, daysCount: 0 };
-    
+
     const totalRevenue = weekSnapshots.reduce((sum, s) => sum + s.netRevenue, 0);
     const totalNetProfit = weekSnapshots.reduce((sum, s) => sum + s.netProfit, 0);
     const sorted = [...weekSnapshots].sort((a, b) => b.netProfit - a.netProfit);
-    
+
     return {
       weekStart: weekStartStr, weekEnd: weekEndStr,
       totalRevenue, totalNetProfit,
       avgDailyProfit: totalNetProfit / weekSnapshots.length,
       bestDay: { date: sorted[0].date, profit: sorted[0].netProfit },
-      worstDay: { date: sorted[sorted.length-1].date, profit: sorted[sorted.length-1].netProfit },
+      worstDay: { date: sorted[sorted.length - 1].date, profit: sorted[sorted.length - 1].netProfit },
       daysCount: weekSnapshots.length
     };
   };
@@ -533,7 +704,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     const totalRevenue = monthSnapshots.reduce((sum, s) => sum + s.netRevenue, 0);
     const totalGrossProfit = monthSnapshots.reduce((sum, s) => sum + s.grossProfit, 0);
     const totalNetProfit = monthSnapshots.reduce((sum, s) => sum + s.netProfit, 0);
-    
+
     return {
       month, totalRevenue, totalGrossProfit, totalNetProfit,
       totalDiscounts: monthSnapshots.reduce((sum, s) => sum + s.discounts, 0),
@@ -546,22 +717,22 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const getStockStatus = (item: Ingredient) => {
     // If minStock is not set (0), treat as untracked/good unless 0 stock
     if (!item.minStock || item.minStock <= 0) {
-        if (item.stockQty <= 0) return { label: "OUT OF STOCK", colorClass: "bg-gray-400", textClass: "text-gray-400", bgClass: "", width: 0 };
-        return { label: "IN STOCK", colorClass: "bg-[#34c759]", textClass: "text-[#34c759]", bgClass: "", width: 100 };
+      if (item.stockQty <= 0) return { label: "OUT OF STOCK", colorClass: "bg-gray-400", textClass: "text-gray-400", bgClass: "", width: 0 };
+      return { label: "IN STOCK", colorClass: "bg-[#34c759]", textClass: "text-[#34c759]", bgClass: "", width: 100 };
     }
 
     const pct = (item.stockQty / (item.minStock * 2)) * 100;
-    
+
     if (item.stockQty <= 0) {
-        return { label: "OUT OF STOCK", colorClass: "bg-gray-900 dark:bg-gray-600", textClass: "text-gray-900 dark:text-gray-400", bgClass: "", width: 0 };
+      return { label: "OUT OF STOCK", colorClass: "bg-gray-900 dark:bg-gray-600", textClass: "text-gray-900 dark:text-gray-400", bgClass: "", width: 0 };
     }
     if (item.stockQty <= item.minStock) {
-        return { label: "LOW STOCK", colorClass: "bg-[#ff3b30]", textClass: "text-[#ff3b30]", bgClass: "", width: Math.max(pct, 10) };
+      return { label: "LOW STOCK", colorClass: "bg-[#ff3b30]", textClass: "text-[#ff3b30]", bgClass: "", width: Math.max(pct, 10) };
     }
     if (item.stockQty <= item.minStock * 1.5) {
-        return { label: "REORDER SOON", colorClass: "bg-[#ffcc00]", textClass: "text-[#ffcc00]", bgClass: "", width: Math.min(pct, 100) };
+      return { label: "REORDER SOON", colorClass: "bg-[#ffcc00]", textClass: "text-[#ffcc00]", bgClass: "", width: Math.min(pct, 100) };
     }
-    
+
     return { label: "GOOD", colorClass: "bg-[#34c759]", textClass: "text-[#34c759]", bgClass: "", width: 100 };
   };
 
@@ -571,7 +742,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   };
   const resetBuilder = () => setBuilder(INITIAL_BUILDER);
   const toggleInventoryEdit = () => setInventoryEditMode(!inventoryEditMode);
-  
+
   const openModal = (m: 'picker' | 'stock', itemToEdit?: Ingredient, filter?: 'ingredient' | 'other') => {
     setEditingStockItem(itemToEdit || null);
     setPickerFilter(filter || null);
@@ -583,15 +754,31 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   return (
     <AppContext.Provider value={{
-      view, setView, isLoggedIn, login, logout, theme, setTheme, user,
+      view, setView, isLoggedIn, isLoading: loading, login, logout, theme, setTheme, user,
       data, setData, getIngredient, calculateRecipeCost, getRecipeFinancials, getProjection, getStockStatus,
       captureDailySnapshot, getWeeklySummary, getMonthlySummary,
-      builder, setBuilder, loadRecipeToBuilder, saveCurrentRecipe, deleteRecipe, duplicateRecipe, resetBuilder,
+      builder, setBuilder, loadRecipeToBuilder,
       selectedRecipeId, setSelectedRecipeId,
-      inventoryEditMode, toggleInventoryEdit, updateStockItem, addStockItem, deleteStockItem,
-      activeModal, pickerFilter, openModal, closeModal, editingStockItem,
-      confirmModal, askConfirmation, closeConfirmation,
-      cookModal, openCookModal, closeCookModal, cookRecipe
+      inventoryEditMode, toggleInventoryEdit,
+      activeModal, pickerFilter, editingStockItem,
+      confirmModal, cookModal, cookRecipe,
+      // Tour Export
+      isTourActive, currentStepIndex, startTour, endTour, nextStep, prevStep,
+      openModal, closeModal,
+      // Actions
+      saveCurrentRecipe,
+      deleteRecipe,
+      duplicateRecipe,
+      addStockItem,
+      updateStockItem,
+      deleteStockItem,
+      resetBuilder,
+      newlyAddedId, selectFirstRecipe, // New features
+      // Confirmation
+      askConfirmation,
+      closeConfirmation: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
+      openCookModal,
+      closeCookModal
     }}>
       {children}
     </AppContext.Provider>

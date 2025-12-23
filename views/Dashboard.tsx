@@ -131,7 +131,7 @@ export const Dashboard = () => {
   return (
     <div className="view-section fade-enter space-y-6">
       {/* Featured Insight - Primary Decision Surface */}
-      <div className="sticky top-[58px] md:top-[72px] z-10 bg-[#1C1C1E] dark:bg-[#1C1C1E] backdrop-blur-xl rounded-3xl p-6 text-white relative overflow-hidden shadow-2xl ring-1 ring-black/5 dark:ring-white/10 transition-all animate-in fade-in slide-in-from-bottom-8 duration-700">
+      <div className="sticky top-[58px] md:top-[72px] z-10 bg-[#1C1C1E] dark:bg-[#1C1C1E] backdrop-blur-xl rounded-3xl p-6 text-white relative overflow-hidden shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
         {/* Subtle background glow for depth - adjusted opacity for consistent look */}
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/20 rounded-full filter blur-[100px] -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
 
@@ -168,15 +168,15 @@ export const Dashboard = () => {
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setMobileToggleOpen(false)}></div>
                   <div className="absolute top-0 right-0 z-50 bg-white/10 rounded-lg shadow-xl border border-white/10 overflow-hidden min-w-[60px] animate-in fade-in zoom-in-95 duration-200">
-                     {(['daily', 'weekly', 'monthly'] as const).map((p) => (
-                        <button
-                          key={p}
-                          onClick={() => { setForecastPeriod(p); setMobileToggleOpen(false); }}
-                          className={`w-full text-center px-1 py-2 text-[10px] font-bold uppercase tracking-wide border-b border-white/5 last:border-0 hover:bg-white/5 ${forecastPeriod === p ? 'text-white bg-white/5' : 'text-gray-400'}`}
-                        >
-                          {p}
-                        </button>
-                      ))}
+                    {(['daily', 'weekly', 'monthly'] as const).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => { setForecastPeriod(p); setMobileToggleOpen(false); }}
+                        className={`w-full text-center px-1 py-2 text-[10px] font-bold uppercase tracking-wide border-b border-white/5 last:border-0 hover:bg-white/5 ${forecastPeriod === p ? 'text-white bg-white/5' : 'text-gray-400'}`}
+                      >
+                        {p}
+                      </button>
+                    ))}
                   </div>
                 </>
               )}
@@ -216,7 +216,7 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* NEW CARD 1: TODAY'S BOTTLENECK */}
         <div
           onClick={() => setView('inventory')}
@@ -314,7 +314,7 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div className={lows.length > 0 ? "animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200" : "hidden"}>
+      <div className={lows.length > 0 ? "" : "hidden"}>
         <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 pl-1">Needs Attention</h3>
         {/* Opaque Surface for Readability */}
         <div className="surface-opaque rounded-2xl overflow-hidden divide-y divide-gray-100 dark:divide-white/10">
@@ -330,7 +330,7 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+      <div>
         <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 pl-1">Top Performers</h3>
         {/* Opaque Surface for Readability */}
         <div className="surface-opaque rounded-2xl overflow-hidden divide-y divide-gray-100 dark:divide-white/10">

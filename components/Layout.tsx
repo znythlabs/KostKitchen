@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../AppContext';
 import { View } from '../types';
+import { TourGuide } from './TourGuide';
 
 const NavItemDesktop = ({ target, label, icon }: { target: View, label: string, icon: string }) => {
   const { view, setView } = useApp();
@@ -38,13 +39,13 @@ export const DesktopSidebar = () => {
         </div>
         <span className="font-semibold text-lg tracking-tight text-gray-900 dark:text-white">CostKitchen</span>
       </div>
-      <div className="flex-1 px-3 py-4 space-y-0.5">
-        <NavItemDesktop target="dashboard" label="Overview" icon="lucide:layout-grid" />
-        <NavItemDesktop target="recipes" label="Menu" icon="lucide:utensils" />
-        <NavItemDesktop target="engineering" label="Matrix" icon="lucide:scatter-chart" />
-        <NavItemDesktop target="inventory" label="Inventory" icon="lucide:package" />
-        <NavItemDesktop target="finance" label="Financials" icon="lucide:pie-chart" />
-        <NavItemDesktop target="calendar" label="Reports" icon="lucide:calendar" />
+      <div className="flex-1 px-3 py-4 space-y-0.5" id="nav-container">
+        <div id="nav-dashboard"><NavItemDesktop target="dashboard" label="Overview" icon="lucide:layout-grid" /></div>
+        <div id="nav-recipes"><NavItemDesktop target="recipes" label="Menu" icon="lucide:utensils" /></div>
+        <div id="nav-engineering"><NavItemDesktop target="engineering" label="Matrix" icon="lucide:scatter-chart" /></div>
+        <div id="nav-inventory"><NavItemDesktop target="inventory" label="Inventory" icon="lucide:package" /></div>
+        <div id="nav-finance"><NavItemDesktop target="finance" label="Financials" icon="lucide:pie-chart" /></div>
+        <div id="nav-calendar"><NavItemDesktop target="calendar" label="Reports" icon="lucide:calendar" /></div>
       </div>
       <div className="p-3 border-t border-black/5 dark:border-white/10">
         <button type="button" onClick={() => setView('profile')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors group text-gray-500 dark:text-gray-400">
@@ -78,7 +79,7 @@ export const MobileNav = () => {
 };
 
 export const Header = () => {
-  const { view, setView, data, theme, setTheme } = useApp();
+  const { view, setView, data, theme, setTheme, startTour } = useApp();
   const [showNotifications, setShowNotifications] = useState(false);
 
   const lowStockCount = data.ingredients.filter(i => i.stockQty <= i.minStock).length;
@@ -97,7 +98,7 @@ export const Header = () => {
     const nextIndex = (themes.indexOf(theme) + 1) % themes.length;
     setTheme(themes[nextIndex]);
   };
-  
+
   const themeIcon = {
     light: 'lucide:sun',
     dark: 'lucide:moon',
@@ -125,6 +126,15 @@ export const Header = () => {
       <div className="flex items-center gap-3 shrink-0 ml-4 relative">
         <button
           type="button"
+          onClick={startTour}
+          className="w-9 h-9 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 active-scale transition-colors"
+          title="Start Tour"
+        >
+          <iconify-icon icon="lucide:help-circle" width="20"></iconify-icon>
+        </button>
+        <button
+          type="button"
+          id="header-theme"
           onClick={cycleTheme}
           className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-gray-300 active-scale transition-colors"
         >

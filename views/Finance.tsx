@@ -344,7 +344,7 @@ export const Finance = () => {
                 value={newExp.amount}
                 onChange={e => setNewExp({ ...newExp, amount: e.target.value })}
               />
-              <button onClick={addExpense} className="w-10 h-10 shrink-0 bg-[#007AFF] text-white rounded-xl flex items-center justify-center active-scale">
+              <button id="finance-add-btn" onClick={addExpense} className="w-10 h-10 shrink-0 bg-[#007AFF] text-white rounded-xl flex items-center justify-center active-scale">
                 <iconify-icon icon="lucide:plus" width="18"></iconify-icon>
               </button>
             </div>
