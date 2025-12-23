@@ -17,7 +17,16 @@ import { Profile } from './views/Profile';
 import { MenuEngineering } from './views/MenuEngineering';
 
 const MainContent = () => {
-  const { isLoggedIn, view } = useApp();
+  const { isLoggedIn, view, isLoading } = useApp();
+
+  // Show loading while checking auth - prevents login screen flash
+  if (isLoading && !isLoggedIn) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-[#F2F2F7] dark:bg-black">
+        <div className="text-gray-500 dark:text-gray-400 text-sm">Loading...</div>
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     return <AuthLayer />;

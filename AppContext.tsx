@@ -3,6 +3,40 @@ import { supabase } from './lib/supabase';
 import { AppData, View, BuilderState, Ingredient, Recipe, Expense, AppContextType, DailySnapshot, WeeklySummary, MonthlySummary, Theme } from './types';
 import { INITIAL_DATA, INITIAL_BUILDER, TOUR_STEPS } from './constants';
 
+// --- LOCALSTORAGE CACHE SYSTEM ---
+const CACHE_KEY = 'ck_data_cache';
+const CACHE_VERSION_KEY = 'ck_cache_version';
+const CACHE_VERSION = '1'; // Increment when data structure changes
+
+const saveToCache = (data: AppData) => {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    localStorage.setItem(CACHE_VERSION_KEY, CACHE_VERSION);
+    console.log('Cache saved:', { ingredients: data.ingredients.length, recipes: data.recipes.length });
+  } catch (e) { console.warn('Cache save failed:', e); }
+};
+
+const loadFromCache = (): AppData | null => {
+  try {
+    if (localStorage.getItem(CACHE_VERSION_KEY) !== CACHE_VERSION) {
+      console.log('Cache version mismatch - clearing');
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      console.log('Cache loaded:', { ingredients: parsed.ingredients?.length, recipes: parsed.recipes?.length });
+      return parsed;
+    }
+    console.log('No cache found');
+    return null;
+  } catch (e) {
+    console.warn('Cache load failed:', e);
+    return null;
+  }
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: PropsWithChildren) => {
@@ -131,14 +165,21 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   // --- SUPABASE DATA FETCHING ---
   const refreshData = async (silent = false) => {
+    console.log('refreshData called, silent:', silent);
+    console.time('refreshData');
     if (!silent) setLoading(true);
+
+    console.time('getUser');
     const { data: { user } } = await supabase.auth.getUser();
+    console.timeEnd('getUser');
 
     if (!user) {
+      console.log('No user found');
       setIsLoggedIn(false);
       setUser(null);
       setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [] });
       setLoading(false);
+      console.timeEnd('refreshData');
       return;
     }
 
@@ -147,6 +188,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
     try {
       // Parallel Fetch
+      console.time('supabaseFetch');
       const [ingRes, recRes, recIngRes, settingsRes, expRes, snapRes] = await Promise.all([
         supabase.from('ingredients').select('*').order('name'),
         supabase.from('recipes').select('*').order('id', { ascending: false }),
@@ -155,6 +197,11 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         supabase.from('expenses').select('*'),
         supabase.from('daily_snapshots').select('*').order('date', { ascending: false })
       ]);
+      console.timeEnd('supabaseFetch');
+      console.log('Data received:', {
+        ingredients: ingRes.data?.length,
+        recipes: recRes.data?.length
+      });
 
       // Map Ingredients
       const ingredients: Ingredient[] = (ingRes.data || []).map((i: any) => ({
@@ -205,38 +252,36 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         date: s.date
       }));
 
-      setData({ ingredients, recipes, settings, dailySnapshots });
+      const newData = { ingredients, recipes, settings, dailySnapshots };
+      setData(newData);
+      console.log('Data loaded successfully!');
 
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
+      console.timeEnd('refreshData');
     }
   };
 
   useEffect(() => {
-    // Check initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      // ALWAYS REFRESH FOR AUDIT BYPASS
-      refreshData();
-    });
+    // Simple: Just fetch data on mount
+    refreshData();
 
     // Realtime Subscription
     const channel = supabase.channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, (payload) => {
-        console.log('Realtime Event received:', payload);
-        refreshData(true);
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, () => refreshData(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'recipes' }, () => refreshData(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => refreshData(true))
-      .subscribe((status) => {
-        console.log("Realtime Connection Status:", status);
-      });
+      .subscribe();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN') refreshData(true);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        refreshData(false); // Always show loading on fresh login
+      }
       if (event === 'SIGNED_OUT') {
         setIsLoggedIn(false);
+        setLoading(false);
         setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [] });
       }
     });
@@ -248,8 +293,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   }, []);
 
   const login = () => {
-    refreshData();
-    // Start tour for new users who haven't seen it yet
+    // Data refresh is handled by onAuthStateChange SIGNED_IN event
+    // This function only handles post-login tasks like tour
     const hasSeen = localStorage.getItem('hasSeenTour');
     if (!hasSeen) {
       // Delay to allow data load and UI render

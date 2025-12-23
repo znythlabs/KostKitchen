@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../AppContext';
 import { useSound } from '../SoundContext';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -15,6 +15,15 @@ export const Recipes = () => {
 
   const mode = builder.showBuilder ? 'builder' : 'list';
   const [showDiscountDetails, setShowDiscountDetails] = useState(false);
+
+  // Memoize financials for all recipes to avoid recalculating on every render
+  const recipeFinancialsMap = useMemo(() => {
+    const map = new Map();
+    data.recipes.forEach(r => {
+      map.set(r.id, getRecipeFinancials(r));
+    });
+    return map;
+  }, [data.recipes, getRecipeFinancials]);
 
   useEffect(() => {
     if (newlyAddedId && mode === 'list') {
@@ -268,7 +277,7 @@ export const Recipes = () => {
       {mode === 'list' && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
           {data.recipes.map((r, index) => {
-            const f = getRecipeFinancials(r);
+            const f = recipeFinancialsMap.get(r.id) || { unitCost: 0, price: 0 };
             const isSelected = selectedRecipeId === r.id;
             const isNew = r.id === newlyAddedId;
             return (
