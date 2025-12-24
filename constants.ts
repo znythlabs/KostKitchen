@@ -35,7 +35,7 @@ import { TourStep } from './types';
 export const TOUR_STEPS: TourStep[] = [
   {
     targetId: 'root',
-    title: 'Welcome to CostKitchen!',
+    title: 'Welcome to KostKitchen!',
     content: "Let's take a detailed tour to master your restaurant management. We'll cover everything from simple inventory to advanced menu engineering.",
     position: 'center',
     action: 'resetBuilder'
@@ -58,18 +58,21 @@ export const TOUR_STEPS: TourStep[] = [
     action: 'resetBuilder'
   },
   {
-    targetId: 'recipe-create-btn',
-    title: 'Create or Edit',
-    content: 'Click here to capture a new dish or open the Builder.',
+    targetId: 'builder-name',
+    title: 'Create First Recipe',
+    content: 'Start by naming your dish. Give it a memorable name that represents your creation.',
     view: 'recipes',
-    position: 'bottom'
+    position: 'bottom',
+    action: 'openBuilder',
+    skipIfHasData: true
   },
   {
     targetId: 'recipe-card-0',
     title: 'Select a Recipe',
     content: 'Clicking a recipe card selects it, unlocking quick actions.',
     view: 'recipes',
-    position: 'right'
+    position: 'right',
+    skipIfNoData: true
   },
   {
     targetId: 'recipe-action-edit',
@@ -77,15 +80,16 @@ export const TOUR_STEPS: TourStep[] = [
     content: 'Once selected, easily Edit, Copy, or Delete recipes instantly.',
     view: 'recipes',
     position: 'bottom',
-    action: 'selectFirstRecipe'
+    action: 'selectFirstRecipe',
+    skipIfNoData: true
   },
   // 4. BUILDER MODE
   {
-    targetId: 'tour-name-wrapper',
-    title: 'Name Your Dish',
-    content: 'Give your creation a name and set an estimated daily volume.',
+    targetId: 'builder-volume',
+    title: 'Daily Volume',
+    content: 'Estimate how many servings you sell per day. This helps calculate your daily revenue and costs.',
     view: 'recipes',
-    position: 'right',
+    position: 'bottom',
     action: 'openBuilder'
   },
   {
@@ -112,9 +116,9 @@ export const TOUR_STEPS: TourStep[] = [
   {
     targetId: 'builder-save-btn',
     title: 'Save Recipe',
-    content: 'Don\'t forget to save your profitable creation! (Position: Left)',
+    content: 'Don\'t forget to save your profitable creation!',
     view: 'recipes',
-    position: 'left'
+    position: 'top'
   },
   // 5. MENU ENGINEERING
   {
@@ -160,7 +164,7 @@ export const TOUR_STEPS: TourStep[] = [
     title: 'Track Expenses',
     content: 'Add fixed costs like Rent, Salaries, and Utilities here to get a true Net Profit calculation.',
     view: 'finance',
-    position: 'left'
+    position: 'top'
   },
   {
     targetId: 'header-theme',

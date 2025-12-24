@@ -114,16 +114,44 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   };
 
   const nextStep = () => {
-    if (currentStepIndex < TOUR_STEPS.length - 1) {
-      setCurrentStepIndex(prev => prev + 1);
+    let nextIndex = currentStepIndex + 1;
+    // Skip steps based on data availability (Branching Logic)
+    while (nextIndex < TOUR_STEPS.length) {
+      const step = TOUR_STEPS[nextIndex];
+      if (step.skipIfNoData && data.recipes.length === 0) {
+        nextIndex++;
+        continue;
+      }
+      if (step.skipIfHasData && data.recipes.length > 0) {
+        nextIndex++;
+        continue;
+      }
+      break;
+    }
+    if (nextIndex < TOUR_STEPS.length) {
+      setCurrentStepIndex(nextIndex);
     } else {
       endTour();
     }
   };
 
   const prevStep = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex(prev => prev - 1);
+    let prevIndex = currentStepIndex - 1;
+    // Skip steps based on data availability (Branching Logic)
+    while (prevIndex >= 0) {
+      const step = TOUR_STEPS[prevIndex];
+      if (step.skipIfNoData && data.recipes.length === 0) {
+        prevIndex--;
+        continue;
+      }
+      if (step.skipIfHasData && data.recipes.length > 0) {
+        prevIndex--;
+        continue;
+      }
+      break;
+    }
+    if (prevIndex >= 0) {
+      setCurrentStepIndex(prevIndex);
     }
   };
 
@@ -174,12 +202,13 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     console.timeEnd('getUser');
 
     if (!user) {
-      console.log('No user found');
-      setIsLoggedIn(false);
-      setUser(null);
-      setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [] });
-      setLoading(false);
-      console.timeEnd('refreshData');
+      // Only reset data on explicit logout, not on silent refresh failures
+      if (!silent) {
+        setIsLoggedIn(false);
+        setUser(null);
+        setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [] });
+        setLoading(false);
+      }
       return;
     }
 
@@ -219,6 +248,16 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         type: (i.type || 'ingredient') as 'ingredient' | 'other'
       }));
 
+      // Build ingredients map for fast lookup (O(n) instead of O(n*m))
+      const ingredientsByRecipeId = new Map<number, { id: number; qty: number }[]>();
+      (recIngRes.data || []).forEach((ri: any) => {
+        const recipeId = ri.recipe_id;
+        if (!ingredientsByRecipeId.has(recipeId)) {
+          ingredientsByRecipeId.set(recipeId, []);
+        }
+        ingredientsByRecipeId.get(recipeId)!.push({ id: ri.ingredient_id, qty: Number(ri.qty) });
+      });
+
       // Map Recipes
       const recipes: Recipe[] = (recRes.data || []).map((r: any) => ({
         id: r.id,
@@ -229,9 +268,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         dailyVolume: Number(r.daily_volume),
         image: r.image,
         batchSize: Number(r.batch_size),
-        ingredients: (recIngRes.data || [])
-          .filter((ri: any) => ri.recipe_id === r.id)
-          .map((ri: any) => ({ id: ri.ingredient_id, qty: Number(ri.qty) }))
+        ingredients: ingredientsByRecipeId.get(r.id) || []
       }));
 
       // Map Settings
@@ -253,42 +290,53 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       }));
 
       const newData = { ingredients, recipes, settings, dailySnapshots };
+
+      // SAFEGUARD: Don't wipe existing data if fetch returned empty (possible error)
+      if (recipes.length === 0 && data.recipes.length > 0) {
+        console.warn('Fetch returned 0 recipes but we have existing data - keeping current data');
+        return;
+      }
+
       setData(newData);
-      console.log('Data loaded successfully!');
+      saveToCache(newData); // Cache for instant load next time
+      console.log('Data loaded and cached!');
 
     } catch (error) {
       console.error("Error fetching data:", error);
+      // Keep existing data on error
     } finally {
       setLoading(false);
-      console.timeEnd('refreshData');
     }
   };
 
   useEffect(() => {
-    // Simple: Just fetch data on mount
-    refreshData();
+    // Load from cache first for instant display
+    const cached = loadFromCache();
+    if (cached && cached.recipes.length > 0) {
+      setData(cached);
+      setIsLoggedIn(true);
+      setLoading(false);
+    }
 
-    // Realtime Subscription
-    const channel = supabase.channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, () => refreshData(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recipes' }, () => refreshData(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, () => refreshData(true))
-      .subscribe();
+    // Fetch fresh data (silent if we have cache)
+    refreshData(cached ? true : false);
 
+    // Auth state listener only - no realtime (saves bandwidth)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN') {
-        refreshData(false); // Always show loading on fresh login
+        refreshData(false);
       }
       if (event === 'SIGNED_OUT') {
         setIsLoggedIn(false);
         setLoading(false);
         setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [] });
+        // Clear cache on logout
+        localStorage.removeItem('ck_data_cache');
       }
     });
 
     return () => {
       subscription.unsubscribe();
-      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -608,15 +656,39 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   };
 
   const duplicateRecipe = async (id: number) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
     const r = data.recipes.find(x => x.id === id);
     if (!r) return;
 
     const newName = `${r.name} (Copy)`;
+    const tempId = -Date.now(); // Temporary negative ID until we get real one
 
-    // 1. Create Recipe
+    // 1. INSTANT: Optimistic update with temp ID
+    const optimisticRecipe: Recipe = {
+      id: tempId,
+      name: newName,
+      category: r.category,
+      margin: r.margin,
+      price: r.price,
+      dailyVolume: r.dailyVolume,
+      image: r.image,
+      batchSize: r.batchSize,
+      ingredients: r.ingredients.map(ri => ({ ...ri }))
+    };
+
+    setData(prev => ({
+      ...prev,
+      recipes: [optimisticRecipe, ...prev.recipes]
+    }));
+    setNewlyAddedId(tempId);
+
+    // 2. Background: Actually create in database
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      // Revert on auth failure
+      setData(prev => ({ ...prev, recipes: prev.recipes.filter(x => x.id !== tempId) }));
+      return;
+    }
+
     const { data: newRecipe, error } = await supabase.from('recipes').insert({
       user_id: user.id,
       name: newName,
@@ -629,11 +701,13 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     }).select().single();
 
     if (error || !newRecipe) {
+      // Revert on error
+      setData(prev => ({ ...prev, recipes: prev.recipes.filter(x => x.id !== tempId) }));
       alert("Failed to duplicate recipe");
       return;
     }
 
-    // 2. Duplicate Ingredients
+    // 3. Duplicate Ingredients in DB
     if (r.ingredients.length > 0) {
       const ingPayload = r.ingredients.map(ri => ({
         recipe_id: newRecipe.id,
@@ -643,34 +717,14 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       await supabase.from('recipe_ingredients').insert(ingPayload);
     }
 
-    // 3. Optimistic Update (Instant Feedback)
-    // We can't know the real ID yet, but we can fake it for a second or just wait for refresh?
-    // User asked for "Instant Respond".
-    // Since we need the ID for ingredients insert, we actually HAVE to wait for the insert to return the ID.
-    // However, the `insert` is fast. `refreshData` is slow because it refetches EVERYTHING.
-    // Instead of full refreshData(), let's just push the new recipe to state.
-
-    // Construct local object
-    const optimisticRecipe: Recipe = {
-      id: newRecipe.id,
-      name: newRecipe.name,
-      category: newRecipe.category,
-      margin: newRecipe.margin,
-      price: newRecipe.price,
-      dailyVolume: newRecipe.daily_volume,
-      image: newRecipe.image,
-      batchSize: newRecipe.batch_size,
-      ingredients: r.ingredients.map(ri => ({ ...ri, qty: ri.qty })) // Assuming ingredient structure matches
-    };
-
+    // 4. Replace temp recipe with real one (update the ID)
     setData(prev => ({
       ...prev,
-      recipes: [optimisticRecipe, ...prev.recipes] // Prepend
+      recipes: prev.recipes.map(x =>
+        x.id === tempId ? { ...x, id: newRecipe.id } : x
+      )
     }));
-    setNewlyAddedId(optimisticRecipe.id);
-
-    // Background refresh to be safe
-    refreshData();
+    setNewlyAddedId(newRecipe.id);
   };
 
   const captureDailySnapshot = async () => {

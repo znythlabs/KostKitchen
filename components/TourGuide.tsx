@@ -4,9 +4,10 @@ import { useApp } from '../AppContext';
 import { TOUR_STEPS } from '../constants';
 
 export const TourGuide = () => {
-    const { isTourActive, currentStepIndex, nextStep, prevStep, endTour, setView, setBuilder, resetBuilder, selectFirstRecipe } = useApp();
+    const { isTourActive, currentStepIndex, nextStep, prevStep, endTour, setView, setBuilder, resetBuilder, selectFirstRecipe, selectedRecipeId, loadRecipeToBuilder } = useApp();
     const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
     const [isSearching, setIsSearching] = useState(false);
+    const [isFirstHighlight, setIsFirstHighlight] = useState(true); // Track if this is first highlight
     const prevStepRef = useRef(currentStepIndex);
 
     const step = TOUR_STEPS[currentStepIndex];
@@ -19,7 +20,7 @@ export const TourGuide = () => {
         const stepChanged = prevStepRef.current !== currentStepIndex;
         prevStepRef.current = currentStepIndex;
 
-        // Mark as searching (but don't hide the popover)
+        // Mark as searching but DON'T clear targetRect (keeps old position until new found)
         if (stepChanged) {
             setIsSearching(true);
         }
@@ -33,7 +34,11 @@ export const TourGuide = () => {
         if (step.action === 'resetBuilder') {
             resetBuilder();
         } else if (step.action === 'openBuilder') {
-            setBuilder(prev => ({ ...prev, showBuilder: true }));
+            if (selectedRecipeId) {
+                loadRecipeToBuilder(selectedRecipeId);
+            } else {
+                setBuilder(prev => ({ ...prev, showBuilder: true }));
+            }
         } else if (step.action === 'selectFirstRecipe') {
             resetBuilder();
             selectFirstRecipe();
@@ -97,6 +102,8 @@ export const TourGuide = () => {
                                 clearInterval(checkStability);
                                 console.log(`TourGuide: Position stable. Setting target.`);
                                 setTargetRect(currentRect);
+                                // Delay turning off first highlight so we can use it for animation delay
+                                setTimeout(() => setIsFirstHighlight(false), 500);
                                 setIsSearching(false);
                             }
                         }, 50);
@@ -109,15 +116,17 @@ export const TourGuide = () => {
                 if (attempts > 100) {
                     clearInterval(intervalId);
                     setIsSearching(false);
+                    setTargetRect(null);
                     console.warn(`TourGuide: Could not find element with id "${step.targetId}"`);
                 }
             }, 50);
         };
 
-        // Minimal delay for actions
+        // Delay for actions - openBuilder needs more time for builder UI to render
+        // Increasing to 1000ms to ensure Modal is fully rendered and element is found
         let delay = 0;
         if (step.action === 'openBuilder') {
-            delay = 300; // Short delay for builder
+            delay = 1000;
         } else if (step.action) {
             delay = 100;
         }
@@ -127,28 +136,42 @@ export const TourGuide = () => {
             clearTimeout(timeoutId);
             clearInterval(intervalId);
         };
-    }, [isTourActive, currentStepIndex, step, setView, resetBuilder, setBuilder, selectFirstRecipe]);
+    }, [isTourActive, currentStepIndex, step, setView, resetBuilder, setBuilder, selectFirstRecipe, selectedRecipeId, loadRecipeToBuilder]);
 
     if (!isTourActive || !step) return null;
 
-    // Calculate Popover Position
+    // Calculate Popover Position - RESPONSIVE
     const isCenter = step.position === 'center';
     const popoverStyle: React.CSSProperties = {};
-    const popoverWidth = 420;
-    const popoverHeight = 300;
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
-    const safeMargin = 20;
+    const isMobile = screenWidth < 640;
+    const popoverWidth = isMobile ? screenWidth - 32 : Math.min(400, screenWidth - 40);
+    const popoverHeight = 280;
+    const safeMargin = 16;
+    const highlightPadding = 12;
 
-    // Use center position if no target yet, or if it's a center step
-    if (isCenter || !targetRect) {
+    // For mobile: always position at bottom of screen with extra space for highlighted elements
+    // For desktop: position relative to target
+    if (isMobile) {
+        popoverStyle.position = 'fixed';
+        popoverStyle.bottom = 20; // Fixed at bottom
+        popoverStyle.left = safeMargin;
+        popoverStyle.right = safeMargin;
+        popoverStyle.width = 'auto';
+        popoverStyle.maxHeight = '40vh'; // Limit height so elements above are visible
+    } else if (isCenter || !targetRect || (targetRect.width === 0 && targetRect.height === 0)) {
+        // Force center if explicit center OR if targetRect is the center placeholder (0x0)
+        // This prevents the "shift" when transitioning from center -> element before element is found
         popoverStyle.position = 'fixed';
         popoverStyle.top = Math.max(safeMargin, (screenHeight - popoverHeight) / 2);
         popoverStyle.left = Math.max(safeMargin, (screenWidth - popoverWidth) / 2);
+        popoverStyle.width = popoverWidth;
     } else {
         const gap = 16;
         const clampLeft = (left: number) => Math.max(safeMargin, Math.min(screenWidth - popoverWidth - safeMargin, left));
         const clampTop = (top: number) => Math.max(safeMargin, Math.min(screenHeight - popoverHeight - safeMargin, top));
+        popoverStyle.width = popoverWidth;
 
         if (step.position === 'top') {
             popoverStyle.top = clampTop(targetRect.top - popoverHeight - gap);
@@ -167,60 +190,81 @@ export const TourGuide = () => {
 
     return (
         <div className="fixed inset-0 z-[100] overflow-visible pointer-events-none">
-            {/* Backdrop with Hole */}
-            {!isCenter && targetRect && (
-                <div className="absolute inset-0 pointer-events-auto">
-                    <svg className="w-full h-full text-black/60 dark:text-black/80 fill-current">
-                        <defs>
-                            <mask id="tour-mask">
-                                <rect x="0" y="0" width="100%" height="100%" fill="white" />
+            {/* Unified Overlay - Use SVG Mask for EVERYTHING to prevent flicker */}
+            <div className="absolute inset-0 pointer-events-auto">
+                <svg className="w-full h-full text-black/60 dark:text-black/80 fill-current">
+                    <defs>
+                        <mask id="tour-mask">
+                            <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                            {/* Mask Hole - Only render if we have a valid targetRect and NOT center */}
+                            {/* If center, we render nothing here, so mask is full white -> rect covers everything (full backdrop) */}
+                            {!isCenter && targetRect && targetRect.width > 0 && (
                                 <motion.rect
+                                    initial={isFirstHighlight ? {
+                                        x: targetRect.left - 8,
+                                        y: targetRect.top - 8,
+                                        width: targetRect.width + 16,
+                                        height: targetRect.height + 16,
+                                        opacity: 0
+                                    } : false}
                                     animate={{
                                         x: targetRect.left - 8,
                                         y: targetRect.top - 8,
                                         width: targetRect.width + 16,
-                                        height: targetRect.height + 16
+                                        height: targetRect.height + 16,
+                                        opacity: 1
                                     }}
-                                    transition={{ type: "spring", stiffness: 800, damping: 50 }}
+                                    transition={{
+                                        duration: isFirstHighlight ? 0.3 : 0.35,
+                                        delay: isFirstHighlight ? 0.3 : 0, // Delay first appearance so popover moves first
+                                        ease: [0.4, 0, 0.2, 1]
+                                    }}
                                     rx="12"
                                     fill="black"
                                 />
-                            </mask>
-                        </defs>
-                        <rect x="0" y="0" width="100%" height="100%" mask="url(#tour-mask)" />
-                    </svg>
+                            )}
+                        </mask>
+                    </defs>
+                    <rect x="0" y="0" width="100%" height="100%" mask="url(#tour-mask)" />
+                </svg>
 
-                    {/* Highlight Ring */}
+                {/* Highlight Ring - Only render if targetRect valid and NOT center */}
+                {!isCenter && targetRect && targetRect.width > 0 && (
                     <motion.div
                         className="absolute border-2 border-[#007AFF] rounded-xl shadow-[0_0_20px_rgba(0,122,255,0.5)] pointer-events-none"
+                        initial={isFirstHighlight ? {
+                            left: targetRect.left - 8,
+                            top: targetRect.top - 8,
+                            width: targetRect.width + 16,
+                            height: targetRect.height + 16,
+                            opacity: 0
+                        } : false}
                         animate={{
                             left: targetRect.left - 8,
                             top: targetRect.top - 8,
                             width: targetRect.width + 16,
-                            height: targetRect.height + 16
+                            height: targetRect.height + 16,
+                            opacity: 1
                         }}
-                        transition={{ type: "spring", stiffness: 800, damping: 50 }}
+                        transition={{
+                            duration: isFirstHighlight ? 0.3 : 0.35,
+                            delay: isFirstHighlight ? 0.3 : 0, // Delay first appearance
+                            ease: [0.4, 0, 0.2, 1]
+                        }}
                     />
-                </div>
-            )}
+                )}
+            </div>
 
-            {/* Center backdrop */}
-            {isCenter && (
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto" />
-            )}
-
-            {/* Popover Card - Always visible */}
+            {/* Popover Card - Responsive, no remount on step change */}
             <motion.div
-                key={currentStepIndex}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}
-                className="absolute pointer-events-auto w-[420px] bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden flex flex-col"
+                className="absolute pointer-events-auto bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden flex flex-col max-w-[calc(100vw-32px)]"
                 style={popoverStyle}
             >
-                <div className="h-2 bg-gradient-to-r from-blue-500 to-purple-500 w-full" />
-                <div className="p-5 pb-6">
-                    <div className="flex justify-between items-start mb-4">
+                <div className="h-1.5 sm:h-2 bg-gradient-to-r from-blue-500 to-purple-500 w-full" />
+                <div className="p-4 sm:p-5 pb-5 sm:pb-6">
+                    <div className="flex justify-between items-start mb-3 sm:mb-4">
                         <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-500">
                             {isSearching ? (
                                 <iconify-icon icon="lucide:loader-2" width="20" class="animate-spin"></iconify-icon>
@@ -233,8 +277,8 @@ export const TourGuide = () => {
                         </button>
                     </div>
 
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{step.title}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-1.5 sm:mb-2">{step.title}</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4 sm:mb-6">
                         {step.content}
                     </p>
 
@@ -248,18 +292,18 @@ export const TourGuide = () => {
                             ))}
                         </div>
 
-                        <div className="flex gap-3">
+                        <div className="flex gap-2 sm:gap-3">
                             {currentStepIndex > 0 && (
                                 <button
                                     onClick={prevStep}
-                                    className="px-4 py-2 text-sm font-semibold text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
+                                    className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
                                 >
                                     Back
                                 </button>
                             )}
                             <button
                                 onClick={nextStep}
-                                className="px-5 py-2.5 bg-[#007AFF] hover:bg-blue-600 text-white text-sm font-bold rounded-xl shadow-sm active:scale-95 transition-all"
+                                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-[#007AFF] hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm active:scale-95 transition-all"
                             >
                                 {currentStepIndex === TOUR_STEPS.length - 1 ? 'Finish' : 'Next'}
                             </button>

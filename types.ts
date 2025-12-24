@@ -29,6 +29,8 @@ export interface TourStep {
   view?: View;
   position?: 'top' | 'bottom' | 'left' | 'right' | 'center';
   action?: 'resetBuilder' | 'openBuilder' | 'selectFirstRecipe' | 'clearSelection' | 'none';
+  skipIfNoData?: boolean; // Skip this step if no recipes exist (for new users)
+  skipIfHasData?: boolean; // Skip this step if recipes DO exist (for existing users)
 }
 
 

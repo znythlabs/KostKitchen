@@ -95,7 +95,7 @@ export const Calendar = () => {
 
         // Brand Header
         doc.setFontSize(20);
-        doc.text("CostKitchen", 14, 20);
+        doc.text("KostKitchen", 14, 20);
         doc.setFontSize(10);
         doc.text("Premium Financial Report", 14, 26);
 

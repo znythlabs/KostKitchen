@@ -37,7 +37,7 @@ export const DesktopSidebar = () => {
         <div className="w-8 h-8 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-black flex items-center justify-center shadow-md mr-3">
           <iconify-icon icon="lucide:chef-hat" width="18"></iconify-icon>
         </div>
-        <span className="font-semibold text-lg tracking-tight text-gray-900 dark:text-white">CostKitchen</span>
+        <span className="font-semibold text-lg tracking-tight text-gray-900 dark:text-white">KostKitchen</span>
       </div>
       <div className="flex-1 px-3 py-4 space-y-0.5" id="nav-container">
         <div id="nav-dashboard"><NavItemDesktop target="dashboard" label="Overview" icon="lucide:layout-grid" /></div>

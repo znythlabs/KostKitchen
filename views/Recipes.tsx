@@ -15,6 +15,7 @@ export const Recipes = () => {
 
   const mode = builder.showBuilder ? 'builder' : 'list';
   const [showDiscountDetails, setShowDiscountDetails] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
 
   // Memoize financials for all recipes to avoid recalculating on every render
   const recipeFinancialsMap = useMemo(() => {
@@ -23,7 +24,8 @@ export const Recipes = () => {
       map.set(r.id, getRecipeFinancials(r));
     });
     return map;
-  }, [data.recipes, getRecipeFinancials]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.recipes]); // Only recalculate when recipes change
 
   useEffect(() => {
     if (newlyAddedId && mode === 'list') {
@@ -42,7 +44,16 @@ export const Recipes = () => {
   const handleSwitchToBuilder = () => { playClick(); resetBuilder(); setBuilder(prev => ({ ...prev, showBuilder: true })); setSelectedRecipeId(null); };
 
   const handleEditSelected = () => { playClick(); if (selectedRecipeId) loadRecipeToBuilder(selectedRecipeId); };
-  const handleDuplicateSelected = () => { playClick(); if (selectedRecipeId) duplicateRecipe(selectedRecipeId); };
+
+  // Rate-limited duplicate - 2 second cooldown
+  const handleDuplicateSelected = async () => {
+    if (isDuplicating || !selectedRecipeId) return;
+    setIsDuplicating(true);
+    playClick();
+    await duplicateRecipe(selectedRecipeId);
+    setTimeout(() => setIsDuplicating(false), 2000); // 2s cooldown
+  };
+
   const handleDeleteSelected = () => {
     playClick();
     const r = data.recipes.find(i => i.id === selectedRecipeId);
@@ -285,9 +296,9 @@ export const Recipes = () => {
                 id={index === 0 ? 'recipe-card-0' : `recipe-card-${r.id}`}
                 key={r.id}
                 onClick={() => setSelectedRecipeId(isSelected ? null : r.id)}
-                className={`glass-thin rounded-2xl flex flex-col justify-between overflow-hidden cursor-pointer transition-all duration-150 ${isNew ? 'ring-2 ring-[#007AFF] animate-pulse' : ''} ${isSelected ? 'ring-2 ring-[#007AFF] border-transparent scale-[1.02] shadow-lg z-10' : 'hover:bg-white/40 dark:hover:bg-white/10'}`}
+                className={`bg-white/80 dark:bg-[#1C1C1E] rounded-2xl flex flex-col justify-between overflow-hidden cursor-pointer border border-gray-200/50 dark:border-white/10 shadow-sm ${isNew ? 'ring-2 ring-[#007AFF]' : ''} ${isSelected ? 'ring-2 ring-[#007AFF] scale-[1.02] shadow-lg z-10' : 'hover:shadow-md'}`}
               >
-                <div className="h-48 bg-gray-100 dark:bg-white/5 relative bg-cover bg-center transition-all" style={{ backgroundImage: r.image ? `url('${r.image}')` : 'none' }}>
+                <div className="h-48 bg-gray-100 dark:bg-white/5 relative bg-cover bg-center" style={{ backgroundImage: r.image ? `url('${r.image}')` : 'none' }}>
                   {!r.image && (
                     <div className="absolute inset-0 bg-slate-200/50 dark:bg-white/5 flex flex-col items-center justify-center text-slate-400 dark:text-gray-500">
                       <iconify-icon icon="lucide:image" width="40" class="opacity-80 mb-1"></iconify-icon>
