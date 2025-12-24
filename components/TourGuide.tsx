@@ -4,10 +4,10 @@ import { useApp } from '../AppContext';
 import { TOUR_STEPS } from '../constants';
 
 export const TourGuide = () => {
-    const { isTourActive, currentStepIndex, nextStep, prevStep, endTour, setView, setBuilder, resetBuilder, selectFirstRecipe, selectedRecipeId, loadRecipeToBuilder } = useApp();
+    const { isTourActive, currentStepIndex, nextStep, prevStep, endTour, setView, setBuilder, resetBuilder, selectFirstRecipe, selectedRecipeId, loadRecipeToBuilder, getTourElement } = useApp();
     const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
     const [isSearching, setIsSearching] = useState(false);
-    const [isFirstHighlight, setIsFirstHighlight] = useState(true); // Track if this is first highlight
+    const [isFirstHighlight, setIsFirstHighlight] = useState(true);
     const prevStepRef = useRef(currentStepIndex);
 
     const step = TOUR_STEPS[currentStepIndex];
@@ -20,31 +20,31 @@ export const TourGuide = () => {
         const stepChanged = prevStepRef.current !== currentStepIndex;
         prevStepRef.current = currentStepIndex;
 
-        // Mark as searching but DON'T clear targetRect (keeps old position until new found)
+        // Only run view/action changes when step actually changes
         if (stepChanged) {
             setIsSearching(true);
-        }
 
-        // 1. Switch View
-        if (step.view) {
-            setView(step.view);
-        }
-
-        // 2. Execute Action
-        if (step.action === 'resetBuilder') {
-            resetBuilder();
-        } else if (step.action === 'openBuilder') {
-            if (selectedRecipeId) {
-                loadRecipeToBuilder(selectedRecipeId);
-            } else {
-                setBuilder(prev => ({ ...prev, showBuilder: true }));
+            // 1. Switch View
+            if (step.view) {
+                setView(step.view);
             }
-        } else if (step.action === 'selectFirstRecipe') {
-            resetBuilder();
-            selectFirstRecipe();
+
+            // 2. Execute Action
+            if (step.action === 'resetBuilder') {
+                resetBuilder();
+            } else if (step.action === 'openBuilder') {
+                if (selectedRecipeId) {
+                    loadRecipeToBuilder(selectedRecipeId);
+                } else {
+                    setBuilder(prev => ({ ...prev, showBuilder: true }));
+                }
+            } else if (step.action === 'selectFirstRecipe') {
+                resetBuilder();
+                selectFirstRecipe();
+            }
         }
 
-        // 3. Find Element
+        // 3. Find Element with multiple strategies
         let intervalId: NodeJS.Timeout;
         let timeoutId: NodeJS.Timeout;
 
@@ -60,8 +60,30 @@ export const TourGuide = () => {
 
             let attempts = 0;
             intervalId = setInterval(() => {
-                const el = document.getElementById(step.targetId);
-                console.log(`TourGuide: Searching for "${step.targetId}"`, el);
+                // Try multiple strategies to find the element
+                let el: HTMLElement | null = null;
+
+                // Strategy 1: Context registry (if available)
+                if (getTourElement) {
+                    el = getTourElement(step.targetId);
+                }
+
+                // Strategy 2: Direct getElementById
+                if (!el) {
+                    el = document.getElementById(step.targetId);
+                }
+
+                // Strategy 3: querySelector with ID selector
+                if (!el) {
+                    el = document.querySelector(`#${step.targetId}`) as HTMLElement;
+                }
+
+                // Strategy 4: querySelector with data attribute
+                if (!el) {
+                    el = document.querySelector(`[data-tour-id="${step.targetId}"]`) as HTMLElement;
+                }
+
+                console.log(`TourGuide: Searching for "${step.targetId}"`, el ? 'FOUND' : 'NOT FOUND', 'attempt:', attempts);
 
                 if (el) {
                     const rect = el.getBoundingClientRect();
@@ -71,8 +93,15 @@ export const TourGuide = () => {
                     if (rect.width > 0 && rect.height > 0) {
                         clearInterval(intervalId);
 
-                        // 1. Scroll first (instant for speed)
-                        el.scrollIntoView({ behavior: 'auto', block: 'center' });
+                        // 1. Only scroll if element is not fully visible
+                        const isMobileView = window.innerWidth < 640;
+                        const viewportHeight = window.innerHeight;
+                        const popoverHeight = isMobileView ? viewportHeight * 0.4 + 40 : 0; // 40vh + 20px margin
+                        const isVisible = rect.top >= 60 && rect.bottom <= (viewportHeight - popoverHeight - 20);
+
+                        if (!isVisible) {
+                            el.scrollIntoView({ behavior: 'smooth', block: isMobileView ? 'start' : 'center' });
+                        }
 
                         // 2. Start stability check (poll position until it stops moving)
                         let stableCount = 0;
@@ -83,32 +112,29 @@ export const TourGuide = () => {
 
                         const checkStability = setInterval(() => {
                             const currentRect = el.getBoundingClientRect();
-                            // Check movement
                             const diffTop = Math.abs(currentRect.top - lastRect.top);
                             const diffLeft = Math.abs(currentRect.left - lastRect.left);
 
                             if (diffTop < 2 && diffLeft < 2) {
                                 stableCount++;
                             } else {
-                                stableCount = 0; // Reset if moving
+                                stableCount = 0;
                                 console.log(`TourGuide: Element moving... diffTop: ${diffTop}`);
                             }
 
                             lastRect = currentRect;
                             stabilityAttempts++;
 
-                            // If stable for 2 consecutive checks (approx 100ms) OR timeout (1s)
-                            if (stableCount >= 2 || stabilityAttempts > 10) {
+                            if (stableCount >= 1 || stabilityAttempts > 10) {
                                 clearInterval(checkStability);
                                 console.log(`TourGuide: Position stable. Setting target.`);
                                 setTargetRect(currentRect);
-                                // Delay turning off first highlight so we can use it for animation delay
                                 setTimeout(() => setIsFirstHighlight(false), 500);
                                 setIsSearching(false);
                             }
-                        }, 50);
+                        }, 30);
 
-                        return; // Stop outer interval
+                        return;
                     }
                 }
                 attempts++;
@@ -116,17 +142,16 @@ export const TourGuide = () => {
                 if (attempts > 100) {
                     clearInterval(intervalId);
                     setIsSearching(false);
-                    setTargetRect(null);
+                    // Keep old targetRect instead of clearing - better UX
                     console.warn(`TourGuide: Could not find element with id "${step.targetId}"`);
                 }
             }, 50);
         };
 
         // Delay for actions - openBuilder needs more time for builder UI to render
-        // Increasing to 1000ms to ensure Modal is fully rendered and element is found
         let delay = 0;
         if (step.action === 'openBuilder') {
-            delay = 1000;
+            delay = 100;
         } else if (step.action) {
             delay = 100;
         }
@@ -136,6 +161,7 @@ export const TourGuide = () => {
             clearTimeout(timeoutId);
             clearInterval(intervalId);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isTourActive, currentStepIndex, step, setView, resetBuilder, setBuilder, selectFirstRecipe, selectedRecipeId, loadRecipeToBuilder]);
 
     if (!isTourActive || !step) return null;
@@ -149,20 +175,15 @@ export const TourGuide = () => {
     const popoverWidth = isMobile ? screenWidth - 32 : Math.min(400, screenWidth - 40);
     const popoverHeight = 280;
     const safeMargin = 16;
-    const highlightPadding = 12;
 
-    // For mobile: always position at bottom of screen with extra space for highlighted elements
-    // For desktop: position relative to target
     if (isMobile) {
         popoverStyle.position = 'fixed';
-        popoverStyle.bottom = 20; // Fixed at bottom
+        popoverStyle.bottom = 20;
         popoverStyle.left = safeMargin;
         popoverStyle.right = safeMargin;
         popoverStyle.width = 'auto';
-        popoverStyle.maxHeight = '40vh'; // Limit height so elements above are visible
+        popoverStyle.maxHeight = '40vh';
     } else if (isCenter || !targetRect || (targetRect.width === 0 && targetRect.height === 0)) {
-        // Force center if explicit center OR if targetRect is the center placeholder (0x0)
-        // This prevents the "shift" when transitioning from center -> element before element is found
         popoverStyle.position = 'fixed';
         popoverStyle.top = Math.max(safeMargin, (screenHeight - popoverHeight) / 2);
         popoverStyle.left = Math.max(safeMargin, (screenWidth - popoverWidth) / 2);
@@ -190,14 +211,12 @@ export const TourGuide = () => {
 
     return (
         <div className="fixed inset-0 z-[100] overflow-visible pointer-events-none">
-            {/* Unified Overlay - Use SVG Mask for EVERYTHING to prevent flicker */}
+            {/* Unified Overlay - SVG Mask */}
             <div className="absolute inset-0 pointer-events-auto">
                 <svg className="w-full h-full text-black/60 dark:text-black/80 fill-current">
                     <defs>
                         <mask id="tour-mask">
                             <rect x="0" y="0" width="100%" height="100%" fill="white" />
-                            {/* Mask Hole - Only render if we have a valid targetRect and NOT center */}
-                            {/* If center, we render nothing here, so mask is full white -> rect covers everything (full backdrop) */}
                             {!isCenter && targetRect && targetRect.width > 0 && (
                                 <motion.rect
                                     initial={isFirstHighlight ? {
@@ -216,7 +235,7 @@ export const TourGuide = () => {
                                     }}
                                     transition={{
                                         duration: isFirstHighlight ? 0.3 : 0.35,
-                                        delay: isFirstHighlight ? 0.3 : 0, // Delay first appearance so popover moves first
+                                        delay: isFirstHighlight ? 0.3 : 0,
                                         ease: [0.4, 0, 0.2, 1]
                                     }}
                                     rx="12"
@@ -228,7 +247,7 @@ export const TourGuide = () => {
                     <rect x="0" y="0" width="100%" height="100%" mask="url(#tour-mask)" />
                 </svg>
 
-                {/* Highlight Ring - Only render if targetRect valid and NOT center */}
+                {/* Highlight Ring */}
                 {!isCenter && targetRect && targetRect.width > 0 && (
                     <motion.div
                         className="absolute border-2 border-[#007AFF] rounded-xl shadow-[0_0_20px_rgba(0,122,255,0.5)] pointer-events-none"
@@ -248,14 +267,14 @@ export const TourGuide = () => {
                         }}
                         transition={{
                             duration: isFirstHighlight ? 0.3 : 0.35,
-                            delay: isFirstHighlight ? 0.3 : 0, // Delay first appearance
+                            delay: isFirstHighlight ? 0.3 : 0,
                             ease: [0.4, 0, 0.2, 1]
                         }}
                     />
                 )}
             </div>
 
-            {/* Popover Card - Responsive, no remount on step change */}
+            {/* Popover Card */}
             <motion.div
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2 }}

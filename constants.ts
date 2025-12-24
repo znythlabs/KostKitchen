@@ -58,9 +58,9 @@ export const TOUR_STEPS: TourStep[] = [
     action: 'resetBuilder'
   },
   {
-    targetId: 'builder-name',
+    targetId: 'builder-basic-info',
     title: 'Create First Recipe',
-    content: 'Start by naming your dish. Give it a memorable name that represents your creation.',
+    content: 'Start by entering a recipe name and your expected daily sales volume in the fields above.',
     view: 'recipes',
     position: 'bottom',
     action: 'openBuilder',
@@ -85,19 +85,12 @@ export const TOUR_STEPS: TourStep[] = [
   },
   // 4. BUILDER MODE
   {
-    targetId: 'builder-volume',
-    title: 'Daily Volume',
-    content: 'Estimate how many servings you sell per day. This helps calculate your daily revenue and costs.',
+    targetId: 'builder-category',
+    title: 'Categorize Your Dish',
+    content: 'Select a category and set how many servings each batch makes. This is key for menu matrix analysis.',
     view: 'recipes',
     position: 'bottom',
     action: 'openBuilder'
-  },
-  {
-    targetId: 'builder-category',
-    title: 'Category Strategy',
-    content: 'Categorize your dish (e.g., Main, Starter) for matrix analysis.',
-    view: 'recipes',
-    position: 'right'
   },
   {
     targetId: 'builder-ingredients',
@@ -118,7 +111,7 @@ export const TOUR_STEPS: TourStep[] = [
     title: 'Save Recipe',
     content: 'Don\'t forget to save your profitable creation!',
     view: 'recipes',
-    position: 'top'
+    position: 'left'
   },
   // 5. MENU ENGINEERING
   {
@@ -164,7 +157,7 @@ export const TOUR_STEPS: TourStep[] = [
     title: 'Track Expenses',
     content: 'Add fixed costs like Rent, Salaries, and Utilities here to get a true Net Profit calculation.',
     view: 'finance',
-    position: 'top'
+    position: 'left'
   },
   {
     targetId: 'header-theme',

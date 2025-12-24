@@ -351,7 +351,7 @@ export const Recipes = () => {
           <div className="grid lg:grid-cols-12 gap-6 items-start pb-0">
             <div className="lg:col-span-7 space-y-5">
               {/* Main Info - Glass Thin */}
-              <div id="builder-basic-info" className="glass-thin rounded-2xl p-5 space-y-4">
+              <div id="builder-basic-info" data-tour-id="builder-basic-info" className="glass-thin rounded-2xl p-5 space-y-4">
                 <div className="flex flex-row gap-4">
                   <div className="shrink-0">
                     <input type="file" id="builder-image-input" className="hidden" accept="image/*" onChange={handleImageUpload} />
@@ -366,7 +366,7 @@ export const Recipes = () => {
                     </label>
                   </div>
                   <div className="flex-1 space-y-3">
-                    <div id="tour-name-wrapper">
+                    <div id="tour-name-wrapper" data-tour-id="tour-name-wrapper">
                       <label className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Recipe Name</label>
                       <input id="builder-name" type="text" value={builder.name} onChange={e => setBuilder({ ...builder, name: e.target.value })} className="ios-input glass-input w-full mt-1 py-2 px-3 text-sm font-semibold text-gray-900 dark:text-white placeholder-gray-400" placeholder="e.g. Sisig Rice Bowl" />
                     </div>
@@ -380,7 +380,7 @@ export const Recipes = () => {
                   <div>
                     <label className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Category</label>
                     <div className="relative mt-1">
-                      <select id="builder-category" value={builder.category} onChange={e => setBuilder({ ...builder, category: e.target.value })} className="ios-input glass-input w-full py-2.5 px-3 text-sm appearance-none dark:text-white">
+                      <select id="builder-category" data-tour-id="builder-category" value={builder.category} onChange={e => setBuilder({ ...builder, category: e.target.value })} className="ios-input glass-input w-full py-2.5 px-3 text-sm appearance-none dark:text-white">
                         <option className="dark:bg-gray-800">Main Course</option>
                         <option className="dark:bg-gray-800">Appetizers</option>
                         <option className="dark:bg-gray-800">Beverages</option>

@@ -49,6 +49,7 @@ const MainContent = () => {
         </div>
       </main>
       <Modals />
+      <TourGuide />
     </div>
   );
 };
@@ -58,7 +59,6 @@ const App = () => {
     <AppProvider>
       <SoundProvider>
         <MainContent />
-        <TourGuide />
         <LoadingToast />
       </SoundProvider>
     </AppProvider>

@@ -102,6 +102,18 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [isTourActive, setIsTourActive] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
+  // Tour Element Registry - components register their elements here
+  const [tourElements, setTourElements] = useState<Record<string, HTMLElement | null>>({});
+
+  const registerTourElement = React.useCallback((id: string, element: HTMLElement | null) => {
+    setTourElements(prev => ({ ...prev, [id]: element }));
+  }, []);
+
+  const getTourElement = React.useCallback((id: string): HTMLElement | null => {
+    // First try registry, then fallback to getElementById
+    return tourElements[id] || document.getElementById(id);
+  }, [tourElements]);
+
   const startTour = () => {
     setIsTourActive(true);
     setCurrentStepIndex(0);
@@ -863,6 +875,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       confirmModal, cookModal, cookRecipe,
       // Tour Export
       isTourActive, currentStepIndex, startTour, endTour, nextStep, prevStep,
+      registerTourElement, getTourElement,
       openModal, closeModal,
       // Actions
       saveCurrentRecipe,
