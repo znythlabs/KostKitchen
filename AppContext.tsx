@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, PropsWithChildre
 import { supabase, isAuthenticated, getCurrentUserId } from './lib/supabase';
 import { dataService } from './lib/data-service';
 import { updateSessionActivity, isSessionActive, clearSession } from './lib/auth-utils';
+import { saveDataCache, loadDataCache, isOnline } from './lib/offline-storage';
 import { AppData, View, BuilderState, Ingredient, Recipe, Expense, AppContextType, DailySnapshot, WeeklySummary, MonthlySummary, Theme } from './types';
 import { INITIAL_DATA, INITIAL_BUILDER, TOUR_STEPS } from './constants';
 
@@ -11,10 +12,21 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<{ email?: string } | null>(null);
   const [view, setView] = useState<View>('dashboard');
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setThemeState] = useState<Theme>(() => {
+    // Load theme from localStorage on init
+    const savedTheme = localStorage.getItem('kostkitchen_theme') as Theme | null;
+    return savedTheme || 'light';
+  });
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false); // Track if initial auth check is done
 
-  // Theme Effect
+  // Custom setTheme that also persists to localStorage
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+    localStorage.setItem('kostkitchen_theme', newTheme);
+  };
+
+  // Theme Effect - apply theme classes to document
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove('dark', 'midnight', 'oled');
@@ -202,7 +214,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     }
   };
 
-  // --- DATA FETCHING (Delegated to DataService) ---
+  // --- DATA FETCHING (Offline-First with Cache) ---
   const refreshData = async (silent = false) => {
     if (!silent) setLoading(true);
 
@@ -219,38 +231,85 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         return;
       }
 
-      // Initialize Data Service with User ID
-      await dataService.init(currentUserId);
-      setIsLoggedIn(true);
+      // STEP 1: Load from cache immediately (instant load)
+      const cachedData = await loadDataCache();
+      if (cachedData && cachedData.ingredients) {
+        console.log('[Cache] Loading cached data instantly...');
+        setIsLoggedIn(true);
+        setData({
+          ingredients: cachedData.ingredients || [],
+          recipes: cachedData.recipes || [],
+          dailySnapshots: cachedData.dailySnapshots || [],
+          settings: {
+            expenses: cachedData.expenses || [],
+            isVatRegistered: cachedData.settings?.isVatRegistered || false,
+            isPwdSeniorActive: cachedData.settings?.isPwdSeniorActive || false,
+            otherDiscountRate: cachedData.settings?.otherDiscountRate || 0
+          }
+        });
+        // Hide loading since we have cached data
+        if (!silent) setLoading(false);
+      }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      // STEP 2: Fetch fresh data from Supabase (background refresh)
+      if (isOnline()) {
+        console.log('[Network] Fetching fresh data from Supabase...');
 
-      // Parallel Fetch via Data Service
-      const [ingredients, recipes, settings, expenses, dailySnapshots] = await Promise.all([
-        dataService.getIngredients(),
-        dataService.getRecipes(),
-        dataService.getSettings(),
-        dataService.getExpenses(),
-        dataService.getSnapshots()
-      ]);
+        // Initialize Data Service with User ID
+        await dataService.init(currentUserId);
+        setIsLoggedIn(true);
 
-      setData({
-        ingredients,
-        recipes,
-        dailySnapshots,
-        settings: {
-          expenses: expenses,
-          isVatRegistered: settings?.isVatRegistered || false,
-          isPwdSeniorActive: settings?.isPwdSeniorActive || false,
-          otherDiscountRate: settings?.otherDiscountRate || 0
-        }
-      });
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
 
-      updateSessionActivity();
+        // Parallel Fetch via Data Service
+        const [ingredients, recipes, settings, expenses, dailySnapshots] = await Promise.all([
+          dataService.getIngredients(),
+          dataService.getRecipes(),
+          dataService.getSettings(),
+          dataService.getExpenses(),
+          dataService.getSnapshots()
+        ]);
+
+        const freshData = {
+          ingredients,
+          recipes,
+          dailySnapshots,
+          settings: {
+            expenses: expenses,
+            isVatRegistered: settings?.isVatRegistered || false,
+            isPwdSeniorActive: settings?.isPwdSeniorActive || false,
+            otherDiscountRate: settings?.otherDiscountRate || 0
+          }
+        };
+
+        setData(freshData);
+
+        // STEP 3: Save fresh data to cache for next time
+        console.log('[Cache] Saving fresh data to cache...');
+        await saveDataCache({
+          ingredients,
+          recipes,
+          settings: {
+            isVatRegistered: settings?.isVatRegistered || false,
+            isPwdSeniorActive: settings?.isPwdSeniorActive || false,
+            otherDiscountRate: settings?.otherDiscountRate || 0
+          },
+          expenses,
+          dailySnapshots,
+          lastSync: Date.now()
+        });
+
+        updateSessionActivity();
+      } else {
+        console.log('[Offline] Using cached data only');
+        // Already loaded from cache above, just mark as logged in
+        setIsLoggedIn(true);
+      }
 
     } catch (error) {
       console.error("Error fetching data:", error);
+      // If network fails, we still have cached data loaded (if available)
     } finally {
       setLoading(false);
     }
@@ -264,11 +323,14 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     // Check initial auth
     isAuthenticated().then(isAuth => {
       if (isAuth && !dataLoadedRef.current) {
+        // IMPORTANT: Set isLoggedIn IMMEDIATELY to prevent login flash
+        setIsLoggedIn(true);
         dataLoadedRef.current = true;
         refreshData();
       } else {
         setLoading(false);
       }
+      setAuthChecked(true); // Mark auth check as complete AFTER setting isLoggedIn
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -689,7 +751,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   return (
     <AppContext.Provider value={{
-      view, setView, isLoggedIn, isLoading: loading, login, logout, theme, setTheme, user,
+      view, setView, isLoggedIn, isLoading: loading, authChecked, login, logout, theme, setTheme, user,
       data, setData, getIngredient, calculateRecipeCost, getRecipeFinancials, getProjection, getStockStatus,
       captureDailySnapshot, getWeeklySummary, getMonthlySummary,
       builder, setBuilder, loadRecipeToBuilder,

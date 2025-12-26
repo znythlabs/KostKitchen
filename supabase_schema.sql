@@ -55,7 +55,8 @@ create table settings (
   user_id uuid references auth.users on delete cascade not null,
   is_vat_registered boolean default false,
   is_pwd_senior_active boolean default false,
-  other_discount_rate numeric default 0
+  other_discount_rate numeric default 0,
+  contingency_rate numeric default 5
 );
 
 -- 6. EXPENSES
@@ -74,6 +75,15 @@ create table daily_snapshots (
   data jsonb not null,
   created_at timestamp with time zone default timezone('utc'::text, now())
 );
+
+-- 8. PERFORMANCE INDEXES
+create index if not exists idx_expenses_user_id on public.expenses(user_id);
+create index if not exists idx_ingredients_user_id on public.ingredients(user_id);
+create index if not exists idx_recipes_user_id on public.recipes(user_id);
+create index if not exists idx_settings_user_id on public.settings(user_id);
+create index if not exists idx_daily_snapshots_user_id on public.daily_snapshots(user_id);
+create index if not exists idx_recipe_ingredients_recipe_id on public.recipe_ingredients(recipe_id);
+create index if not exists idx_recipe_ingredients_ingredient_id on public.recipe_ingredients(ingredient_id);
 
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- This ensures users only see their own data

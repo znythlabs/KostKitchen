@@ -143,6 +143,7 @@ export interface AppContextType {
   setView: (v: View) => void;
   isLoggedIn: boolean;
   isLoading: boolean; // True when fetching data
+  authChecked: boolean; // True after initial auth check completes
   login: () => void;
   logout: () => void;
   theme: Theme;

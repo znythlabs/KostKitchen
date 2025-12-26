@@ -231,6 +231,7 @@ export interface Database {
                     is_vat_registered: boolean
                     is_pwd_senior_active: boolean
                     other_discount_rate: number
+                    contingency_rate: number
                     created_at: string
                     updated_at: string
                 }
@@ -240,6 +241,7 @@ export interface Database {
                     is_vat_registered?: boolean
                     is_pwd_senior_active?: boolean
                     other_discount_rate?: number
+                    contingency_rate?: number
                     created_at?: string
                     updated_at?: string
                 }
@@ -249,6 +251,7 @@ export interface Database {
                     is_vat_registered?: boolean
                     is_pwd_senior_active?: boolean
                     other_discount_rate?: number
+                    contingency_rate?: number
                     created_at?: string
                     updated_at?: string
                 }

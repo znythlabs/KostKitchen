@@ -69,15 +69,85 @@
     }
 
     .dark .liquid-bg {
-      /* Dark Mode: Deep Space Mesh */
+      /* Dark Mode: Deep Space Mesh with larger, more visible orbs */
       background:
-        radial-gradient(circle at 15% 50%, rgba(10, 132, 255, 0.12), transparent 35%),
-        radial-gradient(circle at 85% 30%, rgba(48, 209, 88, 0.08), transparent 35%),
-        radial-gradient(circle at 50% 90%, rgba(255, 69, 58, 0.05), transparent 40%),
-        linear-gradient(180deg, #000000 0%, #101010 100%);
+        radial-gradient(ellipse 80% 80% at 20% 30%, rgba(10, 132, 255, 0.25), transparent 50%),
+        radial-gradient(ellipse 60% 60% at 75% 60%, rgba(94, 92, 230, 0.15), transparent 50%),
+        radial-gradient(ellipse 50% 50% at 40% 80%, rgba(255, 69, 58, 0.08), transparent 50%),
+        linear-gradient(180deg, #000000 0%, #0a0a0f 100%);
       background-size: 200% 200%;
       background-attachment: fixed;
       animation: gradient-flow 20s ease infinite;
+    }
+
+    /* Custom Range Slider Styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 9999px;
+      background: linear-gradient(to right, #007AFF 0%, #007AFF var(--slider-progress, 50%), #e5e5e5 var(--slider-progress, 50%), #e5e5e5 100%);
+      cursor: pointer;
+    }
+
+    .dark input[type="range"] {
+      background: linear-gradient(to right, #007AFF 0%, #007AFF var(--slider-progress, 50%), rgba(255, 255, 255, 0.15) var(--slider-progress, 50%), rgba(255, 255, 255, 0.15) 100%);
+    }
+
+    .slider-styled::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      margin-top: -8px;
+    }
+
+    .slider-styled::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .slider-styled::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      cursor: pointer;
+      border: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      border: none;
     }
 
     .midnight .liquid-bg {
@@ -378,7 +448,31 @@
 
 <body
   class="h-[100dvh] liquid-bg text-gray-900 dark:text-gray-100 flex overflow-hidden selection:bg-[#007AFF]/30 transition-colors duration-300">
-  <div id="root" class="w-full h-full flex"></div>
+  <!-- Apply saved theme and detect session immediately to prevent flash -->
+  <script>
+      (function () {
+        // Apply theme
+        var theme = localStorage.getItem('kostkitchen_theme');
+        var root = document.documentElement;
+        if (theme === 'dark') root.classList.add('dark');
+        else if (theme === 'midnight') { root.classList.add('dark', 'midnight'); }
+        else if (theme === 'oled') { root.classList.add('dark', 'oled'); }
+
+        // Check if session exists - if so, show loading instead of login
+        var session = localStorage.getItem('ck_auth_session');
+        if (session) {
+          document.documentElement.setAttribute('data-has-session', 'true');
+        }
+      })();
+  </script>
+  <div id="root" class="w-full h-full flex">
+    <!-- Show loading spinner if session exists, prevents login flash -->
+    <script>
+      if (document.documentElement.getAttribute('data-has-session') === 'true') {
+        document.write('<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--bg-color,#F2F2F7)"><div style="width:32px;height:32px;border:3px solid #e5e5e5;border-top-color:#007AFF;border-radius:50%;animation:spin 1s linear infinite"></div></div><style>@keyframes spin{to{transform:rotate(360deg)}}.dark #root>div:first-child{background:#000!important}.dark #root>div:first-child>div{border-color:#333!important;border-top-color:#007AFF!important}</style>');
+      }
+    </script>
+  </div>
   <script type="module" src="/index.tsx"></script>
 </body>
 
