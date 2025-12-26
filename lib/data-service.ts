@@ -228,20 +228,34 @@ class DataService {
 
         if (error) throw error;
 
-        return (data || []).map((i: any) => ({
-            id: i.id,
-            name: i.name,
-            unit: i.unit,
-            cost: Number(i.cost),
-            stockQty: Number(i.stock_qty),
-            minStock: Number(i.min_stock),
-            supplier: i.supplier || '',
-            packageCost: i.package_cost ? Number(i.package_cost) : undefined,
-            packageQty: i.package_qty ? Number(i.package_qty) : undefined,
-            shippingFee: i.shipping_fee ? Number(i.shipping_fee) : undefined,
-            priceBuffer: i.price_buffer ? Number(i.price_buffer) : undefined,
-            type: (i.type || 'ingredient') as 'ingredient' | 'other'
-        }));
+        return (data || []).map((i: any) => {
+            const packageCost = i.package_cost ? Number(i.package_cost) : undefined;
+            const packageQty = i.package_qty ? Number(i.package_qty) : undefined;
+            const shippingFee = i.shipping_fee ? Number(i.shipping_fee) : 0;
+            const priceBuffer = i.price_buffer ? Number(i.price_buffer) : 0;
+
+            // Recalculate cost if package info exists to ensure shipping is included
+            let cost = Number(i.cost);
+            if (packageCost && packageQty && packageQty > 0) {
+                const bufferedPackageCost = packageCost * (1 + (priceBuffer / 100));
+                cost = (bufferedPackageCost + shippingFee) / packageQty;
+            }
+
+            return {
+                id: i.id,
+                name: i.name,
+                unit: i.unit,
+                cost,
+                stockQty: Number(i.stock_qty),
+                minStock: Number(i.min_stock),
+                supplier: i.supplier || '',
+                packageCost,
+                packageQty,
+                shippingFee,
+                priceBuffer,
+                type: (i.type || 'ingredient') as 'ingredient' | 'other'
+            };
+        });
     }
 
     async createIngredient(ingredient: Omit<Ingredient, 'id'>): Promise<{ id: number } | null> {
