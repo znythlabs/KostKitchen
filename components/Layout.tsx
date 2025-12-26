@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../AppContext';
 import { View } from '../types';
 import { TourGuide } from './TourGuide';
+import { SyncStatusBadge } from '../lib/useSync';
 
 const NavItemDesktop = ({ target, label, icon }: { target: View, label: string, icon: string }) => {
   const { view, setView } = useApp();
@@ -124,6 +125,7 @@ export const Header = () => {
 
       {/* RIGHT: Global Actions */}
       <div className="flex items-center gap-3 shrink-0 ml-4 relative">
+        <SyncStatusBadge />
         <button
           type="button"
           onClick={startTour}

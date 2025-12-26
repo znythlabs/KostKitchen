@@ -1,41 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, PropsWithChildren } from 'react';
-import { supabase } from './lib/supabase';
+import { supabase, isAuthenticated, getCurrentUserId } from './lib/supabase';
+import { dataService } from './lib/data-service';
+import { updateSessionActivity, isSessionActive, clearSession } from './lib/auth-utils';
 import { AppData, View, BuilderState, Ingredient, Recipe, Expense, AppContextType, DailySnapshot, WeeklySummary, MonthlySummary, Theme } from './types';
 import { INITIAL_DATA, INITIAL_BUILDER, TOUR_STEPS } from './constants';
-
-// --- LOCALSTORAGE CACHE SYSTEM ---
-const CACHE_KEY = 'ck_data_cache';
-const CACHE_VERSION_KEY = 'ck_cache_version';
-const CACHE_VERSION = '1'; // Increment when data structure changes
-
-const saveToCache = (data: AppData) => {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    localStorage.setItem(CACHE_VERSION_KEY, CACHE_VERSION);
-    console.log('Cache saved:', { ingredients: data.ingredients.length, recipes: data.recipes.length });
-  } catch (e) { console.warn('Cache save failed:', e); }
-};
-
-const loadFromCache = (): AppData | null => {
-  try {
-    if (localStorage.getItem(CACHE_VERSION_KEY) !== CACHE_VERSION) {
-      console.log('Cache version mismatch - clearing');
-      localStorage.removeItem(CACHE_KEY);
-      return null;
-    }
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      console.log('Cache loaded:', { ingredients: parsed.ingredients?.length, recipes: parsed.recipes?.length });
-      return parsed;
-    }
-    console.log('No cache found');
-    return null;
-  } catch (e) {
-    console.warn('Cache load failed:', e);
-    return null;
-  }
-};
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -59,6 +27,38 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       root.classList.add('dark', 'oled');
     }
   }, [theme]);
+
+  // Session Activity Tracker
+  useEffect(() => {
+    const trackActivity = () => {
+      if (isLoggedIn) updateSessionActivity();
+    };
+
+    window.addEventListener('click', trackActivity);
+    window.addEventListener('keydown', trackActivity);
+    window.addEventListener('touchstart', trackActivity);
+
+    return () => {
+      window.removeEventListener('click', trackActivity);
+      window.removeEventListener('keydown', trackActivity);
+      window.removeEventListener('touchstart', trackActivity);
+    };
+  }, [isLoggedIn]);
+
+  // Session Timeout Check
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const checkSession = setInterval(async () => {
+      if (!isSessionActive()) {
+        console.warn("Session timeout - logging out");
+        await logout();
+        alert("Session expired due to inactivity. Please log in again.");
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(checkSession);
+  }, [isLoggedIn]);
 
   // Data State
   const [data, setData] = useState<AppData>({
@@ -102,7 +102,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const [isTourActive, setIsTourActive] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
-  // Tour Element Registry - components register their elements here
+  // Tour Element Registry
   const [tourElements, setTourElements] = useState<Record<string, HTMLElement | null>>({});
 
   const registerTourElement = React.useCallback((id: string, element: HTMLElement | null) => {
@@ -110,7 +110,6 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   }, []);
 
   const getTourElement = React.useCallback((id: string): HTMLElement | null => {
-    // First try registry, then fallback to getElementById
     return tourElements[id] || document.getElementById(id);
   }, [tourElements]);
 
@@ -149,7 +148,6 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   const prevStep = () => {
     let prevIndex = currentStepIndex - 1;
-    // Skip steps based on data availability (Branching Logic)
     while (prevIndex >= 0) {
       const step = TOUR_STEPS[prevIndex];
       if (step.skipIfNoData && data.recipes.length === 0) {
@@ -167,9 +165,6 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     }
   };
 
-  // Tour is now triggered from login() instead of mount
-  // This ensures tour only starts after successful login for new users
-
   const openCookModal = (recipeId: number, recipeName: string) => setCookModal({ isOpen: true, recipeId, recipeName });
   const closeCookModal = () => setCookModal({ isOpen: false, recipeId: null, recipeName: '' });
 
@@ -185,7 +180,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       const ingredient = data.ingredients.find(i => i.id === ri.id);
       if (ingredient) {
         const amountNeeded = ri.qty * ratio;
-        const newStock = ingredient.stockQty - amountNeeded;
+        const newStock = Math.max(0, ingredient.stockQty - amountNeeded);
         updates.push({ id: ingredient.id, stockQty: newStock });
       }
     }
@@ -197,173 +192,129 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     });
     setData(prev => ({ ...prev, ingredients: newIngredients }));
 
-    // Database Update
+    // Database Update via DataService
     for (const u of updates) {
-      await supabase.from('ingredients').update({ stock_qty: u.stockQty }).eq('id', u.id);
+      const success = await dataService.updateIngredient(u.id, { stockQty: u.stockQty });
+      if (!success) {
+        console.error("Failed to sync stock update for", u.id);
+        // In a real app we might revert or queue depending on error
+      }
     }
   };
 
-  // --- SUPABASE DATA FETCHING ---
+  // --- DATA FETCHING (Delegated to DataService) ---
   const refreshData = async (silent = false) => {
-    console.log('refreshData called, silent:', silent);
-    console.time('refreshData');
     if (!silent) setLoading(true);
 
-    console.time('getUser');
-    const { data: { user } } = await supabase.auth.getUser();
-    console.timeEnd('getUser');
-
-    if (!user) {
-      // Only reset data on explicit logout, not on silent refresh failures
-      if (!silent) {
-        setIsLoggedIn(false);
-        setUser(null);
-        setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [] });
-        setLoading(false);
-      }
-      return;
-    }
-
-    setIsLoggedIn(true);
-    setUser(user);
-
     try {
-      // Parallel Fetch
-      console.time('supabaseFetch');
-      const [ingRes, recRes, recIngRes, settingsRes, expRes, snapRes] = await Promise.all([
-        supabase.from('ingredients').select('*').order('name'),
-        supabase.from('recipes').select('*').order('id', { ascending: false }),
-        supabase.from('recipe_ingredients').select('*'),
-        supabase.from('settings').select('*').single(),
-        supabase.from('expenses').select('*'),
-        supabase.from('daily_snapshots').select('*').order('date', { ascending: false })
-      ]);
-      console.timeEnd('supabaseFetch');
-      console.log('Data received:', {
-        ingredients: ingRes.data?.length,
-        recipes: recRes.data?.length
-      });
-
-      // Map Ingredients
-      const ingredients: Ingredient[] = (ingRes.data || []).map((i: any) => ({
-        id: i.id,
-        name: i.name,
-        unit: i.unit,
-        cost: Number(i.cost),
-        stockQty: Number(i.stock_qty),
-        minStock: Number(i.min_stock),
-        supplier: i.supplier || '',
-        packageCost: i.package_cost ? Number(i.package_cost) : undefined,
-        packageQty: i.package_qty ? Number(i.package_qty) : undefined,
-        shippingFee: i.shipping_fee ? Number(i.shipping_fee) : undefined,
-        priceBuffer: i.price_buffer ? Number(i.price_buffer) : undefined,
-        type: (i.type || 'ingredient') as 'ingredient' | 'other'
-      }));
-
-      // Build ingredients map for fast lookup (O(n) instead of O(n*m))
-      const ingredientsByRecipeId = new Map<number, { id: number; qty: number }[]>();
-      (recIngRes.data || []).forEach((ri: any) => {
-        const recipeId = ri.recipe_id;
-        if (!ingredientsByRecipeId.has(recipeId)) {
-          ingredientsByRecipeId.set(recipeId, []);
+      const currentUserId = await getCurrentUserId();
+      if (!currentUserId) {
+        if (!silent) {
+          setIsLoggedIn(false);
+          setUser(null);
+          setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [] });
+          setLoading(false);
+          clearSession();
         }
-        ingredientsByRecipeId.get(recipeId)!.push({ id: ri.ingredient_id, qty: Number(ri.qty) });
-      });
-
-      // Map Recipes
-      const recipes: Recipe[] = (recRes.data || []).map((r: any) => ({
-        id: r.id,
-        name: r.name,
-        category: r.category || '',
-        margin: Number(r.margin),
-        price: Number(r.price),
-        dailyVolume: Number(r.daily_volume),
-        image: r.image,
-        batchSize: Number(r.batch_size),
-        ingredients: ingredientsByRecipeId.get(r.id) || []
-      }));
-
-      // Map Settings
-      const settings = {
-        isVatRegistered: settingsRes.data?.is_vat_registered || false,
-        isPwdSeniorActive: settingsRes.data?.is_pwd_senior_active || false,
-        otherDiscountRate: Number(settingsRes.data?.other_discount_rate || 0),
-        expenses: (expRes.data || []).map((e: any) => ({
-          id: e.id,
-          category: e.category,
-          amount: Number(e.amount)
-        }))
-      };
-
-      // Map Snapshots
-      const dailySnapshots: DailySnapshot[] = (snapRes.data || []).map((s: any) => ({
-        ...s.data,
-        date: s.date
-      }));
-
-      const newData = { ingredients, recipes, settings, dailySnapshots };
-
-      // SAFEGUARD: Don't wipe existing data if fetch returned empty (possible error)
-      if (recipes.length === 0 && data.recipes.length > 0) {
-        console.warn('Fetch returned 0 recipes but we have existing data - keeping current data');
         return;
       }
 
-      setData(newData);
-      saveToCache(newData); // Cache for instant load next time
-      console.log('Data loaded and cached!');
+      // Initialize Data Service with User ID
+      await dataService.init(currentUserId);
+      setIsLoggedIn(true);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+
+      // Parallel Fetch via Data Service
+      const [ingredients, recipes, settings, expenses, dailySnapshots] = await Promise.all([
+        dataService.getIngredients(),
+        dataService.getRecipes(),
+        dataService.getSettings(),
+        dataService.getExpenses(),
+        dataService.getSnapshots()
+      ]);
+
+      setData({
+        ingredients,
+        recipes,
+        dailySnapshots,
+        settings: {
+          expenses: expenses,
+          isVatRegistered: settings?.isVatRegistered || false,
+          isPwdSeniorActive: settings?.isPwdSeniorActive || false,
+          otherDiscountRate: settings?.otherDiscountRate || 0
+        }
+      });
+
+      updateSessionActivity();
 
     } catch (error) {
       console.error("Error fetching data:", error);
-      // Keep existing data on error
     } finally {
       setLoading(false);
     }
   };
 
+  // Track if we've already loaded data this session
+  const dataLoadedRef = React.useRef(false);
+  const lastRefreshRef = React.useRef(0);
+
   useEffect(() => {
-    // Load from cache first for instant display
-    const cached = loadFromCache();
-    if (cached && cached.recipes.length > 0) {
-      setData(cached);
-      setIsLoggedIn(true);
-      setLoading(false);
-    }
+    // Check initial auth
+    isAuthenticated().then(isAuth => {
+      if (isAuth && !dataLoadedRef.current) {
+        dataLoadedRef.current = true;
+        refreshData();
+      } else {
+        setLoading(false);
+      }
+    });
 
-    // Fetch fresh data (silent if we have cache)
-    refreshData(cached ? true : false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event);
 
-    // Auth state listener only - no realtime (saves bandwidth)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
+      // Only refresh on actual sign-in, not token refresh
+      if (event === 'SIGNED_IN' && !dataLoadedRef.current) {
+        dataLoadedRef.current = true;
         refreshData(false);
       }
+
+      // TOKEN_REFRESHED event - don't reload data, just update activity
+      if (event === 'TOKEN_REFRESHED') {
+        updateSessionActivity();
+        return;
+      }
+
       if (event === 'SIGNED_OUT') {
+        dataLoadedRef.current = false;
         setIsLoggedIn(false);
         setLoading(false);
         setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [] });
-        // Clear cache on logout
-        localStorage.removeItem('ck_data_cache');
+        clearSession();
+        dataService.cleanup();
       }
     });
 
     return () => {
       subscription.unsubscribe();
+      dataService.cleanup();
     };
   }, []);
 
   const login = () => {
-    // Data refresh is handled by onAuthStateChange SIGNED_IN event
-    // This function only handles post-login tasks like tour
     const hasSeen = localStorage.getItem('hasSeenTour');
     if (!hasSeen) {
-      // Delay to allow data load and UI render
       setTimeout(() => startTour(), 2000);
     }
+    updateSessionActivity();
   };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    clearSession();
+    dataService.cleanup();
     window.location.reload();
   };
 
@@ -437,7 +388,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       otherDiscount: totals.otherDiscount * multiplier
     };
 
-    const totalMonthlyEx = data.settings.expenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalMonthlyEx = (data.settings.expenses || []).reduce((sum, e) => sum + e.amount, 0);
     const dailyOpEx = totalMonthlyEx / 30;
     const scaledOpEx = dailyOpEx * multiplier;
     const operatingProfit = scaled.grossProfit - scaledOpEx;
@@ -449,72 +400,38 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     };
   };
 
-  // --- ACTIONS ---
+  // --- ACTIONS (Now using DataService) ---
 
   const addStockItem = async (item: Ingredient) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const optimisticId = !item.id || item.id >= 100000 ? Date.now() : item.id;
 
-    // For NEW items, generate optimistic ID
-    const isNew = !item.id || item.id >= 100000;
-    const optimisticId = isNew ? Date.now() : item.id;
+    // Optimistic Update
+    setData(prev => ({
+      ...prev,
+      ingredients: [...prev.ingredients, { ...item, id: optimisticId }]
+    }));
 
-    // Optimistic Update (Immediately show in UI)
-    if (isNew) {
-      setData(prev => ({
-        ...prev,
-        ingredients: [...prev.ingredients, { ...item, id: optimisticId }]
-      }));
+    // Data Service
+    const result = await dataService.createIngredient(item);
+
+    if (!result) {
+      alert("Failed to add ingredient - please check input");
+      refreshData(); // Revert
     } else {
-      // For updates, we already have optimistic updates in updateStockItem
-    }
-
-    const payload: any = {
-      user_id: user.id,
-      name: item.name,
-      unit: item.unit,
-      cost: item.cost,
-      stock_qty: item.stockQty,
-      min_stock: item.minStock,
-      supplier: item.supplier,
-      package_cost: item.packageCost,
-      package_qty: item.packageQty,
-      shipping_fee: item.shippingFee,
-      price_buffer: item.priceBuffer,
-      type: item.type
-    };
-
-    if (item.id && item.id < 100000) {
-      // Update existing item
-      const { error } = await supabase.from('ingredients').update(payload).eq('id', item.id);
-      if (error) {
-        alert("Failed to update: " + error.message);
-        refreshData(); // Revert
-      }
-    } else {
-      // Insert new item
-      const { error } = await supabase.from('ingredients').insert(payload);
-      if (error) {
-        alert("Failed to add: " + error.message);
-        refreshData(); // Revert
-      } else {
-        // Background sync to get real ID
-        refreshData();
-      }
+      // Sync real ID in background if needed, or wait for next refresh
+      if (result.id !== optimisticId) refreshData(true);
     }
   };
 
   const updateStockItem = async (id: number, field: string, value: any) => {
-    // Optimistic Update
-    let calculatedCost: number | undefined = undefined;
-
+    // Improved Optimistic Update Logic
     setData(prev => ({
       ...prev,
       ingredients: prev.ingredients.map(i => {
         if (i.id !== id) return i;
         const updated = { ...i, [field]: value };
 
-        // Logic for auto-calc
+        // Auto-calc logic needed here locally for immediate feedback
         if (['packageCost', 'packageQty', 'shippingFee', 'priceBuffer'].includes(field)) {
           const pc = Number(field === 'packageCost' ? value : (updated.packageCost || 0));
           const pq = Number(field === 'packageQty' ? value : (updated.packageQty || 0));
@@ -523,63 +440,60 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
           if (pq > 0) {
             const bufferedPackageCost = pc * (1 + (bf / 100));
-            // Ensure cost considers shipping fee (Explicitly cast to Number to avoid string concatenation)
             const shipping = Number(sf);
             updated.cost = (bufferedPackageCost + shipping) / pq;
-            calculatedCost = updated.cost;
           }
         }
         return updated;
       })
     }));
 
-    // DB Update
-    const mapField: any = {
-      stockQty: 'stock_qty', minStock: 'min_stock', packageCost: 'package_cost',
-      packageQty: 'package_qty', shippingFee: 'shipping_fee', priceBuffer: 'price_buffer'
-    };
+    // Construct partial update
+    const updates: Partial<Ingredient> = { [field]: value };
+    // If we updated pricing fields, we should technically recalculate cost for the DB update too
+    // But dataService handles plain updates. 
+    // Ideally, the UI logic for 'cost' calculation should be shared.
+    // For now, we trust the user sees the optimistic update and we send the field update.
 
-    const dbField = mapField[field] || field;
-    const payload: any = { [dbField]: value };
-
-    // If updating pricing, we also need to update cost
-    if (calculatedCost !== undefined) {
-      payload.cost = calculatedCost;
+    // NOTE: For 'cost' to be updated in DB seamlessly when package vars change, 
+    // we should really send the calculated cost too.
+    const currentItem = data.ingredients.find(i => i.id === id);
+    if (currentItem && ['packageCost', 'packageQty', 'shippingFee', 'priceBuffer'].includes(field)) {
+      // Re-calculate cost based on new value
+      const sim = { ...currentItem, [field]: value };
+      const pc = sim.packageCost || 0;
+      const pq = sim.packageQty || 0;
+      const sf = sim.shippingFee || 0;
+      const bf = sim.priceBuffer || 0;
+      if (pq > 0) {
+        const bufferedPackageCost = pc * (1 + (bf / 100));
+        const cost = (bufferedPackageCost + sf) / pq;
+        // @ts-ignore
+        updates.cost = cost;
+      }
     }
 
-    const { error } = await supabase.from('ingredients').update(payload).eq('id', id);
-    if (error) {
-      console.error("Update failed", error);
-      refreshData(); // Revert/Sync on error
+    const success = await dataService.updateIngredient(id, updates);
+    if (!success) {
+      console.error("Update failed");
+      refreshData(); // Revert
     }
   };
 
   const deleteStockItem = async (id: number) => {
-    // Optimistic Update (Immediately remove from UI)
     setData(prev => ({
       ...prev,
       ingredients: prev.ingredients.filter(i => i.id !== id)
     }));
 
-    // First delete references in recipe_ingredients to avoid foreign key constraint violation
-    const { error: relError } = await supabase.from('recipe_ingredients').delete().eq('ingredient_id', id);
-    if (relError) {
-      alert("Failed to delete related recipe ingredients: " + relError.message);
-      refreshData(); // Revert
-      return;
-    }
-
-    const { error } = await supabase.from('ingredients').delete().eq('id', id);
-    if (error) {
-      alert("Failed to delete: " + error.message);
-      refreshData(); // Revert
+    const success = await dataService.deleteIngredient(id);
+    if (!success) {
+      alert("Failed to delete");
+      refreshData();
     }
   };
 
   const saveCurrentRecipe = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
     // Pricing Logic
     const totalCost = calculateRecipeCost(builder.ingredients);
     const costPerServing = totalCost / (builder.batchSize || 1);
@@ -587,83 +501,44 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     const vatRate = data.settings.isVatRegistered ? 0.12 : 0;
     const menuPrice = Math.ceil(netPrice * (1 + vatRate));
 
-    const recipePayload = {
-      user_id: user.id,
+    const recipeData: Omit<Recipe, 'id'> = {
       name: builder.name,
       category: builder.category,
       margin: builder.margin,
       price: menuPrice,
-      daily_volume: builder.dailyVolume,
+      dailyVolume: builder.dailyVolume,
       image: builder.image,
-      batch_size: builder.batchSize
+      batchSize: builder.batchSize,
+      ingredients: builder.ingredients.map(ri => ({ ...ri })) // Satisfy type requirement
     };
 
     if (builder.id) {
       // Update
-      const { error } = await supabase.from('recipes').update(recipePayload).eq('id', builder.id);
-      if (error) { alert("Error saving recipe"); return; }
-
-      // Update Ingredients (Delete all, re-insert)
-      await supabase.from('recipe_ingredients').delete().eq('recipe_id', builder.id);
-
-      const ingPayload = builder.ingredients.map(ri => ({
-        recipe_id: builder.id,
-        ingredient_id: ri.id,
-        qty: ri.qty
-      }));
-      if (ingPayload.length > 0) {
-        await supabase.from('recipe_ingredients').insert(ingPayload);
-      }
+      const success = await dataService.updateRecipe(builder.id, recipeData, builder.ingredients);
+      if (!success) alert("Error saving recipe");
     } else {
       // Insert
-      const { data: newRecipe, error } = await supabase.from('recipes').insert(recipePayload).select().single();
-      if (error || !newRecipe) { alert("Error creating recipe"); return; }
-
-      const ingPayload = builder.ingredients.map(ri => ({
-        recipe_id: newRecipe.id,
-        ingredient_id: ri.id,
-        qty: ri.qty
-      }));
-      if (ingPayload.length > 0) {
-        await supabase.from('recipe_ingredients').insert(ingPayload);
-      }
-
-      // Optimistic Update (Immediately show in UI)
-      const optimisticRecipe: Recipe = {
-        id: newRecipe.id,
-        name: newRecipe.name,
-        category: newRecipe.category,
-        margin: newRecipe.margin,
-        price: newRecipe.price,
-        dailyVolume: newRecipe.daily_volume,
-        image: newRecipe.image,
-        batchSize: newRecipe.batch_size,
-        ingredients: builder.ingredients.map(ri => ({ id: ri.id, qty: ri.qty }))
-      };
-      setData(prev => ({
-        ...prev,
-        recipes: [optimisticRecipe, ...prev.recipes] // Prepend for visibility
-      }));
-      setNewlyAddedId(optimisticRecipe.id);
+      const result = await dataService.createRecipe(recipeData, builder.ingredients);
+      if (!result) alert("Error creating recipe");
+      else setNewlyAddedId(result.id);
     }
 
     // Background refresh
-    refreshData();
+    refreshData(true);
     setBuilder({ ...INITIAL_BUILDER, showBuilder: false });
     setView('recipes');
   };
 
   const deleteRecipe = async (id: number) => {
-    // Optimistic Update (No Confirmation)
     setData(prev => ({
       ...prev,
       recipes: prev.recipes.filter(r => r.id !== id)
     }));
 
-    const { error } = await supabase.from('recipes').delete().eq('id', id);
-    if (error) {
+    const success = await dataService.deleteRecipe(id);
+    if (!success) {
       alert("Error deleting");
-      refreshData(); // Revert
+      refreshData();
     }
   };
 
@@ -672,18 +547,13 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     if (!r) return;
 
     const newName = `${r.name} (Copy)`;
-    const tempId = -Date.now(); // Temporary negative ID until we get real one
+    const tempId = -Date.now();
 
-    // 1. INSTANT: Optimistic update with temp ID
+    // Optimistic
     const optimisticRecipe: Recipe = {
+      ...r,
       id: tempId,
       name: newName,
-      category: r.category,
-      margin: r.margin,
-      price: r.price,
-      dailyVolume: r.dailyVolume,
-      image: r.image,
-      batchSize: r.batchSize,
       ingredients: r.ingredients.map(ri => ({ ...ri }))
     };
 
@@ -693,70 +563,32 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     }));
     setNewlyAddedId(tempId);
 
-    // 2. Background: Actually create in database
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      // Revert on auth failure
-      setData(prev => ({ ...prev, recipes: prev.recipes.filter(x => x.id !== tempId) }));
-      return;
-    }
+    // Actual creation
+    const result = await dataService.createRecipe(
+      { ...r, name: newName }, // Copy properties
+      r.ingredients // Copy ingredients
+    );
 
-    const { data: newRecipe, error } = await supabase.from('recipes').insert({
-      user_id: user.id,
-      name: newName,
-      category: r.category,
-      margin: r.margin,
-      price: r.price,
-      daily_volume: r.dailyVolume,
-      image: r.image,
-      batch_size: r.batchSize
-    }).select().single();
-
-    if (error || !newRecipe) {
-      // Revert on error
-      setData(prev => ({ ...prev, recipes: prev.recipes.filter(x => x.id !== tempId) }));
-      alert("Failed to duplicate recipe");
-      return;
-    }
-
-    // 3. Duplicate Ingredients in DB
-    if (r.ingredients.length > 0) {
-      const ingPayload = r.ingredients.map(ri => ({
-        recipe_id: newRecipe.id,
-        ingredient_id: ri.id,
-        qty: ri.qty
+    if (result) {
+      // Replace temp with real
+      setData(prev => ({
+        ...prev,
+        recipes: prev.recipes.map(x => x.id === tempId ? { ...x, id: result.id } : x)
       }));
-      await supabase.from('recipe_ingredients').insert(ingPayload);
+      setNewlyAddedId(result.id);
+    } else {
+      alert("Failed to duplicate");
+      refreshData();
     }
-
-    // 4. Replace temp recipe with real one (update the ID)
-    setData(prev => ({
-      ...prev,
-      recipes: prev.recipes.map(x =>
-        x.id === tempId ? { ...x, id: newRecipe.id } : x
-      )
-    }));
-    setNewlyAddedId(newRecipe.id);
   };
 
   const captureDailySnapshot = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
     const today = new Date().toISOString().split('T')[0];
     const projection = getProjection('daily');
     const totalOrders = data.recipes.reduce((sum, r) => sum + r.dailyVolume, 0);
-    const recipesSold = data.recipes.map(r => ({
-      recipeId: r.id,
-      recipeName: r.name,
-      quantity: r.dailyVolume,
-      revenue: getRecipeFinancials(r).grossSales
-    }));
-    const stockAlerts = data.ingredients
-      .filter(i => i.stockQty <= i.minStock)
-      .map(i => ({ ingredientId: i.id, ingredientName: i.name, stockQty: i.stockQty }));
 
     const snapshotData = {
+      date: today,
       grossSales: projection.grossSales,
       netRevenue: projection.netRevenue,
       cogs: projection.cogs,
@@ -765,26 +597,18 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       netProfit: projection.netProfit,
       vat: projection.vat,
       discounts: projection.discounts,
-      totalOrders,
-      recipesSold,
-      stockAlerts: stockAlerts.length > 0 ? stockAlerts : undefined
+      totalOrders: totalOrders
     };
 
-    const payload = {
-      user_id: user.id,
-      date: today,
-      data: snapshotData
-    };
-
-    const { error } = await supabase.from('daily_snapshots').insert(payload);
-    if (error) alert("Failed to save snapshot: " + error.message);
-    else {
+    const success = await dataService.saveSnapshot(snapshotData);
+    if (success) {
       alert("Daily Snapshot Saved!");
       refreshData();
+    } else {
+      alert("Failed to save snapshot");
     }
   };
 
-  // Helper functions for Summary (Client-side aggregation of fetched snapshots)
   const getWeeklySummary = (weekStart: Date): WeeklySummary => {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);

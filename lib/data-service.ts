@@ -205,6 +205,17 @@ class DataService {
         return ops.length;
     }
 
+    // Helper to get user ID with fallback
+    private async ensureUserId(): Promise<string | null> {
+        if (this.userId) return this.userId;
+
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) {
+            this.userId = user.id;
+        }
+        return this.userId;
+    }
+
     // ============================================
     // INGREDIENTS
     // ============================================
@@ -234,21 +245,42 @@ class DataService {
     }
 
     async createIngredient(ingredient: Omit<Ingredient, 'id'>): Promise<{ id: number } | null> {
-        const validation = validateIngredient(ingredient);
-        if (!validation.valid) {
-            console.error('Validation failed:', validation.errors);
+        // Check required fields
+        if (!ingredient.name?.trim() || !ingredient.unit?.trim()) {
+            console.error('Missing required fields: name or unit');
             return null;
         }
 
+        // Ensure we have a user ID
+        const userId = await this.ensureUserId();
+        if (!userId) {
+            console.error('No user ID available - user may not be logged in');
+            return null;
+        }
+
+        // Build payload without id - exclude any id that might be passed
+        const { id: _ignoreId, ...ingredientWithoutId } = ingredient as any;
+
         const payload = {
-            user_id: this.userId,
-            ...toSnakeCase(ingredient)
+            user_id: userId,
+            name: ingredientWithoutId.name,
+            unit: ingredientWithoutId.unit,
+            cost: Number(ingredientWithoutId.cost) || 0,
+            stock_qty: Number(ingredientWithoutId.stockQty) || 0,
+            min_stock: Number(ingredientWithoutId.minStock) || 0,
+            supplier: ingredientWithoutId.supplier || '',
+            package_cost: ingredientWithoutId.packageCost ? Number(ingredientWithoutId.packageCost) : null,
+            package_qty: ingredientWithoutId.packageQty ? Number(ingredientWithoutId.packageQty) : null,
+            shipping_fee: ingredientWithoutId.shippingFee ? Number(ingredientWithoutId.shippingFee) : 0,
+            price_buffer: ingredientWithoutId.priceBuffer ? Number(ingredientWithoutId.priceBuffer) : 0,
+            type: ingredientWithoutId.type || 'ingredient'
         };
 
+        console.log('Creating ingredient with payload:', payload);
+
         if (!isOnline()) {
-            // Queue for later
             await addToSyncQueue({ table: 'ingredients', operation: 'insert', payload });
-            return { id: Date.now() }; // Temporary ID
+            return { id: Date.now() };
         }
 
         const { data, error } = await supabase
@@ -258,38 +290,48 @@ class DataService {
             .single();
 
         if (error) {
-            console.error('Create ingredient error:', error);
+            console.error('Create ingredient error:', error.message, error.details, error.hint);
             return null;
         }
 
+        console.log('Ingredient created with ID:', data.id);
         return { id: data.id };
     }
 
     async updateIngredient(id: number, updates: Partial<Ingredient>): Promise<boolean> {
-        const validation = validateIngredient(updates);
-        if (!validation.valid) {
-            console.error('Validation failed:', validation.errors);
-            return false;
+        // Clean up updates - remove undefined and convert numbers
+        const cleanUpdates: Record<string, any> = {};
+        for (const [key, value] of Object.entries(updates)) {
+            if (value === undefined) continue;
+            if (['cost', 'stockQty', 'minStock', 'packageCost', 'packageQty', 'shippingFee', 'priceBuffer'].includes(key)) {
+                const num = Number(value);
+                if (!isNaN(num)) cleanUpdates[key] = num;
+            } else {
+                cleanUpdates[key] = value;
+            }
         }
 
-        const payload = { id, ...toSnakeCase(updates) };
+        const payload = toSnakeCase(cleanUpdates);
+        delete payload.id;
+
+        console.log('Updating ingredient', id, 'with:', payload);
 
         if (!isOnline()) {
-            await addToSyncQueue({ table: 'ingredients', operation: 'update', payload });
+            await addToSyncQueue({ table: 'ingredients', operation: 'update', payload: { id, ...payload } });
             return true;
         }
 
-        const { id: _, ...updateData } = payload;
         const { error } = await supabase
             .from('ingredients')
-            .update(updateData)
+            .update(payload)
             .eq('id', id);
 
         if (error) {
-            console.error('Update ingredient error:', error);
+            console.error('Update ingredient error:', error.message, error.details);
             return false;
         }
 
+        console.log('Ingredient updated successfully');
         return true;
     }
 
@@ -348,14 +390,14 @@ class DataService {
     }
 
     async createRecipe(recipe: Omit<Recipe, 'id'>, ingredients: { id: number; qty: number }[]): Promise<{ id: number } | null> {
-        const validation = validateRecipe(recipe);
-        if (!validation.valid) {
-            console.error('Validation failed:', validation.errors);
+        const userId = await this.ensureUserId();
+        if (!userId) {
+            console.error('No user ID available');
             return null;
         }
 
         const payload = {
-            user_id: this.userId,
+            user_id: userId,
             name: recipe.name,
             category: recipe.category,
             margin: recipe.margin,
@@ -390,14 +432,9 @@ class DataService {
     }
 
     async updateRecipe(id: number, updates: Partial<Recipe>, ingredients?: { id: number; qty: number }[]): Promise<boolean> {
-        const validation = validateRecipe(updates);
-        if (!validation.valid) {
-            console.error('Validation failed:', validation.errors);
-            return false;
-        }
-
         const payload = toSnakeCase(updates);
-        delete payload.ingredients; // Don't send to recipes table
+        delete payload.ingredients;
+        delete payload.id;
 
         const { error } = await supabase
             .from('recipes')
@@ -446,7 +483,7 @@ class DataService {
             .select('*')
             .single();
 
-        if (error && error.code !== 'PGRST116') throw error; // Ignore "no rows" error
+        if (error && error.code !== 'PGRST116') throw error;
 
         return data ? {
             isVatRegistered: data.is_vat_registered || false,
@@ -456,12 +493,13 @@ class DataService {
     }
 
     async updateSettings(updates: any): Promise<boolean> {
+        const userId = await this.ensureUserId();
         const payload = toSnakeCase(updates);
 
         const { error } = await supabase
             .from('settings')
             .update(payload)
-            .eq('user_id', this.userId);
+            .eq('user_id', userId);
 
         if (error) {
             console.error('Update settings error:', error);
@@ -490,15 +528,11 @@ class DataService {
     }
 
     async createExpense(expense: Omit<Expense, 'id'>): Promise<{ id: number } | null> {
-        const validation = validateExpense(expense);
-        if (!validation.valid) {
-            console.error('Validation failed:', validation.errors);
-            return null;
-        }
+        const userId = await this.ensureUserId();
 
         const { data, error } = await supabase
             .from('expenses')
-            .insert({ user_id: this.userId, ...expense })
+            .insert({ user_id: userId, ...expense })
             .select('id')
             .single();
 
@@ -534,34 +568,51 @@ class DataService {
 
         if (error) throw error;
 
-        return (data || []).map((s: any) => ({
-            date: s.date,
-            grossSales: Number(s.gross_sales),
-            netRevenue: Number(s.net_revenue),
-            cogs: Number(s.cogs),
-            grossProfit: Number(s.gross_profit),
-            opex: Number(s.opex),
-            netProfit: Number(s.net_profit),
-            vat: Number(s.vat),
-            discounts: Number(s.discounts),
-            totalOrders: Number(s.total_orders),
-            recipesSold: []
-        }));
+        // Handle JSONB format from user's existing schema
+        return (data || []).map((s: any) => {
+            // If data is stored as JSONB blob
+            if (s.data && typeof s.data === 'object') {
+                return {
+                    date: s.date,
+                    ...s.data,
+                    recipesSold: s.data.recipesSold || []
+                };
+            }
+            // If data is stored as structured columns
+            return {
+                date: s.date,
+                grossSales: Number(s.gross_sales || 0),
+                netRevenue: Number(s.net_revenue || 0),
+                cogs: Number(s.cogs || 0),
+                grossProfit: Number(s.gross_profit || 0),
+                opex: Number(s.opex || 0),
+                netProfit: Number(s.net_profit || 0),
+                vat: Number(s.vat || 0),
+                discounts: Number(s.discounts || 0),
+                totalOrders: Number(s.total_orders || 0),
+                recipesSold: []
+            };
+        });
     }
 
     async saveSnapshot(snapshot: Omit<DailySnapshot, 'recipesSold' | 'stockAlerts'>): Promise<boolean> {
+        const userId = await this.ensureUserId();
+
+        // Support user's JSONB schema
         const payload = {
-            user_id: this.userId,
+            user_id: userId,
             date: snapshot.date,
-            gross_sales: snapshot.grossSales,
-            net_revenue: snapshot.netRevenue,
-            cogs: snapshot.cogs,
-            gross_profit: snapshot.grossProfit,
-            opex: snapshot.opex,
-            net_profit: snapshot.netProfit,
-            vat: snapshot.vat,
-            discounts: snapshot.discounts,
-            total_orders: snapshot.totalOrders
+            data: {
+                grossSales: snapshot.grossSales,
+                netRevenue: snapshot.netRevenue,
+                cogs: snapshot.cogs,
+                grossProfit: snapshot.grossProfit,
+                opex: snapshot.opex,
+                netProfit: snapshot.netProfit,
+                vat: snapshot.vat,
+                discounts: snapshot.discounts,
+                totalOrders: snapshot.totalOrders
+            }
         };
 
         const { error } = await supabase

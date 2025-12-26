@@ -19,31 +19,33 @@ export const ingredientValidators = {
         return trimmed.length > 0 && trimmed.length <= 20;
     },
     cost: (v: number): boolean => {
-        return typeof v === 'number' && v >= 0 && v <= 1000000;
+        return typeof v === 'number' && !isNaN(v) && v >= 0 && v <= 1000000;
     },
     stockQty: (v: number): boolean => {
-        return typeof v === 'number' && v >= 0;
+        return typeof v === 'number' && !isNaN(v) && v >= 0;
     },
     minStock: (v: number): boolean => {
-        return typeof v === 'number' && v >= 0;
+        return typeof v === 'number' && !isNaN(v) && v >= 0;
     },
     packageCost: (v: number | undefined): boolean => {
         if (v === undefined || v === null) return true;
-        return typeof v === 'number' && v >= 0;
+        return typeof v === 'number' && !isNaN(v) && v >= 0;
     },
     packageQty: (v: number | undefined): boolean => {
         if (v === undefined || v === null) return true;
-        return typeof v === 'number' && v > 0;
+        return typeof v === 'number' && !isNaN(v) && v > 0;
     },
     priceBuffer: (v: number | undefined): boolean => {
         if (v === undefined || v === null) return true;
-        return typeof v === 'number' && v >= 0 && v <= 100;
+        return typeof v === 'number' && !isNaN(v) && v >= 0 && v <= 100;
     },
     supplier: (v: string | undefined): boolean => {
         if (!v) return true;
         return v.length <= 100;
     },
-    type: (v: string): boolean => {
+    type: (v: string | undefined): boolean => {
+        // Allow undefined - will default to 'ingredient'
+        if (v === undefined || v === null) return true;
         return v === 'ingredient' || v === 'other';
     }
 };
