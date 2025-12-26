@@ -15,8 +15,18 @@ const UNITS = ['g', 'kg', 'oz', 'lbs', 'mg', 'mL', 'L', 'fl oz', 'tsp', 'tbsp', 
 export const Inventory = () => {
   const {
     data, getStockStatus, inventoryEditMode, toggleInventoryEdit,
-    openModal, updateStockItem, deleteStockItem
+    openModal, updateStockItem, deleteStockItem, addStockItem
   } = useApp();
+
+  // Duplicate an ingredient
+  const duplicateItem = (item: Ingredient) => {
+    const duplicate = {
+      ...item,
+      id: Date.now(),
+      name: `${item.name} (Copy)`
+    };
+    addStockItem(duplicate);
+  };
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<TabType>('ingredient');
   const [sortConfig, setSortConfig] = useState<{ key: SortKey, direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
@@ -216,7 +226,7 @@ export const Inventory = () => {
               <button onClick={handleBulkDelete} className="whitespace-nowrap px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-full shadow-sm active-scale flex items-center gap-2 animate-in fade-in zoom-in duration-200">
                 <iconify-icon icon="lucide:trash-2" width="16"></iconify-icon> Delete ({selectedItems.size})
               </button>
-            ):null}
+            ) : null}
             {!inventoryEditMode && (
               <button
                 id="inventory-ai-btn"
@@ -437,7 +447,12 @@ export const Inventory = () => {
                         <div className="flex-1 pr-2">
                           <div className="flex items-center gap-2">
                             <div className="font-semibold text-gray-900 dark:text-white text-base">{item.name}</div>
-                            {!inventoryEditMode && <button onClick={(e) => { e.stopPropagation(); openModal('stock', item); }} className="text-gray-400 p-1"><iconify-icon icon="lucide:pencil" width="14"></iconify-icon></button>}
+                            {!inventoryEditMode && (
+                              <>
+                                <button onClick={(e) => { e.stopPropagation(); openModal('stock', item); }} className="text-gray-400 p-1"><iconify-icon icon="lucide:pencil" width="14"></iconify-icon></button>
+                                <button onClick={(e) => { e.stopPropagation(); duplicateItem(item); }} className="text-gray-400 p-1" title="Duplicate"><iconify-icon icon="lucide:copy" width="14"></iconify-icon></button>
+                              </>
+                            )}
                           </div>
                           <div className="text-xs text-gray-400 mt-0.5">{item.supplier || "No Supplier"}</div>
                         </div>

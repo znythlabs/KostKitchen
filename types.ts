@@ -119,6 +119,7 @@ export interface AppData {
     isVatRegistered: boolean;
     isPwdSeniorActive: boolean;
     otherDiscountRate: number;
+    contingencyRate?: number; // Default 5%
   };
   ingredients: Ingredient[];
   recipes: Recipe[];

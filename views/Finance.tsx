@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../AppContext';
+import { dataService } from '../lib/data-service';
 
 export const Finance = () => {
   const { getProjection, data, setData, theme } = useApp();
@@ -27,6 +28,8 @@ export const Finance = () => {
 
   const updateSetting = (field: string, val: any) => {
     setData(prev => ({ ...prev, settings: { ...prev.settings, [field]: val } }));
+    // Also persist settings to database
+    dataService.updateSettings({ [field]: val });
   };
 
   const updateRecipeVolume = (id: number, val: number) => {
@@ -36,19 +39,50 @@ export const Finance = () => {
     }));
   };
 
-  const addExpense = () => {
+  const addExpense = async () => {
     if (!newExp.category || !newExp.amount) return;
+
+    const optimisticId = Date.now();
+    const newExpense = { id: optimisticId, category: newExp.category, amount: parseFloat(newExp.amount) };
+
+    // Optimistic update
     setData(prev => ({
       ...prev,
       settings: {
         ...prev.settings,
-        expenses: [...prev.settings.expenses, { id: Date.now(), category: newExp.category, amount: parseFloat(newExp.amount) }]
+        expenses: [...prev.settings.expenses, newExpense]
       }
     }));
     setNewExp({ category: '', amount: '' });
+
+    // Persist to database
+    const result = await dataService.createExpense({ category: newExp.category, amount: parseFloat(newExp.amount) });
+    if (!result) {
+      // Rollback on failure
+      setData(prev => ({
+        ...prev,
+        settings: {
+          ...prev.settings,
+          expenses: prev.settings.expenses.filter(e => e.id !== optimisticId)
+        }
+      }));
+      alert('Failed to save expense');
+    } else {
+      // Update with real ID
+      setData(prev => ({
+        ...prev,
+        settings: {
+          ...prev.settings,
+          expenses: prev.settings.expenses.map(e => e.id === optimisticId ? { ...e, id: result.id } : e)
+        }
+      }));
+    }
   };
 
-  const removeExpense = (id: number) => {
+  const removeExpense = async (id: number) => {
+    const expenseToRemove = data.settings.expenses.find(e => e.id === id);
+
+    // Optimistic update
     setData(prev => ({
       ...prev,
       settings: {
@@ -56,6 +90,20 @@ export const Finance = () => {
         expenses: prev.settings.expenses.filter(e => e.id !== id)
       }
     }));
+
+    // Persist to database
+    const success = await dataService.deleteExpense(id);
+    if (!success && expenseToRemove) {
+      // Rollback on failure
+      setData(prev => ({
+        ...prev,
+        settings: {
+          ...prev.settings,
+          expenses: [...prev.settings.expenses, expenseToRemove]
+        }
+      }));
+      alert('Failed to delete expense');
+    }
   };
 
   const sliderColor = (val: number, min: number, max: number, color: string, track: string) => {
@@ -328,30 +376,72 @@ export const Finance = () => {
             )}
           </div>
 
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-2">
-              <input
-                type="text"
-                placeholder="Category"
-                className="ios-input glass-input flex-1 min-w-[120px] px-3 py-2.5 text-sm"
-                value={newExp.category}
-                onChange={e => setNewExp({ ...newExp, category: e.target.value })}
-              />
-              <input
-                type="number"
-                placeholder="Amount"
-                className="ios-input glass-input w-28 px-3 py-2.5 text-sm"
-                value={newExp.amount}
-                onChange={e => setNewExp({ ...newExp, amount: e.target.value })}
-              />
-              <button id="finance-add-btn" onClick={addExpense} className="w-10 h-10 shrink-0 bg-[#007AFF] text-white rounded-xl flex items-center justify-center active-scale">
-                <iconify-icon icon="lucide:plus" width="18"></iconify-icon>
-              </button>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="text"
+              placeholder="Category"
+              className="ios-input glass-input flex-1 min-w-[120px] px-3 py-2.5 text-sm"
+              value={newExp.category}
+              onChange={e => setNewExp({ ...newExp, category: e.target.value })}
+            />
+            <input
+              type="number"
+              placeholder="Amount"
+              className="ios-input glass-input w-28 px-3 py-2.5 text-sm"
+              value={newExp.amount}
+              onChange={e => setNewExp({ ...newExp, amount: e.target.value })}
+            />
+            <button id="finance-add-btn" onClick={addExpense} className="w-10 h-10 shrink-0 bg-[#007AFF] text-white rounded-xl flex items-center justify-center active-scale">
+              <iconify-icon icon="lucide:plus" width="18"></iconify-icon>
+            </button>
+          </div>
+
+          {/* Total Monthly OPEX */}
+          <div className="pt-3 border-t border-black/5 dark:border-white/10 flex justify-between items-center">
+            <span className="text-xs font-medium text-gray-400">Total Monthly OPEX</span>
+            <span className="text-base font-bold text-gray-900 dark:text-white">₱{totalMonthlyEx.toLocaleString()}</span>
+          </div>
+
+          {/* Contingency Section */}
+          <div className="pt-3 border-t border-black/5 dark:border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600">
+                  <iconify-icon icon="lucide:shield-alert" width="16"></iconify-icon>
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wide">Contingency</span>
+                  <p className="text-[9px] text-gray-400 leading-tight">Buffer for unexpected costs</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  step="1"
+                  value={data.settings.contingencyRate ?? 5}
+                  onChange={e => updateSetting('contingencyRate', Math.min(50, Math.max(0, parseFloat(e.target.value) || 0)))}
+                  className="w-14 text-center text-sm font-bold bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-lg py-1 border border-amber-200 dark:border-amber-900/50 outline-none"
+                />
+                <span className="text-sm font-bold text-amber-600 dark:text-amber-400">%</span>
+              </div>
             </div>
-            <div className="pt-3 border-t border-black/5 dark:border-white/10 flex justify-between items-center">
-              <span className="text-xs font-medium text-gray-400">Total Monthly OPEX</span>
-              <span className="text-base font-bold text-gray-900 dark:text-white">₱{totalMonthlyEx.toLocaleString()}</span>
+
+            <div className="flex justify-between items-center bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-xl">
+              <span className="text-xs text-amber-700 dark:text-amber-300 font-medium">Contingency Amount</span>
+              <span className="text-base font-bold text-amber-600 dark:text-amber-400">
+                ₱{Math.floor(totalMonthlyEx * ((data.settings.contingencyRate ?? 5) / 100)).toLocaleString()}
+              </span>
             </div>
+          </div>
+
+          {/* Grand Total with Contingency */}
+          <div className="pt-3 border-t-2 border-gray-300 dark:border-white/20 flex justify-between items-center">
+            <span className="text-sm font-bold text-gray-900 dark:text-white">Total OPEX + Contingency</span>
+            <span className="text-lg font-bold text-[#007AFF]">
+              ₱{Math.floor(totalMonthlyEx * (1 + ((data.settings.contingencyRate ?? 5) / 100))).toLocaleString()}
+            </span>
           </div>
         </div>
       </div>
