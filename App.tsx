@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AppProvider, useApp } from './AppContext';
 import { SoundProvider } from './SoundContext';
 import { AuthLayer } from './components/AuthLayer';
@@ -15,9 +15,11 @@ import { Finance } from './views/Finance';
 import { Calendar } from './views/Calendar';
 import { Profile } from './views/Profile';
 import { MenuEngineering } from './views/MenuEngineering';
+import { LandingPage } from './views/LandingPage';
 
 const MainContent = () => {
   const { isLoggedIn, view, isLoading, authChecked } = useApp();
+  const [showLanding, setShowLanding] = useState(true);
 
   // Show loading while checking auth - prevents login screen flash
   // Only show login screen AFTER auth check completes and confirms user is not logged in
@@ -30,6 +32,9 @@ const MainContent = () => {
   }
 
   if (!isLoggedIn) {
+    if (showLanding) {
+      return <LandingPage onEnterApp={() => setShowLanding(false)} />;
+    }
     return <AuthLayer />;
   }
 
