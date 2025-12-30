@@ -119,7 +119,7 @@ export const Finance = () => {
       {/* STICKY FINANCIAL OVERVIEW HEADER */}
       <div
         ref={stickyRef}
-        className={`sticky top-[58px] md:top-16 z-20 -mx-4 md:-mx-8 px-4 md:px-8 py-4 bg-[#F2F2F7]/90 dark:bg-black/90 backdrop-blur-xl transition-shadow duration-700 ${isScrolled ? 'shadow-lg shadow-black/10 dark:shadow-black/30' : ''}`}
+        className={`sticky top-[58px] md:top-16 z-20 -mx-4 md:-mx-8 px-4 md:px-8 py-4 bg-[#F2F2F0]/90 backdrop-blur-xl transition-shadow duration-700 ${isScrolled ? 'shadow-lg shadow-black/5' : ''}`}
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">Financial Overview</h2>
@@ -136,19 +136,19 @@ export const Finance = () => {
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2 md:gap-4">
-          <div className="glass-regular bg-[#1C1C1E] dark:bg-[#1C1C1E] p-3 md:p-6 rounded-xl md:rounded-2xl">
+          <div className="soft-card-static bg-[#1C1C1E] dark:bg-[#1C1C1E] p-3 md:p-6 rounded-xl md:rounded-2xl">
             <p className="text-[10px] md:text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 md:mb-2 truncate">Gross Profit</p>
             <p className="text-lg md:text-3xl font-bold text-[#34C759] dark:text-[#34C759]">₱{Math.floor(f.grossProfit).toLocaleString()}</p>
             <p className="text-[9px] md:text-xs text-gray-400 mt-1 hidden md:block">Net Revenue minus Total Cost</p>
           </div>
-          <div className="glass-regular p-3 md:p-6 rounded-xl md:rounded-2xl text-gray-900 dark:text-white relative overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
+          <div className="soft-card-static p-3 md:p-6 rounded-xl md:rounded-2xl text-gray-900 dark:text-white relative overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
             <div className="relative z-10">
               <p className="text-[10px] md:text-xs font-medium opacity-70 uppercase tracking-wider mb-1 md:mb-2 truncate">Net Revenue</p>
               <p className="text-lg md:text-2xl font-semibold">₱{Math.floor(f.netRevenue).toLocaleString()}</p>
               <p className="text-[9px] md:text-xs text-gray-400 mt-1 hidden md:block">After VAT & Discounts</p>
             </div>
           </div>
-          <div className="glass-regular p-3 md:p-6 rounded-xl md:rounded-2xl">
+          <div className="soft-card-static p-3 md:p-6 rounded-xl md:rounded-2xl">
             <p className="text-[10px] md:text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 md:mb-2 truncate">Total Cost</p>
             <p className="text-lg md:text-2xl font-semibold text-red-600 dark:text-red-400">₱{Math.floor(f.cogs).toLocaleString()}</p>
             <p className="text-[9px] md:text-xs text-gray-400 mt-1 hidden md:block">Total Cost of Goods Sold</p>
@@ -157,13 +157,13 @@ export const Finance = () => {
       </div>
 
       {/* EXPANDABLE VOLUME SIMULATOR */}
-      <div className="glass-thin rounded-2xl overflow-hidden">
+      <div className="soft-card-static rounded-2xl overflow-hidden">
         <button
           onClick={() => setIsVolumeExpanded(!isVolumeExpanded)}
           className="w-full p-4 flex items-center justify-between text-left hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#007AFF]/10 dark:bg-[#007AFF]/20 flex items-center justify-center text-[#007AFF]">
+            <div className="w-10 h-10 rounded-xl bg-[#FCD34D]/10 dark:bg-[#FCD34D]/20 flex items-center justify-center text-[#FCD34D]">
               <iconify-icon icon="lucide:sliders-horizontal" width="20"></iconify-icon>
             </div>
             <div>
@@ -221,7 +221,7 @@ export const Finance = () => {
       {/* TWO-COLUMN LAYOUT: Tax (Left), OPEX (Right) */}
       <div className="grid lg:grid-cols-2 gap-6 items-start">
         {/* LEFT COLUMN: Tax & Deductions */}
-        <div className="glass-thin rounded-2xl p-6">
+        <div className="soft-card-static rounded-2xl p-6">
           <div className="mb-6">
             <h3 className="text-base font-semibold text-gray-900 dark:text-white">Tax & Deductions</h3>
             <p className="text-xs text-gray-500 mt-1">Global settings applied to all projections.</p>
@@ -250,10 +250,10 @@ export const Finance = () => {
 
               {/* PWD TOGGLE */}
               <div
-                className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-3 group relative overflow-hidden ${data.settings.isPwdSeniorActive ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30' : 'bg-gray-50 dark:bg-white/5 border-transparent hover:bg-gray-100 dark:hover:bg-white/10'}`}
+                className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-3 group relative overflow-hidden ${data.settings.isPwdSeniorActive ? 'bg-[#FCD34D]/10 dark:bg-[#FCD34D]/20 border-[#FCD34D]/50 dark:border-[#FCD34D]/30' : 'bg-gray-50 dark:bg-white/5 border-transparent hover:bg-gray-100 dark:hover:bg-white/10'}`}
                 onClick={() => updateSetting('isPwdSeniorActive', !data.settings.isPwdSeniorActive)}
               >
-                <div className={`w-10 h-10 rounded-lg flex shrink-0 items-center justify-center transition-colors ${data.settings.isPwdSeniorActive ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-200 dark:bg-white/10 text-gray-400'}`}>
+                <div className={`w-10 h-10 rounded-lg flex shrink-0 items-center justify-center transition-colors ${data.settings.isPwdSeniorActive ? 'bg-[#FCD34D]/20 dark:bg-[#FCD34D]/30 text-[#FCD34D]' : 'bg-gray-200 dark:bg-white/10 text-gray-400'}`}>
                   <iconify-icon icon="lucide:accessibility" width="20"></iconify-icon>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -261,7 +261,7 @@ export const Finance = () => {
                   <p className="text-[10px] text-gray-400 truncate">Fixed 20% Off</p>
                 </div>
                 {/* Custom Checkbox */}
-                <div className={`w-5 h-5 rounded-full border-2 flex shrink-0 items-center justify-center transition-all ${data.settings.isPwdSeniorActive ? 'border-blue-500 bg-blue-500' : 'border-gray-300 dark:border-gray-600'}`}>
+                <div className={`w-5 h-5 rounded-full border-2 flex shrink-0 items-center justify-center transition-all ${data.settings.isPwdSeniorActive ? 'border-[#FCD34D] bg-[#FCD34D]' : 'border-gray-300 dark:border-gray-600'}`}>
                   {data.settings.isPwdSeniorActive && <iconify-icon icon="lucide:check" width="12" class="text-white"></iconify-icon>}
                 </div>
               </div>
@@ -297,8 +297,8 @@ export const Finance = () => {
                 )}
                 {data.settings.isPwdSeniorActive && (
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div> Less: PWD/Senior</span>
-                    <span className="text-blue-500 font-medium">-₱{Math.floor(f.pwdDiscount).toLocaleString()}</span>
+                    <span className="text-gray-500 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#FCD34D]"></div> Less: PWD/Senior</span>
+                    <span className="text-[#FCD34D] font-medium">-₱{Math.floor(f.pwdDiscount).toLocaleString()}</span>
                   </div>
                 )}
                 {data.settings.otherDiscountRate > 0 && (
@@ -314,14 +314,14 @@ export const Finance = () => {
 
               <div className="flex justify-between items-center pt-2 border-t border-black/5 dark:border-white/10">
                 <span className="text-gray-900 dark:text-white font-bold">Net Revenue</span>
-                <span className="text-[#007AFF] font-bold">₱{Math.floor(f.netRevenue).toLocaleString()}</span>
+                <span className="text-[#FCD34D] font-bold">₱{Math.floor(f.netRevenue).toLocaleString()}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* RIGHT COLUMN: OPEX & Fixed Costs */}
-        <div className="glass-thin rounded-2xl p-6 flex flex-col">
+        <div className="soft-card-static rounded-2xl p-6 flex flex-col">
           {/* OPEX Analysis */}
           <div className="bg-black/5 dark:bg-white/5 p-5 rounded-xl mb-6 border border-black/5 dark:border-white/10 pb-2">
             <div className="mb-4">
@@ -336,10 +336,10 @@ export const Finance = () => {
                 </tr>
                 <tr>
                   <td className="py-2 text-gray-500 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <div className="w-2 h-2 rounded-full bg-[#FCD34D]"></div>
                     Less: OPEX
                   </td>
-                  <td className="py-2 text-right font-semibold text-blue-500">-₱{Math.floor(f.opex).toLocaleString()}</td>
+                  <td className="py-2 text-right font-semibold text-[#FCD34D]">-₱{Math.floor(f.opex).toLocaleString()}</td>
                 </tr>
                 <tr className="border-t border-black/5 dark:border-white/5">
                   <td className="py-3 text-gray-900 dark:text-white font-bold">Operating Profit (After OPEX)</td>
@@ -362,7 +362,7 @@ export const Finance = () => {
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide">Monthly Billing</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-gray-700 dark:text-gray-300">₱{e.amount.toLocaleString()}</span>
+                  <span className="text-sm font-bold text-gray-700 dark:text-gray-400">₱{e.amount.toLocaleString()}</span>
                   <button onClick={() => removeExpense(e.id)} className="text-red-500 p-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
                     <iconify-icon icon="lucide:trash-2" width="14"></iconify-icon>
                   </button>
@@ -380,18 +380,18 @@ export const Finance = () => {
             <input
               type="text"
               placeholder="Category"
-              className="ios-input glass-input flex-1 min-w-[120px] px-3 py-2.5 text-sm"
+              className="soft-input flex-1 min-w-[120px] px-3 py-2.5 text-sm"
               value={newExp.category}
               onChange={e => setNewExp({ ...newExp, category: e.target.value })}
             />
             <input
               type="number"
               placeholder="Amount"
-              className="ios-input glass-input w-28 px-3 py-2.5 text-sm"
+              className="soft-input w-28 px-3 py-2.5 text-sm"
               value={newExp.amount}
               onChange={e => setNewExp({ ...newExp, amount: e.target.value })}
             />
-            <button id="finance-add-btn" onClick={addExpense} className="w-10 h-10 shrink-0 bg-[#007AFF] text-white rounded-xl flex items-center justify-center active-scale">
+            <button id="finance-add-btn" onClick={addExpense} className="w-10 h-10 shrink-0 bg-[#FCD34D] text-[#303030] rounded-xl flex items-center justify-center active-scale">
               <iconify-icon icon="lucide:plus" width="18"></iconify-icon>
             </button>
           </div>
@@ -439,7 +439,7 @@ export const Finance = () => {
           {/* Grand Total with Contingency */}
           <div className="pt-3 border-t-2 border-gray-300 dark:border-white/20 flex justify-between items-center">
             <span className="text-sm font-bold text-gray-900 dark:text-white">Total OPEX + Contingency</span>
-            <span className="text-lg font-bold text-[#007AFF]">
+            <span className="text-lg font-bold text-[#FCD34D]">
               ₱{Math.floor(totalMonthlyEx * (1 + ((data.settings.contingencyRate ?? 5) / 100))).toLocaleString()}
             </span>
           </div>

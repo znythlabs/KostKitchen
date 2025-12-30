@@ -13,7 +13,7 @@ const NavItemDesktop = ({ target, label, icon }: { target: View, label: string, 
       onClick={() => setView(target)}
       className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all group ${isActive ? 'bg-black/5 dark:bg-white/10 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'}`}
     >
-      <iconify-icon icon={icon} width="18" className={`${isActive ? 'text-[#007AFF]' : 'text-gray-400 dark:text-gray-500'} group-hover:text-gray-900 dark:group-hover:text-white`}></iconify-icon>
+      <iconify-icon icon={icon} width="18" className={`${isActive ? 'text-[#FCD34D]' : 'text-gray-400 dark:text-gray-500'} group-hover:text-gray-900 dark:group-hover:text-white`}></iconify-icon>
       <span>{label}</span>
     </button>
   );
@@ -24,8 +24,8 @@ const NavItemMobile = ({ target, label, icon }: { target: View, label: string, i
   const isActive = view === target;
   return (
     <button type="button" onClick={() => setView(target)} className={`flex flex-col items-center justify-center pt-1 active-scale ${isActive ? 'active' : ''}`}>
-      <iconify-icon icon={icon} width="22" className={`transition-colors ${isActive ? 'text-[#007AFF]' : 'text-gray-400 dark:text-gray-500'}`}></iconify-icon>
-      <span className={`text-[10px] font-medium mt-0.5 ${isActive ? 'text-[#007AFF]' : 'text-gray-500 dark:text-gray-500'}`}>{label}</span>
+      <iconify-icon icon={icon} width="22" className={`transition-colors ${isActive ? 'text-[#FCD34D]' : 'text-gray-400 dark:text-gray-500'}`}></iconify-icon>
+      <span className={`text-[10px] font-medium mt-0.5 ${isActive ? 'text-[#FCD34D]' : 'text-gray-500 dark:text-gray-500'}`}>{label}</span>
     </button>
   );
 };
@@ -116,7 +116,7 @@ export const Header = () => {
         <button
           type="button"
           onClick={() => setView('profile')}
-          className="md:hidden w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden border border-transparent active:border-[#007AFF] transition-colors"
+          className="md:hidden w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden border border-transparent active:border-[#FCD34D] transition-colors"
         >
           <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin" className="w-full h-full object-cover" alt="Profile" />
         </button>
@@ -129,7 +129,7 @@ export const Header = () => {
         <button
           type="button"
           onClick={startTour}
-          className="w-9 h-9 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 active-scale transition-colors"
+          className="w-9 h-9 rounded-full bg-[#FCD34D]/10 dark:bg-[#FCD34D]/20 flex items-center justify-center text-[#FCD34D] dark:text-[#FCD34D] active-scale transition-colors"
           title="Start Tour"
         >
           <iconify-icon icon="lucide:help-circle" width="20"></iconify-icon>
@@ -138,14 +138,14 @@ export const Header = () => {
           type="button"
           id="header-theme"
           onClick={cycleTheme}
-          className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-gray-300 active-scale transition-colors"
+          className="w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-gray-400 active-scale transition-colors"
         >
           <iconify-icon icon={themeIcon[theme]} width="18"></iconify-icon>
         </button>
         <button
           type="button"
           onClick={() => setShowNotifications(!showNotifications)}
-          className={`relative w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-gray-300 active-scale ${showNotifications ? 'bg-black/10 dark:bg-white/20' : ''}`}
+          className={`relative w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-gray-400 active-scale ${showNotifications ? 'bg-black/10 dark:bg-white/20' : ''}`}
         >
           {lowStockCount > 0 && <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-[#FF3B30] rounded-full"></div>}
           <iconify-icon icon="lucide:bell" width="18"></iconify-icon>

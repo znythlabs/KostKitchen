@@ -18,8 +18,8 @@ export const CustomSelect = ({ value, onChange, options, className = '', placeho
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (triggerRef.current && !triggerRef.current.contains(e.target as Node) && 
-          dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -41,7 +41,7 @@ export const CustomSelect = ({ value, onChange, options, className = '', placeho
       // Remove capture phase to allow internal scrolling, but we need capture to detect window scroll if it doesn't bubble?
       // Actually 'scroll' on window fires at window. 
       // Using capture=true is fine as long as we filter by target.
-      window.addEventListener('scroll', handleScroll, true); 
+      window.addEventListener('scroll', handleScroll, true);
       window.addEventListener('resize', handleResize);
     }
 
@@ -98,24 +98,25 @@ export const CustomSelect = ({ value, onChange, options, className = '', placeho
 
   return (
     <>
-      <div 
+      <div
         ref={triggerRef}
         onClick={toggleOpen}
         className={`cursor-pointer select-none ${className}`}
       >
         <div className={`flex items-center justify-between w-full h-full ${!value ? 'text-gray-400' : ''}`}>
-           <span className="truncate flex-1 text-inherit">{displayValue}</span>
+          <span className="truncate flex-1 text-inherit">{displayValue}</span>
+          <iconify-icon icon="lucide:chevron-down" width="16" class={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}></iconify-icon>
         </div>
       </div>
 
       {isOpen && typeof document !== 'undefined' && createPortal(
-        <div 
+        <div
           ref={dropdownRef}
           className="fixed z-[9999] bg-white dark:bg-[#1C1C1E] border border-gray-100 dark:border-[#38383A] rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 flex flex-col"
-          style={{ 
+          style={{
             top: coords.top !== undefined ? coords.top : 'auto',
             bottom: coords.bottom !== undefined ? coords.bottom : 'auto',
-            left: coords.left, 
+            left: coords.left,
             minWidth: Math.max(coords.width, 120), // Minimum width for readability
             maxHeight: '240px'
           }}
@@ -128,11 +129,10 @@ export const CustomSelect = ({ value, onChange, options, className = '', placeho
                   onChange(opt);
                   setIsOpen(false);
                 }}
-                className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors flex items-center justify-between ${
-                  value === opt 
-                    ? 'bg-[#007AFF]/10 text-[#007AFF] font-semibold' 
-                    : 'text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/5'
-                }`}
+                className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors flex items-center justify-between ${value === opt
+                  ? 'bg-[#FCD34D]/10 text-[#FCD34D] font-bold'
+                  : 'text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/5'
+                  }`}
               >
                 <span>{opt}</span>
                 {value === opt && <iconify-icon icon="lucide:check" width="14"></iconify-icon>}

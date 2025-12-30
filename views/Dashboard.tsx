@@ -1,356 +1,319 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import { useApp } from '../AppContext';
-import { Ingredient } from '../types';
 
 export const Dashboard = () => {
-  const { getProjection, data, getRecipeFinancials, setView, resetBuilder, setBuilder, openModal } = useApp();
-  const [forecastPeriod, setForecastPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const [mobileToggleOpen, setMobileToggleOpen] = useState(false);
+  const { data, getProjection, getWeeklySummary, updateDailyTarget, getStockStatus, openPrompt, isLoading } = useApp();
 
-  const f = getProjection(forecastPeriod);
-  const lows = data.ingredients.filter(i => i.stockQty <= i.minStock);
-  const topPerformers = useMemo(() => {
-    const daily = getProjection('daily');
-    const base = data.recipes.map((r) => {
-      const f = getRecipeFinancials(r);
-      return { r, f };
-    });
-
-    const totalGrossProfit = base.reduce((sum, x) => sum + x.f.grossProfit, 0);
-    const dailyOpex = daily.opex || 0;
-
-    return base
-      .map(({ r, f }) => {
-        const opexShare = totalGrossProfit > 0 ? (dailyOpex * (f.grossProfit / totalGrossProfit)) : 0;
-        return { r, f, operatingProfit: f.grossProfit - opexShare };
-      })
-      .sort((a, b) => b.operatingProfit - a.operatingProfit)
-      .slice(0, 3);
-  }, [data, getProjection, getRecipeFinancials]);
-
-  const avgMargin = data.recipes.length
-    ? Math.round(data.recipes.reduce((a, b) => a + getRecipeFinancials(b).grossProfit / (getRecipeFinancials(b).netRevenue || 1), 0) / data.recipes.length * 100)
-    : 0;
-
-  // --- LOGIC: TODAY'S BOTTLENECK ---
-  // Identify the single most limiting ingredient for today's forecasted orders
-  const bottleneck = useMemo(() => {
-    let worstBottleneck: { item: Ingredient, limit: number, affectedRecipeName: string, ratio: number } | null = null;
-
-    // We only care about ingredients used in active recipes
-    const activeIngredients = new Set<number>();
-    data.recipes.forEach(r => r.ingredients.forEach(i => activeIngredients.add(i.id)));
-
-    data.ingredients.forEach(ing => {
-      if (!activeIngredients.has(ing.id)) return;
-
-      // Calculate total daily demand for this ingredient
-      let dailyDemand = 0;
-      let primaryRecipe = { name: '', usage: 0, volume: 0 };
-
-      data.recipes.forEach(r => {
-        const usage = r.ingredients.find(ri => ri.id === ing.id);
-        if (usage) {
-          const qtyNeeded = usage.qty * r.dailyVolume;
-          dailyDemand += qtyNeeded;
-
-          // Track highest volume recipe for the "Limit" text
-          if (r.dailyVolume > primaryRecipe.volume) {
-            primaryRecipe = { name: r.name, usage: usage.qty, volume: r.dailyVolume };
-          }
+  // Helper to calculate financials for a recipe
+  const getRecipeFinancials = (recipe: any) => {
+    let unitCost = 0;
+    if (recipe.ingredients) {
+      recipe.ingredients.forEach((ri: any) => {
+        const ing = data.ingredients.find(i => i.id === ri.id);
+        if (ing) {
+          unitCost += (ing.cost || 0) * (ri.qty || 0);
         }
       });
+    }
+    return { unitCost, unitPrice: recipe.price || 0 };
+  };
 
-      if (dailyDemand > 0) {
-        // How many "days" (or orders relative to forecast) do we have?
-        // Actually, let's just look at if we can meet TODAY's demand.
-        // Ratio < 1 means we run out today.
-        const ratio = ing.stockQty / dailyDemand;
+  // Real Data
+  const dailyProj = getProjection('daily');
+  const weeklySummary = getWeeklySummary(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)); // Last 7 days? Or just current week.
 
-        // Potential orders for the primary recipe given current stock
-        // (Assuming *only* this recipe is made, simplifying for the card subtext)
-        const limit = primaryRecipe.usage > 0 ? Math.floor(ing.stockQty / primaryRecipe.usage) : 0;
+  // --- Comparison Logic (Total Sales) ---
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  const yesterdaySnapshot = data.dailySnapshots.find(s => s.date === yesterdayStr);
 
-        // We prioritize the lowest ratio (most critical shortage)
-        if (ratio < 1.2) { // Show if we have less than 120% of today's need, prioritizing severe shortages
-          if (!worstBottleneck || ratio < worstBottleneck.ratio) {
-            worstBottleneck = { item: ing, limit, affectedRecipeName: primaryRecipe.name, ratio };
-          }
-        }
-      }
-    });
-    return worstBottleneck;
-  }, [data]);
+  const totalSales = dailyProj.grossSales;
+  const yesteraySales = yesterdaySnapshot ? yesterdaySnapshot.grossSales : 0;
 
-  // --- LOGIC: RESTOCK PRIORITY ---
-  // Rank by Revenue Impact
-  const restockPriority = useMemo(() => {
-    let topPriority: { item: Ingredient, revenueRisk: number, affectedCount: number } | null = null;
+  let salesChangePct = 0;
+  let isPositive = true;
 
-    data.ingredients.forEach(ing => {
-      // Only consider items that are low or near running out
-      // Using a simpler heuristic: if stock lasts < 2 days of demand
+  if (yesterdaySnapshot && yesteraySales > 0) {
+    salesChangePct = ((totalSales - yesteraySales) / yesteraySales) * 100;
+    isPositive = salesChangePct >= 0;
+  }
 
-      let dailyDemand = 0;
-      let revenueRisk = 0;
-      let affectedCount = 0;
-
-      data.recipes.forEach(r => {
-        const usage = r.ingredients.find(ri => ri.id === ing.id);
-        if (usage) {
-          dailyDemand += usage.qty * r.dailyVolume;
-
-          // Calculate potential revenue loss if we can't make this recipe
-          // Loss = (Forecasted - CanMake) * Price
-          const canMake = Math.floor(ing.stockQty / usage.qty);
-          if (canMake < r.dailyVolume) {
-            revenueRisk += (r.dailyVolume - canMake) * r.price;
-            affectedCount++;
-          }
-        }
-      });
-
-      // If stock is low (e.g. less than 2 days worth) OR we are already losing revenue
-      const daysCovered = dailyDemand > 0 ? ing.stockQty / dailyDemand : 999;
-
-      if (revenueRisk > 0 || daysCovered < 2) {
-        // Weight revenue risk heavily
-        // If no immediate revenue risk, use a small proxy based on demand to break ties
-        const score = revenueRisk + (1000 / (daysCovered + 0.1));
-
-        if (!topPriority || score > topPriority.revenueRisk) {
-          topPriority = { item: ing, revenueRisk: score, affectedCount };
-        }
-      }
+  // Alerts logic
+  const alerts = data.ingredients
+    .map(i => ({ ...i, status: getStockStatus(i) }))
+    .filter(i => i.status.label !== "GOOD")
+    .sort((a, b) => {
+      // Sort Critical first, then Low, then Reorder
+      const priority = { "CRITICAL": 0, "LOW STOCK": 1, "REORDER": 2 };
+      // @ts-ignore
+      return (priority[a.status.label] || 3) - (priority[b.status.label] || 3);
     });
 
-    return topPriority;
-  }, [data]);
+  const lowStockCount = alerts.length;
+  // cogs / sales = food cost %
+  const foodCost = totalSales > 0 ? ((dailyProj.cogs / totalSales) * 100).toFixed(1) : "0";
+  const profitMargin = totalSales > 0 ? ((dailyProj.grossProfit / totalSales) * 100).toFixed(1) : "0";
 
+  // Top Movers based on daily volume * price (Revenue) or just Volume
+  const topMovers = [...data.recipes]
+    .sort((a, b) => (b.dailyVolume * b.price) - (a.dailyVolume * a.price))
+    .slice(0, 5);
+
+  // --- Chart Data (Last 7 Days) ---
+  const chartData = data.dailySnapshots
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(-7);
+
+  // Pad if empty just for visual placeholder or show "No Data"
+  // If chartData is empty, we might want to keep the mock visual but grayed out? 
+  // User said "fix data never loads up", so implies they want real data.
+  // If no snapshots, show empty state or single bar for "Today (Proj)"
+  const chartItems = chartData.length > 0 ? chartData : [];
+  // Normalize for chart height
+  const maxChartVal = Math.max(...chartItems.map(d => d.netProfit), dailyProj.netProfit, 100);
+
+  // If loading...
+  if (isLoading && !data.recipes.length) {
+    return (
+      <div className="flex-1 flex items-center justify-center h-full">
+        <div className="w-8 h-8 rounded-full border-4 border-[#FCD34D] border-t-transparent animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="view-section fade-enter space-y-6">
-      {/* Featured Insight - Primary Decision Surface */}
-      <div className="sticky top-[58px] md:top-[72px] z-10 bg-[#1C1C1E] dark:bg-[#1C1C1E] backdrop-blur-xl rounded-3xl p-6 text-white relative overflow-hidden shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
-        {/* Subtle background glow for depth - adjusted opacity for consistent look */}
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/20 rounded-full filter blur-[100px] -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+    <div id="view-dashboard" className="flex-1 overflow-y-auto no-scrollbar pb-6 space-y-6 animate-fade-in relative z-0">
 
-        <div className="relative z-10">
-          <div className="flex justify-between items-start mb-1.5">
-            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest opacity-80 mt-1">
-              {forecastPeriod === 'daily' ? "Today's Forecast" : `${forecastPeriod === 'weekly' ? 'Weekly' : 'Monthly'} Forecast`}
-            </h2>
-
-            {/* Desktop Toggle */}
-            <div className="hidden md:flex bg-white/10 p-1 rounded-xl items-center h-10 relative">
-              {(['daily', 'weekly', 'monthly'] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setForecastPeriod(p)}
-                  className={`px-4 h-full rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${forecastPeriod === p ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                >
-                  {p}
-                </button>
-              ))}
+      {/* KPI Row */}
+      <div className="grid grid-cols-1 pt-5 md:grid-cols-4 gap-6">
+        {/* TOTAL SALES - GOLD */}
+        <div className="yellow-card rounded-[2rem] soft-card-gold p-6 flex flex-col justify-between h-40">
+          <div className="flex justify-between items-start">
+            <span className="text-sm font-semibold text-[#303030]/80">Total Sales (Daily)</span>
+            <div className="bg-[#ffffff]/50 w-10 h-10 flex items-center justify-center rounded-full">
+              <iconify-icon icon="lucide:dollar-sign" width="20" className="text-[#303030]"></iconify-icon>
             </div>
-
-            {/* Mobile Toggle (Compact - Expanding Overlay) */}
-            <div className="md:hidden relative">
-              {/* Placeholder/Trigger */}
-              <button
-                className={`flex items-center gap-1 bg-white/10 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide text-white transition-colors ${mobileToggleOpen ? 'invisible' : ''}`}
-                onClick={() => setMobileToggleOpen(true)}
-              >
-                {forecastPeriod} <iconify-icon icon="lucide:chevron-down" width="12"></iconify-icon>
-              </button>
-
-              {mobileToggleOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setMobileToggleOpen(false)}></div>
-                  <div className="absolute top-0 right-0 z-50 bg-white/10 rounded-lg shadow-xl border border-white/10 overflow-hidden min-w-[60px] animate-in fade-in zoom-in-95 duration-200">
-                    {(['daily', 'weekly', 'monthly'] as const).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => { setForecastPeriod(p); setMobileToggleOpen(false); }}
-                        className={`w-full text-center px-1 py-2 text-[10px] font-bold uppercase tracking-wide border-b border-white/5 last:border-0 hover:bg-white/5 ${forecastPeriod === p ? 'text-white bg-white/5' : 'text-gray-400'}`}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-                </>
+          </div>
+          <div>
+            <h3 className="text-3xl font-medium tracking-tight text-[#303030]">₱{totalSales.toLocaleString(undefined, { maximumFractionDigits: 0 })}</h3>
+            <div className="flex items-center gap-2 mt-2">
+              {yesterdaySnapshot ? (
+                <span className={`${isPositive ? 'bg-green-500 text-white' : 'bg-red-500 text-white'} text-[10px] uppercase font-bold px-2 py-0.5 rounded-md`}>
+                  {isPositive ? '+' : ''}{salesChangePct.toFixed(1)}%
+                </span>
+              ) : (
+                <span className="bg-[#FFFF] text-[#303030] text-[10px] uppercase font-bold px-2 py-0.5 rounded-md">PROJ.</span>
               )}
+              <span className="text-xs text-[#303030]/70 font-medium">
+                {yesterdaySnapshot ? "from yesterday" : "based on volume"}
+              </span>
             </div>
           </div>
-          <div className="mb-5">
-            <div className="flex items-center gap-3">
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold tracking-tight text-[#34C759] opacity-60">₱</span>
-                <span className="text-6xl font-bold tracking-tighter text-[#34C759] drop-shadow-sm">{Math.floor(f.netProfit).toLocaleString()}</span>
-              </div>
-              <div className="flex flex-col justify-center">
-                <span className="text-sm font-bold text-[#34C759] opacity-60 uppercase tracking-widest leading-none mb-[px]">Net</span>
-                <span className="text-xl font-bold text-[#34C759] opacity-100 uppercase tracking-tight leading-none">Profit</span>
-              </div>
-            </div>
-            <div className="text-xs font-semibold text-gray-500 mt-2 ml-1 flex items-center gap-2">
-              <div className="w-1 h-1 rounded-full bg-gray-400"></div>
-              Operating Profit (After OPEX)
-            </div>
-          </div>
+        </div>
 
-          <div className="grid grid-cols-3 gap-8 border-t border-white/10 pt-5">
-            <div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Net Revenue</div>
-              <div className="text-xl font-semibold text-white">₱{Math.floor(f.netRevenue).toLocaleString()}</div>
+        {/* FOOD COST */}
+        <div className="soft-card p-6 flex flex-col justify-between h-40 dark:bg-[#2D2A26] dark:bg-hover:[#2D2A26] dark:border-white/10">
+          <div className="flex justify-between items-start">
+            <span className="text-sm font-medium text-gray-400">Food Cost</span>
+            <div className="bg-[#ffffff] w-10 h-10 flex items-center justify-center rounded-full dark:bg-white/10">
+              <iconify-icon icon="lucide:trending-down" width="20" className="text-gray-600 dark:text-gray-300"></iconify-icon>
             </div>
-            <div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Total Cost</div>
-              <div className="text-xl font-semibold text-[#FF453A]">₱{Math.floor(f.cogs).toLocaleString()}</div>
+          </div>
+          <div>
+            <h3 className="text-3xl font-light tracking-tight text-[#303030] dark:text-[#E7E5E4]">{foodCost}%</h3>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-gray-400">Target: 30%</span>
             </div>
-            <div>
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Daily OPEX</div>
-              <div className="text-xl font-semibold text-orange-500">₱{Math.floor(f.opex).toLocaleString()}</div>
+          </div>
+        </div>
+
+        {/* LOW STOCK */}
+        <div className="soft-card p-6 flex flex-col justify-between h-40 dark:bg-[#2D2A26] dark:border-white/10">
+          <div className="flex justify-between items-start">
+            <span className="text-sm font-medium text-gray-400">Low Stock Items</span>
+            <div className="bg-[#ffffff] w-10 h-10 flex items-center justify-center rounded-full dark:bg-white/10">
+              <iconify-icon icon="lucide:alert-circle" width="20" className="text-gray-600 dark:text-gray-300"></iconify-icon>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-3xl font-light tracking-tight text-[#303030] dark:text-[#E7E5E4]">{lowStockCount}</h3>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-gray-400">{lowStockCount > 0 ? "Requires attention" : "Everything good"}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* GROSS PROFIT */}
+        <div className="soft-card p-6 flex flex-col justify-between h-40 dark:bg-[#2D2A26] dark:border-white/10">
+          <div className="flex justify-between items-start">
+            <span className="text-sm font-medium text-gray-400">Gross Profit</span>
+            <div className="bg-[#ffffff] w-10 h-10 flex items-center justify-center rounded-full dark:bg-white/10">
+              <iconify-icon icon="lucide:wallet" width="20" className="text-gray-600 dark:text-gray-300"></iconify-icon>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-3xl font-light tracking-tight text-[#303030] dark:text-[#E7E5E4]">₱{dailyProj.grossProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</h3>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-gray-400">{profitMargin}% margin</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* NEW CARD 1: TODAY'S BOTTLENECK */}
-        <div
-          onClick={() => setView('inventory')}
-          className={`glass-thin p-5 rounded-2xl active-scale cursor-pointer transition-colors group relative overflow-hidden ${bottleneck ? 'hover:bg-orange-50/50 dark:hover:bg-orange-900/10' : 'hover:bg-white/40 dark:hover:bg-white/10'}`}
-        >
-          <div className="flex flex-col h-full justify-between relative z-10">
-            <div className="flex items-center gap-2 text-gray-500 mb-3">
-              {/* Icon changes based on state */}
-              <div className={`p-1.5 rounded-md transition-colors ${bottleneck ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400' : 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'}`}>
-                <iconify-icon icon={bottleneck ? "lucide:alert-circle" : "lucide:check-circle-2"} width="14"></iconify-icon>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-wide truncate">Today's Bottleneck</span>
-            </div>
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto">
 
-            {bottleneck ? (
-              <div>
-                <span className="text-lg font-bold text-gray-900 dark:text-white leading-tight block mb-1 line-clamp-2">
-                  {bottleneck.item.name}
-                </span>
-                <div className="flex items-center gap-1.5 opacity-80">
-                  {/* Progress bar visual for limits */}
-                  <div className="h-1 w-8 bg-gray-200 dark:bg-white/20 rounded-full overflow-hidden">
-                    <div className="h-full bg-orange-500 w-1/2"></div>
+        {/* Chart Card */}
+        <div className="lg:col-span-2 soft-card p-8 flex flex-col relative overflow-hidden dark:bg-[#2D2A26] dark:border-white/10 min-h-[350px]">
+          {/* Chart Header */}
+          <div className="flex justify-between items-center mb-8 z-10">
+            <div>
+              <h3 className="text-2xl font-light tracking-tight mb-1 text-[#303030] dark:text-[#E7E5E4]">Profitability Trend</h3>
+              <p className="text-sm text-gray-400">Net profit history</p>
+            </div>
+          </div>
+          {/* Chart Visual - REAL DATA */}
+          <div className="flex-1 flex items-end justify-between gap-4 z-10 px-4 h-48">
+            {chartItems.length === 0 ? (
+              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+                No historical data yet. Capture daily snapshots to see trends.
+              </div>
+            ) : (
+              chartItems.map((snap, i) => {
+                const h = (snap.netProfit / maxChartVal) * 100;
+                return (
+                  <div key={i} className="flex-1 flex flex-col justify-end group relative">
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                      ₱{snap.netProfit.toLocaleString()}
+                    </div>
+                    <div style={{ height: `${Math.max(h, 5)}%` }} className={`w-full rounded-xl transition-all duration-300 bg-[#FCD34D] hover:bg-[#303030] dark:hover:bg-[#E7E5E4]`}></div>
                   </div>
-                  <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Limits sales</span>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <span className="text-lg font-bold text-gray-900 dark:text-white leading-tight block mb-1">
-                  All Clear
-                </span>
-                <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">No bottlenecks today</span>
-              </div>
+                );
+              })
             )}
           </div>
-          {/* Subtle decoration for bottleneck state */}
-          {bottleneck && <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-orange-500/10 rounded-full blur-xl pointer-events-none"></div>}
+          {chartItems.length > 0 && (
+            <div className="flex justify-between mt-4 px-4 text-xs font-semibold text-gray-400 z-10">
+              {chartItems.map((snap, i) => {
+                const date = new Date(snap.date);
+                const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                return <span key={i} className="flex-1 text-center">{days[date.getDay()]}</span>;
+              })}
+            </div>
+          )}
         </div>
 
-        {/* NEW CARD 2: RESTOCK PRIORITY */}
-        <div
-          onClick={() => restockPriority && openModal('stock', restockPriority.item)}
-          className="glass-thin p-5 rounded-2xl active-scale cursor-pointer hover:bg-white/40 dark:hover:bg-white/10 transition-colors group relative overflow-hidden"
-        >
-          <div className="flex flex-col h-full justify-between relative z-10">
-            <div className="flex items-center gap-2 text-gray-500 mb-3">
-              <div className="p-1.5 rounded-md bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 group-hover:bg-[#007AFF] group-hover:text-white transition-colors">
-                <iconify-icon icon="lucide:trending-up" width="14"></iconify-icon>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-wide truncate">Restock Priority</span>
-            </div>
-
-            {restockPriority ? (
-              <div>
-                <span className="text-lg font-bold text-gray-900 dark:text-white leading-tight block mb-1 line-clamp-2">
-                  {restockPriority.item.name}
-                </span>
-                <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">
-                  Affects {restockPriority.affectedCount > 0 ? restockPriority.affectedCount : 'key'} recipes
-                </span>
-              </div>
-            ) : (
-              <div>
-                <span className="text-lg font-bold text-gray-900 dark:text-white leading-tight block mb-1">
-                  Good Stock
-                </span>
-                <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">Inventory healthy</span>
-              </div>
-            )}
+        {/* Circular Progress Card */}
+        <div className="soft-card p-8 flex flex-col items-center justify-center relative dark:bg-[#2D2A26] dark:border-white/0">
+          <div className="absolute top-6 left-6">
+            <h3 className="text-lg font-medium text-[#303030] dark:text-[#E7E5E4]">Daily Goal</h3>
           </div>
-        </div>
 
-        <div onClick={() => setView('recipes')} className="glass-thin p-5 rounded-2xl active-scale cursor-pointer hover:bg-white/40 dark:hover:bg-white/10 transition-colors group">
-          <div className="flex flex-col h-full justify-between">
-            <div className="flex items-center gap-2 text-gray-500 mb-3">
-              <div className="p-1.5 rounded-md bg-gray-100 dark:bg-white/10 group-hover:bg-[#007AFF] group-hover:text-white transition-colors">
-                <iconify-icon icon="lucide:book-open" width="14"></iconify-icon>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-wide">Recipes</span>
-            </div>
-            <span className="text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">{data.recipes.length}</span>
-          </div>
-        </div>
-        <div onClick={() => setView('finance')} className="glass-thin p-5 rounded-2xl active-scale cursor-pointer hover:bg-white/40 dark:hover:bg-white/10 transition-colors group">
-          <div className="flex flex-col h-full justify-between">
-            <div className="flex items-center gap-2 text-gray-500 mb-3">
-              <div className="p-1.5 rounded-md bg-gray-100 dark:bg-white/10 group-hover:bg-[#007AFF] group-hover:text-white transition-colors">
-                <iconify-icon icon="lucide:percent" width="14"></iconify-icon>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-wide">Avg Margin</span>
-            </div>
-            <span className="text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">{avgMargin}%</span>
-          </div>
-        </div>
-      </div>
+          {/* Goal Calc */}
+          {(() => {
+            const target = data.settings.dailySalesTarget || 35000;
+            const current = dailyProj.netRevenue;
+            const pct = Math.min(100, Math.round((current / target) * 100));
+            const deg = (pct / 100) * 360;
 
-      <div className={lows.length > 0 ? "" : "hidden"}>
-        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 pl-1">Needs Attention</h3>
-        {/* Opaque Surface for Readability */}
-        <div className="surface-opaque rounded-2xl overflow-hidden divide-y divide-gray-100 dark:divide-white/10">
-          {lows.slice(0, 3).map(i => (
-            <div key={i.id} className="px-5 py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors" onClick={() => setView('inventory')}>
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm shadow-orange-500/50"></div>
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">{i.name}</span>
-              </div>
-              <span className="text-xs font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-md">{i.stockQty} {i.unit} left</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 pl-1">Top Performers</h3>
-        {/* Opaque Surface for Readability */}
-        <div className="surface-opaque rounded-2xl overflow-hidden divide-y divide-gray-100 dark:divide-white/10">
-          {topPerformers.map(({ r, operatingProfit }, i) => {
             return (
-              <div key={r.id} className="px-5 py-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="font-medium text-gray-400 dark:text-gray-600 text-xs w-4">{i + 1}</div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white leading-none mb-1">{r.name}</p>
-                    <p className="text-[10px] text-gray-500">{r.dailyVolume} orders/day</p>
+              <>
+                <div className="relative w-48 h-48 rounded-full flex items-center justify-center mb-6 mt-6"
+                  style={{ background: `conic-gradient(#FCD34D 0deg ${deg}deg, #F3F4F6 ${deg}deg 360deg)` }}>
+                  <div className="absolute inset-4 bg-white rounded-full flex flex-col items-center justify-center shadow-inner dark:bg-[#2D2A26] dark:shadow-none">
+                    <span className="text-4xl font-light tracking-tight text-[#303030] dark:text-[#E7E5E4]">{pct}%</span>
+                    <span className="text-xs text-gray-400 font-medium uppercase tracking-wide mt-1">Achieved</span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">₱{Math.floor(operatingProfit).toLocaleString()}</p>
-                  <p className="text-[10px] text-gray-400">Profit</p>
+                <div className="flex gap-8 text-center">
+                  <div className="group cursor-pointer" onClick={() => {
+                    openPrompt("Set Daily Sales Target", target.toString(), (val) => {
+                      if (val && !isNaN(parseFloat(val))) updateDailyTarget(parseFloat(val));
+                    });
+                  }}>
+                    <p className="text-xs text-gray-400 uppercase font-semibold flex items-center gap-1 justify-center">Target <iconify-icon icon="lucide:edit-2" width="10" class="opacity-0 group-hover:opacity-100 transition-opacity"></iconify-icon></p>
+                    <p className="text-lg font-medium text-[#303030] dark:text-[#E7E5E4]">₱{target.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase font-semibold">Current</p>
+                    <p className="text-lg font-medium text-[#303030] dark:text-[#E7E5E4]">₱{current.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                  </div>
                 </div>
+              </>
+            )
+          })()}
+        </div>
+      </div>
+
+      {/* Bottom Section: Dark List */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Dark List: Tasks/Alerts */}
+        <div className="lg:col-span-1 black-card text-white rounded-[2.5rem] p-8 flex flex-col shadow-[0_10px_5px_-5px_rgba(0,0,0,0.1)] dark:bg-[#303030] dark:shadow-[0_10px_20px_-5px_rgba(0,0,0,0.5)] max-h-[400px]">
+          <div className="flex justify-between items-center mb-6 sticky top-0 z-10">
+            <h3 className="text-xl font-light">Action Required</h3>
+            <span className="text-sm text-gray-400">System</span>
+          </div>
+          <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+            {alerts.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                No active alerts
               </div>
-            );
-          })}
+            ) : (
+              alerts.map(item => (
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                  <div>
+                    <p className="font-medium text-sm text-[#E7E5E4]">{item.name}</p>
+                    <p className="text-[10px] text-gray-400">{item.stockQty} {item.unit} (Min: {item.minStock})</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${item.status.textClass} bg-white/10`}>
+                    {item.status.label}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Menu Engineering Table - REAL DATA */}
+        <div className="lg:col-span-2 soft-card p-8 dark:bg-[#2D2A26] dark:border-white/10">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-light tracking-tight text-[#303030] dark:text-[#E7E5E4]">Top Movers</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-gray-400 text-xs uppercase tracking-wider border-b border-gray-200 dark:border-white/10">
+                  <th className="pb-3 font-medium">Item Name</th>
+                  <th className="pb-3 font-medium">Category</th>
+                  <th className="pb-3 font-medium">Vol/Day</th>
+                  <th className="pb-3 font-medium">Cost %</th>
+                  <th className="pb-3 font-medium text-right">Profit/Unit</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                {topMovers.length === 0 ? (
+                  <tr><td colSpan={5} className="py-8 text-center text-gray-400">No recipes found. Add some to see data!</td></tr>
+                ) : (
+                  topMovers.map(r => {
+                    const fin = getRecipeFinancials(r);
+                    const costPct = (fin.unitCost / fin.unitPrice) * 100;
+                    return (
+                      <tr key={r.id} className="group hover:bg-gray-50 transition-colors dark:hover:bg-white/5">
+                        <td className="py-4 font-medium text-gray-800 pl-2 rounded-l-xl dark:text-[#E7E5E4]">{r.name}</td>
+                        <td className="py-4"><span className="px-2 py-1 rounded-md bg-orange-50 text-orange-600 text-xs font-semibold dark:bg-orange-500/20 dark:text-orange-400">{r.category}</span></td>
+                        <td className="py-4 text-gray-500 dark:text-gray-400">{r.dailyVolume}</td>
+                        <td className="py-4 font-semibold text-gray-600 dark:text-gray-400">{costPct.toFixed(0)}%</td>
+                        <td className="py-4 text-right pr-2 rounded-r-xl font-medium text-[#303030] dark:text-[#E7E5E4]">₱{(fin.unitPrice - fin.unitCost).toFixed(2)}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

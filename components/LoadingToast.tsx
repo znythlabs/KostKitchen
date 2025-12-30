@@ -18,7 +18,7 @@ export const LoadingToast = () => {
                         {/* Spinner */}
                         <div className="w-5 h-5 relative">
                             <div className="absolute inset-0 border-2 border-white/20 dark:border-gray-900/20 rounded-full"></div>
-                            <div className="absolute inset-0 border-2 border-transparent border-t-[#007AFF] rounded-full animate-spin"></div>
+                            <div className="absolute inset-0 border-2 border-transparent border-t-[#FCD34D] rounded-full animate-spin"></div>
                         </div>
                         <span className="text-sm font-semibold">Loading data...</span>
                     </div>

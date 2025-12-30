@@ -184,7 +184,7 @@ export const MenuEngineering = () => {
 
                 {/* LEFT: THE MATRIX CHART */}
                 <div className="lg:col-span-7 h-full flex flex-col">
-                    <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl p-1 shadow-sm border border-gray-200/50 dark:border-white/5 h-full relative overflow-hidden flex flex-col">
+                    <div className="soft-card-static p-1 h-full relative overflow-hidden flex flex-col">
 
                         {/* CHART CONTAINER */}
                         <div className="relative flex-1 w-full h-full min-h-[400px] rounded-[20px] overflow-hidden">
@@ -305,7 +305,7 @@ export const MenuEngineering = () => {
 
                 {/* RIGHT: DETAILED LIST */}
                 <div className="lg:col-span-5 h-full flex flex-col min-h-[500px]">
-                    <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-sm border border-gray-200/50 dark:border-white/5 flex flex-col h-full overflow-hidden">
+                    <div className="soft-card-static flex flex-col h-full overflow-hidden">
 
                         <div className="p-5 border-b border-gray-100 dark:border-white/5 shrink-0 bg-gray-50/50 dark:bg-white/5 backdrop-blur-sm">
                             <div className="flex justify-between items-center mb-1">
@@ -329,7 +329,7 @@ export const MenuEngineering = () => {
                         <div className="overflow-y-auto flex-1 p-0 scrollbar-thin">
                             {filteredItems.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-center p-8 text-gray-400">
-                                    <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center mb-4 text-gray-300">
+                                    <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center mb-4 text-gray-400">
                                         <iconify-icon icon="lucide:search" width="32"></iconify-icon>
                                     </div>
                                     <p className="text-sm">No items found for this filter.</p>

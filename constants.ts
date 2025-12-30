@@ -10,7 +10,8 @@ export const INITIAL_DATA: AppData = {
     ],
     isVatRegistered: true,
     isPwdSeniorActive: false,
-    otherDiscountRate: 0
+    otherDiscountRate: 0,
+    dailySalesTarget: 35000
   },
   ingredients: [],
   recipes: [],

@@ -283,7 +283,7 @@ export const Calendar = () => {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setIsHeatmapEnabled(!isHeatmapEnabled)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95 touch-manipulation shadow-sm border ${isHeatmapEnabled ? 'bg-[#007AFF] text-white border-[#007AFF]' : 'bg-white dark:bg-[#1C1C1E] text-gray-500 border-gray-100 dark:border-white/5'}`}
+                            className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95 touch-manipulation shadow-sm border ${isHeatmapEnabled ? 'bg-[#FCD34D] text-[#303030] border-[#FCD34D]' : 'bg-white dark:bg-[#1C1C1E] text-gray-500 border-gray-100 dark:border-white/5'}`}
                             aria-label="Toggle Heatmap"
                         >
                             <iconify-icon icon="lucide:flame" width="20"></iconify-icon>
@@ -308,7 +308,7 @@ export const Calendar = () => {
                     </div>
                     <div className="text-right pl-6 border-l border-gray-100 dark:border-white/10">
                         <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Margin</div>
-                        <div className="text-xl font-bold text-[#007AFF]">{monthSummary.avgMargin.toFixed(1)}%</div>
+                        <div className="text-xl font-bold text-[#FCD34D]">{monthSummary.avgMargin.toFixed(1)}%</div>
                     </div>
                 </div>
             </div>
@@ -317,7 +317,7 @@ export const Calendar = () => {
             <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl p-3 md:p-6 shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden">
                 {/* Week Headers */}
                 <div className="grid grid-cols-[3rem_repeat(7,1fr)] mb-3 text-center">
-                    <div className="text-[11px] font-bold text-gray-300 dark:text-gray-600 self-center uppercase tracking-wider">Week</div>
+                    <div className="text-[11px] font-bold text-gray-400 dark:text-gray-600 self-center uppercase tracking-wider">Week</div>
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                         <div key={day} className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{day}</div>
                     ))}
@@ -341,7 +341,7 @@ export const Calendar = () => {
                                     className={`
                                         flex flex-col items-center justify-center rounded-xl transition-all duration-200 group relative
                                         ${isCurrentWeek
-                                            ? 'bg-[#007AFF]/10 text-[#007AFF]'
+                                            ? 'bg-[#FCD34D]/10 text-[#FCD34D]'
                                             : 'bg-gray-50 dark:bg-white/5 text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white'
                                         }
                                     `}
@@ -404,7 +404,7 @@ export const Calendar = () => {
                                                         : 'cursor-pointer bg-gray-50 dark:bg-white/5 ring-1 ring-black/5 dark:ring-white/10 hover:bg-white hover:shadow-lg hover:ring-black/10 hover:-translate-y-1 dark:hover:bg-[#2C2C2E]'
                                                     : 'bg-transparent opacity-30 cursor-default'
                                                 }
-                                                ${isToday ? 'ring-2 ring-[#007AFF] ring-offset-2 ring-offset-white dark:ring-offset-[#121212] z-10 shadow-md' : ''}
+                                                ${isToday ? 'ring-2 ring-[#FCD34D] ring-offset-2 ring-offset-white dark:ring-offset-[#121212] z-10 shadow-md' : ''}
                                             `}
                                         >
                                             {!isHeatmapEnabled && hasData && (
@@ -416,7 +416,7 @@ export const Calendar = () => {
                                             <div className="flex justify-between items-start relative z-10">
                                                 <span
                                                     className={`text-xs md:text-sm font-bold leading-none ${isToday
-                                                        ? isHeatmapEnabled ? 'text-white' : 'text-[#007AFF]'
+                                                        ? isHeatmapEnabled ? 'text-white' : 'text-[#FCD34D]'
                                                         : dynamicTextColor || (hasData
                                                             ? 'text-gray-900 dark:text-white'
                                                             : 'text-gray-400')
@@ -426,7 +426,7 @@ export const Calendar = () => {
                                                 </span>
                                                 {hasData && (
                                                     isToday && !isHeatmapEnabled ? (
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-[#007AFF] animate-pulse shadow-[0_0_8px_rgba(0,122,255,0.5)]"></div>
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-[#FCD34D] animate-pulse shadow-[0_0_8px_rgba(252,211,77,0.5)]"></div>
                                                     ) : isHeatmapEnabled ? (
                                                         <div className="w-1.5 h-1.5 rounded-full bg-white/40"></div>
                                                     ) : (

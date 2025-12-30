@@ -101,8 +101,8 @@ export const SyncStatusBadge = ({ className = '' }: { className?: string }) => {
                 </>
             ) : isSyncing ? (
                 <>
-                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                    <span className="text-blue-600">Syncing...</span>
+                    <span className="w-2 h-2 rounded-full bg-[#FCD34D] animate-pulse" />
+                    <span className="text-[#FCD34D]">Syncing...</span>
                 </>
             ) : pendingCount > 0 ? (
                 <>

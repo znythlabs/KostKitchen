@@ -110,6 +110,39 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   const [cookModal, setCookModal] = useState<{ isOpen: boolean; recipeId: number | null; recipeName: string }>({ isOpen: false, recipeId: null, recipeName: '' });
 
+  // Inventory Categories
+  const [inventoryCategories, setInventoryCategories] = useState<string[]>(['All Items', 'Proteins', 'Produce', 'Dairy', 'Dry Goods', 'Packaging']);
+  const addInventoryCategory = (cat: string) => {
+    if (cat && !inventoryCategories.includes(cat)) setInventoryCategories([...inventoryCategories, cat]);
+  };
+
+  const [recipeCategories, setRecipeCategories] = useState<string[]>(['Main Course', 'Appetizers', 'Beverages', 'Desserts']);
+  const addRecipeCategory = (cat: string) => {
+    if (cat && !recipeCategories.includes(cat)) setRecipeCategories([...recipeCategories, cat]);
+  };
+
+
+  // Custom Prompt Modal State
+  const [promptModal, setPromptModal] = useState<{ isOpen: boolean; title: string; defaultValue: string; onConfirm: (val: string) => void }>({
+    isOpen: false,
+    title: '',
+    defaultValue: '',
+    onConfirm: () => { }
+  });
+
+  const openPrompt = (title: string, defaultValue: string = '', onConfirm: (val: string) => void) => {
+    setPromptModal({ isOpen: true, title, defaultValue, onConfirm });
+  };
+
+  const closePrompt = () => {
+    setPromptModal(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const openConfirm = (title: string, message: string, onConfirm: () => void, isDestructive = false) => {
+    setConfirmModal({ isOpen: true, title, message, onConfirm, isDestructive });
+  };
+
+
   // Tour State
   const [isTourActive, setIsTourActive] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -542,6 +575,43 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     }
   };
 
+  const updateStockItemFull = async (id: number, updates: Partial<Ingredient>) => {
+    // Optimistic Update
+    setData(prev => ({
+      ...prev,
+      ingredients: prev.ingredients.map(i => i.id === id ? { ...i, ...updates } : i)
+    }));
+
+    const success = await dataService.updateIngredient(id, updates);
+    if (!success) {
+      alert("Failed to update item");
+      refreshData();
+    }
+  };
+
+  const duplicateStockItem = async (id: number) => {
+    const item = data.ingredients.find(i => i.id === id);
+    if (!item) return;
+
+    const newItem = { ...item, id: Date.now(), name: `${item.name} (Copy)` };
+    // Optimistic
+    setData(prev => ({
+      ...prev,
+      ingredients: [...prev.ingredients, newItem]
+    }));
+
+    const result = await dataService.createIngredient(newItem);
+    if (result) {
+      // Update ID
+      setData(prev => ({
+        ...prev,
+        ingredients: prev.ingredients.map(i => i.id === newItem.id ? { ...i, id: result.id } : i)
+      }));
+    } else {
+      refreshData();
+    }
+  };
+
   const deleteStockItem = async (id: number) => {
     setData(prev => ({
       ...prev,
@@ -589,6 +659,70 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     refreshData(true);
     setBuilder({ ...INITIAL_BUILDER, showBuilder: false });
     setView('recipes');
+  };
+
+  const saveRecipeDirectly = async (recipe: any) => {
+    // Determine Menu Price (Price Inclusive of VAT)
+    const price = recipe.price || 0;
+
+    // Construct DB-ready object
+    const recipeData: Omit<Recipe, 'id'> = {
+      name: recipe.name,
+      category: recipe.category,
+      margin: recipe.margin || 0,
+      price: price,
+      dailyVolume: recipe.dailyVolume || 0,
+      image: recipe.image,
+      batchSize: recipe.batchSize || 1,
+      ingredients: recipe.ingredients.map((ri: any) => ({ id: ri.id, qty: ri.qty })),
+      prepTime: recipe.prepTime
+    };
+
+    if (recipe.id && recipe.id > 0) {
+      // --- OPTIMISTIC UPDATE (Instant) ---
+      setData(prev => ({
+        ...prev,
+        recipes: prev.recipes.map(r => r.id === recipe.id ? { ...recipe, ...recipeData, id: recipe.id } : r)
+      }));
+
+      // Background Sync
+      dataService.updateRecipe(recipe.id, recipeData, recipe.ingredients).then(success => {
+        if (!success) {
+          console.error("Background save failed for recipe", recipe.id);
+          // Optionally notify user or revert
+        }
+      });
+
+    } else {
+      // --- OPTIMISTIC INSERT (Instant) ---
+      const tempId = Date.now(); // Temporary ID for UI
+      const newRecipeObj = { ...recipe, ...recipeData, id: tempId };
+
+      setData(prev => ({
+        ...prev,
+        recipes: [newRecipeObj, ...prev.recipes]
+      }));
+      setNewlyAddedId(tempId);
+
+      // Background Create
+      dataService.createRecipe(recipeData, recipe.ingredients).then(result => {
+        if (result && result.id) {
+          // Swap tempID for Real ID
+          setData((prev) => ({
+            ...prev,
+            recipes: prev.recipes.map(r => r.id === tempId ? { ...r, id: result.id } : r)
+          }));
+          setNewlyAddedId(result.id);
+        } else {
+          console.error("Background creation failed");
+          // Remove the optimistic item if it failed permanently
+          setData(prev => ({ ...prev, recipes: prev.recipes.filter(r => r.id !== tempId) }));
+          alert("Failed to save new recipe to server.");
+        }
+      });
+    }
+
+    return true; // Return immediately to unblock UI
   };
 
   const deleteRecipe = async (id: number) => {
@@ -639,9 +773,16 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       }));
       setNewlyAddedId(result.id);
     } else {
-      alert("Failed to duplicate");
       refreshData();
     }
+  };
+
+  const updateDailyTarget = async (amount: number) => {
+    setData(prev => ({
+      ...prev,
+      settings: { ...prev.settings, dailySalesTarget: amount }
+    }));
+    await dataService.updateSettings({ daily_sales_target: amount });
   };
 
   const captureDailySnapshot = async () => {
@@ -712,25 +853,31 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   };
 
   const getStockStatus = (item: Ingredient) => {
-    // If minStock is not set (0), treat as untracked/good unless 0 stock
-    if (!item.minStock || item.minStock <= 0) {
-      if (item.stockQty <= 0) return { label: "OUT OF STOCK", colorClass: "bg-gray-400", textClass: "text-gray-400", bgClass: "", width: 0 };
-      return { label: "IN STOCK", colorClass: "bg-[#34c759]", textClass: "text-[#34c759]", bgClass: "", width: 100 };
-    }
-
-    const pct = (item.stockQty / (item.minStock * 2)) * 100;
-
+    // 1. Critical: Out of Stock or 0
     if (item.stockQty <= 0) {
-      return { label: "OUT OF STOCK", colorClass: "bg-gray-900 dark:bg-gray-600", textClass: "text-gray-900 dark:text-gray-400", bgClass: "", width: 0 };
-    }
-    if (item.stockQty <= item.minStock) {
-      return { label: "LOW STOCK", colorClass: "bg-[#ff3b30]", textClass: "text-[#ff3b30]", bgClass: "", width: Math.max(pct, 10) };
-    }
-    if (item.stockQty <= item.minStock * 1.5) {
-      return { label: "REORDER SOON", colorClass: "bg-[#ffcc00]", textClass: "text-[#ffcc00]", bgClass: "", width: Math.min(pct, 100) };
+      return { label: "CRITICAL", colorClass: "bg-red-500", textClass: "text-red-500", bgClass: "bg-red-500", width: 100 };
     }
 
-    return { label: "GOOD", colorClass: "bg-[#34c759]", textClass: "text-[#34c759]", bgClass: "", width: 100 };
+    // If minStock is not set, treat as Good unless 0 (handled above)
+    if (!item.minStock || item.minStock <= 0) {
+      return { label: "GOOD", colorClass: "bg-[#34c759]", textClass: "text-[#34c759]", bgClass: "bg-[#34c759]", width: 100 };
+    }
+
+    // 2. Low: <= Min Stock
+    if (item.stockQty <= item.minStock) {
+      const pct = (item.stockQty / item.minStock) * 100;
+      return { label: "LOW STOCK", colorClass: "bg-orange-500", textClass: "text-orange-500", bgClass: "bg-orange-500", width: Math.max(pct, 10) };
+    }
+
+    // 3. Reorder: <= 1.2 * Min Stock (Warning Zone)
+    if (item.stockQty <= item.minStock * 1.2) {
+      // Scale width between min and 1.2*min
+      const pct = ((item.stockQty / (item.minStock * 1.2)) * 100);
+      return { label: "REORDER", colorClass: "bg-yellow-400", textClass: "text-yellow-500", bgClass: "bg-yellow-400", width: pct };
+    }
+
+    // 4. Good
+    return { label: "GOOD", colorClass: "bg-[#34c759]", textClass: "text-[#34c759]", bgClass: "bg-[#34c759]", width: 100 };
   };
 
   const loadRecipeToBuilder = (id: number) => {
@@ -759,24 +906,33 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       inventoryEditMode, toggleInventoryEdit,
       activeModal, pickerFilter, editingStockItem,
       confirmModal, cookModal, cookRecipe,
+      // Modals
+      setConfirmModal, openConfirm,
+      promptModal, openPrompt, closePrompt,
       // Tour Export
       isTourActive, currentStepIndex, startTour, endTour, nextStep, prevStep,
       registerTourElement, getTourElement,
       openModal, closeModal,
       // Actions
       saveCurrentRecipe,
+      saveRecipeDirectly,
       deleteRecipe,
       duplicateRecipe,
       addStockItem,
       updateStockItem,
+      updateStockItemFull,
       deleteStockItem,
+      duplicateStockItem,
       resetBuilder,
       newlyAddedId, selectFirstRecipe, // New features
       // Confirmation
       askConfirmation,
       closeConfirmation: () => setConfirmModal(prev => ({ ...prev, isOpen: false })),
       openCookModal,
-      closeCookModal
+      closeCookModal,
+      updateDailyTarget,
+      inventoryCategories, addInventoryCategory,
+      recipeCategories, addRecipeCategory
     }}>
       {children}
     </AppContext.Provider>

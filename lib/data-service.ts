@@ -75,6 +75,7 @@ const toSnakeCase = (obj: Record<string, any>): Record<string, any> => {
         isVatRegistered: 'is_vat_registered',
         isPwdSeniorActive: 'is_pwd_senior_active',
         otherDiscountRate: 'other_discount_rate',
+        dailySalesTarget: 'daily_sales_target',
         grossSales: 'gross_sales',
         netRevenue: 'net_revenue',
         grossProfit: 'gross_profit',
@@ -107,6 +108,7 @@ const toCamelCase = (obj: Record<string, any>): Record<string, any> => {
         is_vat_registered: 'isVatRegistered',
         is_pwd_senior_active: 'isPwdSeniorActive',
         other_discount_rate: 'otherDiscountRate',
+        daily_sales_target: 'dailySalesTarget',
         gross_sales: 'grossSales',
         net_revenue: 'netRevenue',
         gross_profit: 'grossProfit',
@@ -502,7 +504,8 @@ class DataService {
         return data ? {
             isVatRegistered: data.is_vat_registered || false,
             isPwdSeniorActive: data.is_pwd_senior_active || false,
-            otherDiscountRate: Number(data.other_discount_rate || 0)
+            otherDiscountRate: Number(data.other_discount_rate || 0),
+            dailySalesTarget: Number(data.daily_sales_target || 35000)
         } : null;
     }
 

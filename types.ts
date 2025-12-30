@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export type View = 'dashboard' | 'recipes' | 'inventory' | 'finance' | 'calendar' | 'profile' | 'engineering';
+export type View = 'dashboard' | 'recipes' | 'inventory' | 'finance' | 'calendar' | 'profile' | 'engineering' | 'analytics' | 'settings';
 
 export interface TourStep {
   targetId: string;
@@ -51,6 +51,7 @@ export interface Ingredient {
   priceBuffer?: number; // Percentage buffer (e.g. 10 for 10%)
   // Category type
   type?: 'ingredient' | 'other';
+  category?: string;
 }
 
 export interface RecipeIngredient {
@@ -68,6 +69,7 @@ export interface Recipe {
   dailyVolume: number;
   image: string | null;
   batchSize: number;
+  prepTime?: string;
 }
 
 export interface Expense {
@@ -119,6 +121,7 @@ export interface AppData {
     isVatRegistered: boolean;
     isPwdSeniorActive: boolean;
     otherDiscountRate: number;
+    dailySalesTarget?: number;
     contingencyRate?: number; // Default 5%
   };
   ingredients: Ingredient[];
@@ -136,6 +139,7 @@ export interface BuilderState {
   image: string | null;
   dailyVolume: number;
   showBuilder: boolean;
+  prepTime?: string;
 }
 
 export interface AppContextType {
@@ -171,6 +175,7 @@ export interface AppContextType {
   deleteRecipe: (id: number) => void;
   duplicateRecipe: (id: number) => void;
   resetBuilder: () => void;
+  saveRecipeDirectly: (recipe: any) => Promise<boolean>;
 
   selectedRecipeId: number | null;
   setSelectedRecipeId: (id: number | null) => void;
@@ -211,4 +216,22 @@ export interface AppContextType {
 
   // User
   user: { email?: string } | null;
+
+  updateDailyTarget: (amount: number) => void;
+  // Categories
+  inventoryCategories: string[];
+  addInventoryCategory: (cat: string) => void;
+  recipeCategories: string[];
+  addRecipeCategory: (cat: string) => void;
+  // Extra Actions
+  duplicateStockItem: (id: number) => void;
+  updateStockItemFull: (id: number, updates: Partial<Ingredient>) => void;
+  // Prompts
+  setConfirmModal: React.Dispatch<React.SetStateAction<any>>;
+  openConfirm: (title: string, message: string, onConfirm: () => void, isDestructive?: boolean) => void;
+  promptModal: { isOpen: boolean; title: string; message: string; onConfirm: (val: string) => void; };
+  openPrompt: (title: string, message: string, onConfirm: (val: string) => void) => void;
+  closePrompt: () => void;
+  registerTourElement: (id: string, element: HTMLElement | null) => void;
+  getTourElement: (id: string) => HTMLElement | null;
 }

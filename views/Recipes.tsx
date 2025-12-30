@@ -1,773 +1,725 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../AppContext';
-import { useSound } from '../SoundContext';
-import { AnimatePresence, motion, Reorder } from 'framer-motion';
-import { Recipe } from '../types';
+import { CustomSelect } from '../components/CustomSelect';
 
-// --- HISTORY HOOK FOR UNDO/REDO ---
-function useHistory<T>(initialPresent: T) {
-  const [past, setPast] = useState<T[]>([]);
-  const [present, setPresent] = useState<T>(initialPresent);
-  const [future, setFuture] = useState<T[]>([]);
-
-  const canUndo = past.length > 0;
-  const canRedo = future.length > 0;
-
-  const update = (newPresent: T) => {
-    setPast(prev => [...prev, present]);
-    setPresent(newPresent);
-    setFuture([]);
-  };
-
-  const undo = () => {
-    if (!canUndo) return;
-    const previous = past[past.length - 1];
-    const newPast = past.slice(0, past.length - 1);
-    setFuture(prev => [present, ...prev]);
-    setPresent(previous);
-    setPast(newPast);
-  };
-
-  const redo = () => {
-    if (!canRedo) return;
-    const next = future[0];
-    const newFuture = future.slice(1);
-    setPast(prev => [...prev, present]);
-    setPresent(next);
-    setFuture(newFuture);
-  };
-
-  return { present, setPresent: update, undo, redo, canUndo, canRedo, historyPast: past };
-}
+// Consistent category options used for both dropdown and filter buttons
+// const CATEGORY_OPTIONS = ['Main Course', 'Mains', 'Appetizers', 'Beverages', 'Desserts']; // REMOVED
 
 export const Recipes = () => {
-  const {
-    data, builder, setBuilder, loadRecipeToBuilder,
-    calculateRecipeCost, getIngredient, getRecipeFinancials,
-    openModal, saveCurrentRecipe, deleteRecipe, duplicateRecipe, askConfirmation, darkMode, resetBuilder,
-    selectedRecipeId, setSelectedRecipeId, openCookModal, newlyAddedId
-  } = useApp();
+  const { builder, setBuilder, selectedRecipeId, setSelectedRecipeId, data, saveRecipeDirectly, duplicateRecipe, deleteRecipe, openConfirm, recipeCategories, addRecipeCategory, openPrompt } = useApp();
+  const [viewMode, setViewMode] = useState<'grid' | 'builder'>(selectedRecipeId ? 'builder' : 'grid');
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
 
-  const { playClick, playSuccess, playDelete, playHover } = useSound();
-
-  const mode = builder.showBuilder ? 'builder' : 'list';
-  const [activeTab, setActiveTab] = useState<'items' | 'overview' | 'modifiers'>('items');
+  // --- FILTERING STATE ---
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // null = All Items
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Local state for recipes to support Order/Undo/Redo before syncing or mock-syncing
-  // In a real DB sort scenario, we'd update the sort_order column. 
-  // Here we assume the list order in `present` is the truth for the UI.
-  const { present: localRecipes, setPresent: setLocalRecipes, undo, redo, canUndo, canRedo } = useHistory(data.recipes);
+  // Get unique categories from existing recipes + standard options
+  const allCategories = useMemo(() => {
+    const existingCategories = data.recipes.map(r => r.category).filter(Boolean);
+    const combined = [...new Set([...recipeCategories, ...existingCategories])];
+    return combined.filter(c => c && c !== 'Mains'); // Remove empty and 'Mains' specifically if present
+  }, [data.recipes, recipeCategories]);
 
-  // Sync local state when external data changes (e.g. initial load or add/delete from context)
-  // We only want to do this if the data length changes or distinct IDs change to avoid fighting the local sort
-  const prevDataRef = useRef(data.recipes);
-  useEffect(() => {
-    if (prevDataRef.current !== data.recipes) {
-      // Simple check: if length differs or IDs differ, sync. 
-      // Real implementation would be more complex to preserve sort.
-      // For now, we accept data updates as the "truth" to ensure added items appear.
-      setLocalRecipes(data.recipes);
-      prevDataRef.current = data.recipes;
+  // Filtered Recipes
+  const filteredRecipes = useMemo(() => {
+    return data.recipes.filter(recipe => {
+      // Category filter
+      if (selectedCategory && recipe.category !== selectedCategory) return false;
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        if (!recipe.name.toLowerCase().includes(query)) return false;
+      }
+      return true;
+    });
+  }, [data.recipes, selectedCategory, searchQuery]);
+
+  // Load recipe into builder when entering builder mode
+  React.useEffect(() => {
+    if (viewMode === 'builder') {
+      if (selectedRecipeId) {
+        // In a real app we might fetch here, but we just rely on 'localRecipe' init logic below
+      } else {
+        // New Recipe defaults
+      }
     }
-  }, [data.recipes, setLocalRecipes]);
+  }, [viewMode, selectedRecipeId]);
 
+  // Local Builder State Handling
+  const [localRecipe, setLocalRecipe] = useState<any>({
+    name: '', category: 'Main Course', price: 0, image: '', ingredients: [], description: '', batchSize: 1
+  });
 
-  const [showDiscountDetails, setShowDiscountDetails] = useState(false);
-  const [isDuplicating, setIsDuplicating] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  // Builder View States
+  const [activeTab, setActiveTab] = useState<'ingredient' | 'other'>('ingredient');
+  const [ingPage, setIngPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
+  const [targetMargin, setTargetMargin] = useState(70);
 
-  // --- DERIVED STATE ---
-  const recipeFinancialsMap = useMemo(() => {
-    const map = new Map();
-    localRecipes.forEach(r => map.set(r.id, getRecipeFinancials(r)));
-    return map;
-  }, [localRecipes, getRecipeFinancials]);
+  React.useEffect(() => {
+    if (selectedRecipeId && viewMode === 'builder') {
+      const r = data.recipes.find(curr => curr.id === selectedRecipeId);
+      if (r) setLocalRecipe(JSON.parse(JSON.stringify(r))); // Deep copy
+    } else if (viewMode === 'builder') {
+      setLocalRecipe({ name: 'New Recipe', category: 'Main Course', price: 0, image: '', ingredients: [], description: '', batchSize: 1 });
+    }
+  }, [selectedRecipeId, viewMode, data.recipes]);
 
-  const categorizedRecipes = useMemo((): Record<string, Recipe[]> => {
-    const groups: Record<string, Recipe[]> = {};
-    const filtered = localRecipes.filter((r: Recipe) => r.name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    filtered.forEach((r: Recipe) => {
-      const cat = r.category || 'Uncategorized';
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(r);
+  // Filtered Ingredients for Builder List (uses different name to avoid conflict)
+  const builderFilteredIngredients = useMemo(() => {
+    return (localRecipe.ingredients || []).filter((ri: any) => {
+      const def = data.ingredients.find(i => i.id === ri.id);
+      if (!def) return activeTab === 'ingredient'; // Default to ingredient if not found
+      return (def.type || 'ingredient') === activeTab;
     });
-    return groups;
-  }, [localRecipes, searchQuery]);
+  }, [localRecipe.ingredients, activeTab, data.ingredients]);
 
-  // Init sections expanded
-  useEffect(() => {
-    const initialExpanded: Record<string, boolean> = {};
-    Object.keys(categorizedRecipes).forEach(cat => {
-      initialExpanded[cat] = expandedCategories[cat] !== undefined ? expandedCategories[cat] : true;
+  const paginatedIngredients = builderFilteredIngredients.slice((ingPage - 1) * ITEMS_PER_PAGE, ingPage * ITEMS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(builderFilteredIngredients.length / ITEMS_PER_PAGE));
+
+  // Reset page on tab change
+  React.useEffect(() => {
+    setIngPage(1);
+  }, [activeTab]);
+
+  const toggleBuilder = () => {
+    if (viewMode === 'grid') {
+      setViewMode('builder');
+      setSelectedRecipeId(0); // 0 for new
+    } else {
+      setViewMode('grid');
+      setSelectedRecipeId(null);
+    }
+  };
+
+  const handleSave = () => {
+    if (!localRecipe.name) {
+      alert("Please enter a recipe name.");
+      return;
+    }
+    setIsSaving(true);
+
+    // Optimistic: Assume success immediately
+    saveRecipeDirectly(localRecipe).catch(err => {
+      console.error("Save error:", err);
     });
-    setExpandedCategories(prev => ({ ...initialExpanded, ...prev }));
-  }, [categorizedRecipes]);
 
-  // --- HANDLERS ---
-  const handleSwitchToList = () => { playClick(); resetBuilder(); setSelectedIds([]); };
-  const handleSwitchToBuilder = () => { playClick(); resetBuilder(); setBuilder(prev => ({ ...prev, showBuilder: true })); setSelectedIds([]); };
-
-  const handleEditRecipe = (id: number) => { playClick(); loadRecipeToBuilder(id); };
-
-  const toggleSelection = (id: number) => {
-    playClick();
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    // Instant transition
+    setTimeout(() => {
+      setIsSaving(false);
+      setViewMode('grid');
+      setSelectedRecipeId(null);
+    }, 50);
   };
 
-  const toggleCategory = (cat: string) => {
-    playClick();
-    setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
+  // Helper for Costing (Grid View)
+  const getRecipeStats = (recipe: any) => {
+    let cost = 0;
+    if (recipe.ingredients) {
+      recipe.ingredients.forEach((ri: any) => {
+        const ing = data.ingredients.find(i => i.id === ri.id);
+        if (ing) {
+          cost += (ing.cost || 0) * (ri.qty || 0);
+        }
+      });
+    }
+    const price = recipe.price || 0;
+    const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
+
+    let status = 'Medium';
+    if (margin >= 70) status = 'Excellent';
+    else if (margin >= 60) status = 'Good';
+    else if (margin < 30) status = 'Low Margin';
+
+    return { cost, margin, status };
   };
 
-  const handleDuplicate = async (id: number) => {
-    if (isDuplicating) return;
-    setIsDuplicating(true);
-    playClick();
-    await duplicateRecipe(id);
-    setTimeout(() => setIsDuplicating(false), 2000);
-  };
+  if (viewMode === 'builder') {
+    // Cost Analysis Calculations for Builder
+    const ingredientsCost = (localRecipe.ingredients || []).reduce((acc: number, ri: any) => {
+      const def = data.ingredients.find(i => i.id === ri.id);
+      if (def && (def.type || 'ingredient') === 'ingredient') {
+        return acc + (def.cost * ri.qty);
+      }
+      return acc;
+    }, 0);
 
-  const handleDelete = (id: number, name: string) => {
-    playClick();
-    // For Undo capability, we might ideally effectively "soft delete" locally first
-    // But since `deleteRecipe` hits the API immediately, implementing true Undo requires API reversal or 
-    // delaying the API call. For this specific "Undo/Redo" request, visual undo of sorting/filtering is safest.
-    // Making "Delete" undoable implies not calling API yet. 
-    // Optimization: We will call API directly for Delete to be safe, Undo will mainly handle reordering or bulk changes if we had them purely local.
-    // However, the user asked for Undo. Let's try to support it by *not* calling API immediately? 
-    // No, that risks data loss. We will keep API Delete for safety and clarify Undo is for UI state in this version, 
-    // OR we just use the API. Let's stick to API for delete for data integrity. 
+    const packagingCost = (localRecipe.ingredients || []).reduce((acc: number, ri: any) => {
+      const def = data.ingredients.find(i => i.id === ri.id);
+      if (def && def.type === 'other') {
+        return acc + (def.cost * ri.qty);
+      }
+      return acc;
+    }, 0);
 
-    askConfirmation({
-      title: 'Delete Recipe?',
-      message: `Are you sure you want to delete "${name}"?`,
-      isDestructive: true,
-      onConfirm: () => { playDelete(); deleteRecipe(id); setSelectedIds(prev => prev.filter(i => i !== id)); }
-    });
-  };
+    const totalUnitCost = ingredientsCost + packagingCost;
 
-  const handleSave = async () => {
-    playClick();
-    await saveCurrentRecipe();
-    playSuccess();
-  };
+    // Derived Values
+    const actualPrice = localRecipe.price || 0;
+    const priceBeforeVAT = actualPrice / 1.12;
+    const vatAmount = actualPrice - priceBeforeVAT;
+    const simpleProfit = actualPrice - totalUnitCost; // Gross Profit
+    const currentMargin = actualPrice > 0 ? (simpleProfit / actualPrice) * 100 : 0;
 
-  const handleAddCategory = () => {
-    playClick();
-    // In this schema, categories are just tags. "Adding" one essentially means preparing to create an item in it
-    // or adding an empty placeholder. Let's open builder with a prompt or just a focus.
-    // We'll simulate it by opening builder with a "New Category" placeholder.
-    resetBuilder();
-    setBuilder(prev => ({ ...prev, showBuilder: true, category: 'New Category' }));
-  };
+    // VAT & Discount Calculations
+    const vatExemptPrice = priceBeforeVAT;
+    const pwdDiscount = vatExemptPrice * 0.20;
+    const discountedPrice = vatExemptPrice - pwdDiscount;
+    const profitDiscounted = discountedPrice - totalUnitCost;
 
-  // --- RENDER HELPERS ---
-  const SummaryValue = ({ label, value, type = 'neutral' }: { label: string, value: number, type?: 'neutral' | 'accent' | 'success' | 'danger' }) => {
-    let colorClass = "text-gray-900 dark:text-white";
-    if (type === 'accent') colorClass = "text-[#007AFF]";
-    if (type === 'success') colorClass = "text-green-500";
-    if (type === 'danger') colorClass = "text-red-500";
+    // Sync Handlers
+    const handleMarginChange = (filesMargin: number) => {
+      setTargetMargin(filesMargin);
+      if (totalUnitCost > 0) {
+        // Formula: Price = Cost / (1 - Margin%)
+        const newPrice = totalUnitCost / (1 - (filesMargin / 100));
+        setLocalRecipe({ ...localRecipe, price: Math.ceil(newPrice) }); // Round up
+      }
+    };
+
+    const handlePriceChange = (newPrice: number) => {
+      setLocalRecipe({ ...localRecipe, price: newPrice });
+      if (newPrice > 0 && totalUnitCost > 0) {
+        // Margin = (Price - Cost) / Price
+        const newMargin = ((newPrice - totalUnitCost) / newPrice) * 100;
+        setTargetMargin(Math.min(90, Math.max(0, Math.round(newMargin))));
+      }
+    };
+
     return (
-      <div className="flex justify-between items-center text-sm">
-        <span className="text-gray-500 dark:text-gray-400">{label}</span>
-        <span className={`font-semibold ${colorClass}`}>₱{value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-      </div>
-    );
-  };
+      // Corrected Wrapper: Removed fixed positioning to respect Layout widths
+      <div className="flex-1 flex flex-col h-full overflow-hidden animate-fade-in text-[#303030]">
 
-  return (
-    <div className="view-section fade-enter pb-0 h-full flex flex-col">
-
-      {/* --- TOP HEADER / TABS (Matches Screenshot) --- */}
-      <div className="sticky top-[58px] md:top-16 z-30 bg-white dark:bg-black border-b border-gray-100 dark:border-white/10 pt-4 px-4 md:px-8 shadow-sm">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-0">
-            <div className="flex gap-6">
-              <button
-                onClick={() => setActiveTab('items')}
-                className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'items' ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white' : 'text-gray-400 border-transparent hover:text-gray-600'}`}
-              >
-                Items
-              </button>
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'overview' ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white' : 'text-gray-400 border-transparent hover:text-gray-600'}`}
-              >
-                Overview
-              </button>
-              <button
-                onClick={() => setActiveTab('modifiers')}
-                className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'modifiers' ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white' : 'text-gray-400 border-transparent hover:text-gray-600'}`}
-              >
-                Modifiers
-              </button>
+        {/* Builder Header - Compact */}
+        <div className="flex-none px-6 py-4 flex justify-between items-center border-b border-gray-200">
+          <div className="flex items-center gap-4">
+            <button onClick={toggleBuilder} className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 text-gray-500 transition shadow-sm">
+              <iconify-icon icon="lucide:arrow-left" width="18"></iconify-icon>
+            </button>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">EDITING</p>
+              <h2 className="text-xl font-bold text-[#303030] leading-none">{localRecipe.name || 'New Recipe'}</h2>
             </div>
-
-            {/* Main View Actions - Only visible in Item mode */}
-            <div className="flex items-center gap-2 pb-2">
-              <div className="hidden md:flex items-center bg-gray-100 dark:bg-white/10 rounded-lg px-2 h-8">
-                <iconify-icon icon="lucide:search" width="14" class="text-gray-400"></iconify-icon>
-                <input
-                  type="text"
-                  placeholder="Search"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="bg-transparent border-none outline-none text-xs font-medium ml-2 w-32 placeholder-gray-400 text-gray-900 dark:text-white"
-                />
-              </div>
-
-              <div className="h-6 w-px bg-gray-200 dark:bg-white/10 mx-1"></div>
-
-              <button
-                onClick={() => console.log('Filter')} // Mock logic
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 transition-colors"
-                title="Filters"
-              >
-                <iconify-icon icon="lucide:filter" width="16"></iconify-icon>
-              </button>
-              <button
-                disabled={!canUndo}
-                onClick={() => { playClick(); undo(); }}
-                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${canUndo ? 'hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500' : 'text-gray-300 dark:text-white/20'}`}
-                title="Undo"
-              >
-                <iconify-icon icon="lucide:undo-2" width="16"></iconify-icon>
-              </button>
-              <button
-                disabled={!canRedo}
-                onClick={() => { playClick(); redo(); }}
-                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${canRedo ? 'hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500' : 'text-gray-300 dark:text-white/20'}`}
-                title="Redo"
-              >
-                <iconify-icon icon="lucide:redo-2" width="16"></iconify-icon>
-              </button>
-
-              <div className="h-6 w-px bg-gray-200 dark:bg-white/10 mx-1"></div>
-
-              <button
-                onClick={handleAddCategory}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-all text-xs font-bold text-gray-700 dark:text-gray-200"
-              >
-                <iconify-icon icon="lucide:plus" width="14"></iconify-icon>
-                Add Category
-              </button>
-
-              <button
-                onClick={handleSwitchToBuilder} // Using as general 'Add Item'
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-black hover:opacity-90 transition-all text-xs font-bold shadow-sm"
-              >
-                <iconify-icon icon="lucide:plus" width="14"></iconify-icon>
-                New Item
-              </button>
-            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={toggleBuilder} disabled={isSaving} className="px-5 py-2 rounded-full bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition disabled:opacity-50">Discard</button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-5 py-2 rounded-full bg-[#303030] text-white text-xs font-bold hover:shadow-lg flex items-center gap-2 transition hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isSaving ? (
+                <>
+                  <iconify-icon icon="lucide:loader-2" width="14" class="animate-spin"></iconify-icon> Saving...
+                </>
+              ) : (
+                <>
+                  <iconify-icon icon="lucide:save" width="14"></iconify-icon> Save Recipe
+                </>
+              )}
+            </button>
           </div>
         </div>
-      </div>
 
-      {mode === 'list' ? (
-        <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-black">
-          <div className="max-w-6xl mx-auto py-6 px-4 md:px-8 space-y-6">
-
-            {/* Category Stats Header */}
-            <div className="flex items-center gap-4 text-xs text-gray-400 font-medium px-1">
-              <span>Showing {localRecipes.length} Items</span>
-              <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-              <span>{Object.keys(categorizedRecipes).length} Categories</span>
-            </div>
-
-            {(Object.entries(categorizedRecipes) as [string, Recipe[]][]).map(([category, recipes]) => {
-              const isExpanded = expandedCategories[category];
-              const sortedRecipes = [...recipes]; // We assume they are sorted by default or mapped order
-
-              return (
-                <div key={category} className="bg-white dark:bg-[#1C1C1E] rounded-xl border border-gray-200/60 dark:border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.02)] overflow-hidden">
-
-                  {/* Modern Category Header */}
-                  <div
-                    className="flex items-center justify-between px-6 py-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors border-b border-gray-100 dark:border-white/5"
-                    onClick={() => toggleCategory(category)}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="text-gray-400 transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
-                        <iconify-icon icon="lucide:chevron-down" width="18"></iconify-icon>
-                      </div>
-                      <div className="flex items-baseline gap-3">
-                        <h3 className="text-base font-bold text-gray-900 dark:text-white">{category}</h3>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 dark:bg-white/10 text-gray-500">{recipes.length} Items</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <button className="p-1.5 hover:text-[#007AFF] hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors" title="Add Item to Category">
-                        <iconify-icon icon="lucide:plus" width="16"></iconify-icon>
-                      </button>
-                      <button className="p-1.5 hover:text-gray-600 dark:hover:text-white rounded transition-colors">
-                        <iconify-icon icon="lucide:copy" width="16"></iconify-icon>
-                      </button>
-                      <button className="p-1.5 hover:text-gray-600 dark:hover:text-white rounded transition-colors">
-                        <iconify-icon icon="lucide:more-vertical" width="16"></iconify-icon>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Recipes List */}
-                  <AnimatePresence initial={false}>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        {sortedRecipes.map((r, index) => {
-                          const ingredientsList = r.ingredients.map(ri => getIngredient(ri.id)?.name).filter(Boolean).slice(0, 5).join(', ');
-                          const isPopular = (r.dailyVolume || 0) > 15; // Mock popular logic
-
-                          return (
-                            <div
-                              key={r.id}
-                              className="group relative flex items-center px-6 py-4 hover:bg-blue-50/30 dark:hover:bg-white/5 transition-colors border-b last:border-0 border-gray-50 dark:border-white/5"
-                            >
-                              {/* Drag Handle */}
-                              <div className="mr-4 text-gray-300 dark:text-gray-600 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity">
-                                <iconify-icon icon="lucide:grip-vertical" width="16"></iconify-icon>
-                              </div>
-
-                              {/* Selection Checkbox */}
-                              <div className="mr-4">
-                                <div
-                                  onClick={() => toggleSelection(r.id)}
-                                  className={`w-5 h-5 rounded border cursor-pointer transition-colors flex items-center justify-center ${selectedIds.includes(r.id) ? 'bg-[#007AFF] border-[#007AFF] text-white' : 'border-gray-300 dark:border-gray-600 hover:border-[#007AFF]'}`}
-                                >
-                                  <iconify-icon icon="lucide:check" width="12" class={selectedIds.includes(r.id) ? 'block' : 'hidden'}></iconify-icon>
-                                </div>
-                              </div>
-
-                              {/* Image */}
-                              <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-white/10 overflow-hidden relative border border-gray-200 dark:border-white/10 mr-4">
-                                {r.image ? (
-                                  <img src={r.image} className="w-full h-full object-cover" alt={r.name} />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                    <iconify-icon icon="lucide:image" width="16"></iconify-icon>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Content */}
-                              <div className="flex-1 min-w-0 pr-4">
-                                <h4 className="text-sm font-bold text-gray-900 dark:text-white truncate">{r.name}</h4>
-                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{ingredientsList || 'No ingredients listed'}</p>
-                              </div>
-
-                              {/* Tags */}
-                              <div className="flex items-center gap-2 mr-6">
-                                {isPopular && (
-                                  <span className="hidden md:inline-flex px-2 py-0.5 rounded-full bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 text-[10px] font-bold border border-orange-100 dark:border-orange-900/30">
-                                    Most Popular
-                                  </span>
-                                )}
-                                {/* Example 'Perk' or other tag */}
-                                {(r.margin > 50) && (
-                                  <span className="hidden md:inline-flex px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-[10px] font-bold border border-green-100 dark:border-green-900/30">
-                                    High Margin
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Price */}
-                              <div className="w-24 text-right mr-6">
-                                <span className="font-bold text-gray-900 dark:text-white text-sm">₱{r.price.toFixed(2)}</span>
-                              </div>
-
-                              {/* Actions */}
-                              <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => handleDuplicate(r.id)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-gray-500 transition-colors" title="Copy">
-                                  <iconify-icon icon="lucide:copy" width="16"></iconify-icon>
-                                </button>
-                                <button onClick={() => openCookModal(r.id, r.name)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-gray-500 transition-colors" title="Cook / History">
-                                  <iconify-icon icon="lucide:history" width="16"></iconify-icon>
-                                </button>
-                                <button onClick={() => handleEditRecipe(r.id)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-gray-500 transition-colors" title="Edit / More">
-                                  <iconify-icon icon="lucide:more-vertical" width="16"></iconify-icon>
-                                </button>
-                              </div>
-
-                            </div>
-                          );
-                        })}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        // BUILDER MODE - Matching Original Screenshot
-        <div className="flex-1">
-          {/* Mode Toggle Tabs */}
-          <div className="sticky top-[58px] md:top-16 z-10 bg-[#F2F2F7] dark:bg-black px-4 md:px-8 pt-6 pb-4">
-            <div className="max-w-6xl mx-auto">
-              <div className="inline-flex bg-gray-100 dark:bg-white/10 rounded-full p-1">
-                <button
-                  onClick={handleSwitchToList}
-                  className="px-6 py-2 text-sm font-medium rounded-full transition-all text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                >
-                  Menu List
-                </button>
-                <button
-                  className="px-6 py-2 text-sm font-medium rounded-full transition-all bg-white dark:bg-white/20 text-gray-900 dark:text-white shadow-sm"
-                >
-                  Recipe Builder
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid lg:grid-cols-12 gap-6 items-start pb-8 max-w-6xl mx-auto px-4 md:px-8">
-            {/* Left Column - Recipe Info & Ingredients */}
-            <div className="lg:col-span-7 space-y-5">
-              {/* Main Info Card */}
-              <div className="surface-opaque rounded-2xl p-5 space-y-4">
-                <div className="flex flex-row gap-4">
-                  <div className="shrink-0">
-                    <input type="file" id="builder-image-input" className="hidden" accept="image/*" onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) {
-                        const r = new FileReader();
-                        r.onload = (x) => setBuilder(prev => ({ ...prev, image: x.target?.result as string }));
-                        r.readAsDataURL(f);
-                      }
-                    }} />
-                    <label htmlFor="builder-image-input" className="w-28 h-28 rounded-xl bg-gray-100 dark:bg-white/10 border border-dashed border-gray-300 dark:border-white/20 flex items-center justify-center cursor-pointer hover:bg-gray-200 dark:hover:bg-white/15 transition-colors overflow-hidden">
-                      {builder.image ? (
-                        <img src={builder.image} className="w-full h-full object-cover" alt="Recipe" />
+        {/* Builder Content Grid */}
+        <div className="flex-1 overflow-hidden px-6 pb-6 pt-6 w-full max-w-[1920px] mx-auto">
+          <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            {/* LEFT COLUMN: Inputs & Ingredients (8 cols) */}
+            <div className="lg:col-span-8 flex flex-col gap-6 h-full min-h-0 overflow-hidden">
+              {/* Basic Info */}
+              <div className="flex-none soft-card p-6 shadow-sm">
+                <div className="flex flex-col md:flex-row gap-8">
+                  {/* Left: Image Upload - Larger */}
+                  <div className="flex-shrink-0">
+                    <div className="relative w-full md:w-56 h-56 rounded-[2rem] bg-gray-50 border border-gray-200 overflow-hidden group shadow-inner">
+                      {localRecipe.image ? (
+                        <img src={localRecipe.image} className="w-full h-full object-cover" />
                       ) : (
-                        <iconify-icon icon="lucide:camera" width="24" class="text-gray-400"></iconify-icon>
+                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 gap-2">
+                          <iconify-icon icon="lucide:image" width="48"></iconify-icon>
+                          <span className="text-xs font-medium">Upload Photo</span>
+                        </div>
                       )}
-                    </label>
-                  </div>
-                  <div className="flex-1 space-y-3">
-                    <div>
-                      <label className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Recipe Name</label>
-                      <input type="text" value={builder.name} onChange={e => setBuilder({ ...builder, name: e.target.value })} className="ios-input glass-input w-full mt-1 py-2 px-3 text-sm font-semibold text-gray-900 dark:text-white" placeholder="Garlic Chicken Rice Meal" />
+
+                      {/* Upload Overlay */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer backdrop-blur-sm">
+                        <iconify-icon icon="lucide:upload" class="text-white mb-2" width="32"></iconify-icon>
+                        <span className="text-white text-xs font-bold">Change Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setLocalRecipe({ ...localRecipe, image: reader.result as string });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Daily Orders (Est.)</label>
-                      <input type="number" value={builder.dailyVolume} onChange={e => setBuilder({ ...builder, dailyVolume: parseInt(e.target.value) || 0 })} className="ios-input glass-input w-full mt-1 py-2 px-3 text-sm text-gray-900 dark:text-white" placeholder="15" />
-                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Category</label>
-                    <select value={builder.category} onChange={e => setBuilder({ ...builder, category: e.target.value })} className="ios-input glass-input w-full mt-1 py-2.5 px-3 text-sm text-gray-900 dark:text-white">
-                      <option value="">Select...</option>
-                      <option value="Main Course">Main Course</option>
-                      <option value="Appetizers">Appetizers</option>
-                      <option value="Beverages">Beverages</option>
-                      <option value="Dessert">Dessert</option>
-                      <option value="Soup & Salad">Soup & Salad</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Yield (Servings)</label>
-                    <div className="ios-input glass-input mt-1 px-1 py-1 flex items-center justify-between h-[40px]">
-                      <button type="button" onClick={() => setBuilder(prev => ({ ...prev, batchSize: Math.max(1, prev.batchSize - 1) }))} className="w-8 h-full rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500"><iconify-icon icon="lucide:minus" width="14"></iconify-icon></button>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{builder.batchSize}</span>
-                      <button type="button" onClick={() => setBuilder(prev => ({ ...prev, batchSize: prev.batchSize + 1 }))} className="w-8 h-full rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500"><iconify-icon icon="lucide:plus" width="14"></iconify-icon></button>
+
+                  {/* Right: Form Fields */}
+                  <div className="flex-1 flex flex-col gap-5 justify-center">
+
+                    {/* Row 1: Name */}
+                    <div className="w-full">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Recipe Name</label>
+                      <input
+                        type="text"
+                        value={localRecipe.name}
+                        onChange={(e) => setLocalRecipe({ ...localRecipe, name: e.target.value })}
+                        className="soft-input w-full font-bold text-lg py-3"
+                        placeholder="e.g. Garlic Chicken Rice Meal"
+                      />
                     </div>
+
+                    {/* Row 2: Description */}
+                    <div className="w-full">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Description / Note</label>
+                      <input
+                        type="text"
+                        value={localRecipe.description || ''}
+                        onChange={(e) => setLocalRecipe({ ...localRecipe, description: e.target.value })}
+                        className="soft-input w-full font-medium text-sm py-3"
+                        placeholder="Brief description or notes..."
+                      />
+                    </div>
+
+                    {/* Row 3: Category & Yield */}
+                    <div className="grid grid-cols-2 gap-5">
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Category</label>
+                        <CustomSelect
+                          value={localRecipe.category}
+                          onChange={(val) => setLocalRecipe({ ...localRecipe, category: val })}
+                          options={allCategories}
+                          className="soft-input w-full font-medium text-sm py-3"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Yield (Servings)</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={localRecipe.batchSize || 1}
+                            onChange={(e) => setLocalRecipe({ ...localRecipe, batchSize: parseFloat(e.target.value) })}
+                            className="soft-input w-full font-bold text-sm py-3"
+                            placeholder="1"
+                          />
+                          <span className="absolute right-4 top-3.5 text-xs font-bold text-gray-400 pointer-events-none">srv</span>
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
               </div>
 
-              {/* INGREDIENTS (FOOD) Section */}
-              <div className="surface-opaque rounded-2xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-white/10">
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Ingredients (Food)</span>
-                  <button onClick={() => openModal('picker', undefined, 'ingredient')} className="text-xs font-bold text-[#007AFF] flex items-center gap-1">
-                    <iconify-icon icon="lucide:plus" width="14"></iconify-icon>Add
-                  </button>
-                </div>
-                {/* Table Header */}
-                <div className="grid grid-cols-12 px-5 py-2 border-b border-gray-50 dark:border-white/5 text-[10px] font-medium text-gray-400 uppercase">
-                  <div className="col-span-5">Item</div>
-                  <div className="col-span-4 text-center">Qty. Needed</div>
-                  <div className="col-span-3 text-right">Cost</div>
-                </div>
-                {/* Ingredients List */}
-                {builder.ingredients.filter(ri => {
-                  const ing = getIngredient(ri.id);
-                  return ing && ing.type !== 'other';
-                }).length === 0 ? (
-                  <div className="p-6 text-center text-sm text-gray-400">No food ingredients added</div>
-                ) : (
-                  <div className="divide-y divide-gray-50 dark:divide-white/5">
-                    {builder.ingredients.map((ri) => {
-                      const ing = getIngredient(ri.id);
-                      if (!ing || ing.type === 'other') return null;
-                      const lineCost = (ing.cost || 0) * ri.qty;
-                      return (
-                        <div key={ri.id} className="grid grid-cols-12 items-center px-5 py-3 hover:bg-gray-50/50 dark:hover:bg-white/5 group">
-                          <div className="col-span-5">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">{ing.name}</p>
-                            <p className="text-[11px] text-gray-400">₱{(ing.cost || 0).toFixed(3)} / {ing.unit}</p>
-                          </div>
-                          <div className="col-span-4 flex items-center justify-center gap-1">
-                            <input type="number" value={ri.qty} onChange={e => {
-                              const val = parseFloat(e.target.value) || 0;
-                              setBuilder(prev => ({ ...prev, ingredients: prev.ingredients.map(i => i.id === ri.id ? { ...i, qty: val } : i) }));
-                            }} className="w-16 text-center text-sm font-semibold bg-gray-100 dark:bg-white/10 rounded-lg py-1.5 text-gray-900 dark:text-white" step="1" />
-                            <span className="text-xs text-gray-400">{ing.unit}</span>
-                          </div>
-                          <div className="col-span-3 flex items-center justify-end gap-2">
-                            <span className="text-sm font-semibold text-gray-900 dark:text-white">₱{lineCost.toFixed(2)}</span>
-                            <button onClick={() => setBuilder(prev => ({ ...prev, ingredients: prev.ingredients.filter(i => i.id !== ri.id) }))} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500">
-                              <iconify-icon icon="lucide:trash-2" width="14"></iconify-icon>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+              {/* Ingredients List */}
+              <div className="flex-1 soft-card p-0 flex flex-col overflow-hidden shadow-sm relative">
+                <div className="flex-none p-5 pb-2 flex justify-between items-center">
+                  <div className="flex gap-2 bg-gray-100 p-1 rounded-full">
+                    <button
+                      onClick={() => setActiveTab('ingredient')}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${activeTab === 'ingredient' ? 'bg-white shadow-sm text-[#303030]' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                      Ingredients
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('other')}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${activeTab === 'other' ? 'bg-white shadow-sm text-[#303030]' : 'text-gray-400 hover:text-gray-600'}`}
+                    >
+                      Packaging
+                    </button>
                   </div>
-                )}
-              </div>
 
-              {/* PACKAGING & OTHER Section */}
-              <div className="surface-opaque rounded-2xl overflow-hidden">
-                <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-white/10">
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Packaging & Other</span>
-                  <button onClick={() => openModal('picker', undefined, 'other')} className="text-xs font-bold text-[#007AFF] flex items-center gap-1">
-                    <iconify-icon icon="lucide:plus" width="14"></iconify-icon>Add
+                  <button className="text-xs font-bold bg-[#303030] text-white px-4 py-2 rounded-full flex items-center gap-1 hover:shadow-lg transition transform active:scale-95">
+                    <iconify-icon icon="lucide:plus" width="14"></iconify-icon> Add Item
                   </button>
                 </div>
-                {/* Other Items List */}
-                {builder.ingredients.filter(ri => {
-                  const ing = getIngredient(ri.id);
-                  return ing && ing.type === 'other';
-                }).length === 0 ? (
-                  <div className="p-6 text-center text-sm text-gray-400">No packaging items added</div>
-                ) : (
-                  <div className="divide-y divide-gray-50 dark:divide-white/5">
-                    {builder.ingredients.map((ri) => {
-                      const ing = getIngredient(ri.id);
-                      if (!ing || ing.type !== 'other') return null;
-                      const lineCost = (ing.cost || 0) * ri.qty;
+
+                <div className="px-5 py-2 grid grid-cols-[1fr_8rem_8rem] gap-4 bg-[#F9F9F7]/50 border-b border-gray-100 mt-2">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">DETAILS</span>
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest text-right pr-6">QUANTITY</span>
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest text-right pr-8">COST</span>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1">
+                  {paginatedIngredients.length > 0 ? (
+                    paginatedIngredients.map((ri: any, idx: number) => {
+                      const ingDef = data.ingredients.find(i => i.id === ri.id);
                       return (
-                        <div key={ri.id} className="grid grid-cols-12 items-center px-5 py-3 hover:bg-gray-50/50 dark:hover:bg-white/5 group">
-                          <div className="col-span-5">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">{ing.name}</p>
-                            <p className="text-[11px] text-gray-400">₱{(ing.cost || 0).toFixed(2)} / {ing.unit}</p>
+                        <div key={idx} className="grid grid-cols-[1fr_8rem_8rem] gap-4 items-center bg-white hover:bg-gray-50 p-2 rounded-lg border border-gray-100 group transition">
+
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-[#303030] truncate">{ingDef?.name || 'Unknown Item'}</p>
                           </div>
-                          <div className="col-span-4 flex items-center justify-center gap-1">
-                            <input type="number" value={ri.qty} onChange={e => {
-                              const val = parseFloat(e.target.value) || 0;
-                              setBuilder(prev => ({ ...prev, ingredients: prev.ingredients.map(i => i.id === ri.id ? { ...i, qty: val } : i) }));
-                            }} className="w-16 text-center text-sm font-semibold bg-gray-100 dark:bg-white/10 rounded-lg py-1.5 text-gray-900 dark:text-white" step="1" />
-                            <span className="text-xs text-gray-400">{ing.unit}</span>
+
+                          <div className="flex items-center justify-end pr-2">
+                            <div className="flex items-center bg-white border border-gray-200 rounded px-2 py-0.5 focus-within:border-[#FCD34D] transition w-24">
+                              <input
+                                type="number"
+                                className="w-full outline-none text-right text-xs font-bold text-[#303030] bg-transparent"
+                                value={ri.qty}
+                                onChange={(e) => {
+                                  const realIdx = localRecipe.ingredients.findIndex((x: any) => x.id === ri.id);
+                                  if (realIdx > -1) {
+                                    const newIngs = [...localRecipe.ingredients];
+                                    newIngs[realIdx].qty = parseFloat(e.target.value);
+                                    setLocalRecipe({ ...localRecipe, ingredients: newIngs });
+                                  }
+                                }}
+                              />
+                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider ml-1 flex-shrink-0">{ingDef?.unit || 'u'}</span>
+                            </div>
                           </div>
-                          <div className="col-span-3 flex items-center justify-end gap-2">
-                            <span className="text-sm font-semibold text-gray-900 dark:text-white">₱{lineCost.toFixed(2)}</span>
-                            <button onClick={() => setBuilder(prev => ({ ...prev, ingredients: prev.ingredients.filter(i => i.id !== ri.id) }))} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500">
-                              <iconify-icon icon="lucide:trash-2" width="14"></iconify-icon>
+
+                          <div className="flex items-center justify-end gap-3">
+                            <span className="text-xs font-bold text-gray-600">
+                              ₱{((ingDef?.cost || 0) * (ri.qty || 0)).toFixed(2)}
+                            </span>
+                            <button className="opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded-full text-gray-300 hover:text-red-500 hover:bg-red-50" onClick={() => {
+                              const newIngs = localRecipe.ingredients.filter((x: any) => x.id !== ri.id);
+                              setLocalRecipe({ ...localRecipe, ingredients: newIngs });
+                            }}>
+                              <iconify-icon icon="lucide:x" width="12"></iconify-icon>
                             </button>
                           </div>
                         </div>
-                      );
-                    })}
+                      )
+                    })
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-gray-300 gap-2">
+                      <iconify-icon icon="lucide:shopping-basket" width="20" class="opacity-20"></iconify-icon>
+                      <p className="text-[10px] font-medium">No ingredients added.</p>
+                    </div>
+                  )}
+                </div>
+                {totalPages > 1 && (
+                  <div className="p-3 border-t border-gray-100 bg-white flex justify-center items-center rounded-b-xl">
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setIngPage(p => Math.max(1, p - 1))} disabled={ingPage === 1} className="text-gray-400 hover:text-[#303030] disabled:opacity-30"><iconify-icon icon="lucide:chevron-left" width="14"></iconify-icon></button>
+                      <span className="text-[10px] font-bold text-gray-400">Page {ingPage} / {totalPages}</span>
+                      <button onClick={() => setIngPage(p => Math.min(totalPages, p + 1))} disabled={ingPage === totalPages} className="text-gray-400 hover:text-[#303030] disabled:opacity-30"><iconify-icon icon="lucide:chevron-right" width="14"></iconify-icon></button>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Right Column - Cost Breakdown & Pricing */}
-            <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-20 lg:self-start">
-              {/* Cost Breakdown (Per Serving) */}
-              <div className="surface-opaque rounded-2xl p-5">
-                <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-4">Cost Breakdown (Per Serving)</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Ingredients</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">₱{(builder.ingredients.filter(ri => getIngredient(ri.id)?.type !== 'other').reduce((sum, ri) => sum + (getIngredient(ri.id)?.cost || 0) * ri.qty, 0) / (builder.batchSize || 1)).toFixed(2)}</span>
+            {/* RIGHT COLUMN: Cost Analysis Receipt (4 cols) - Added min-h-0 for scroll fix */}
+            <div className="lg:col-span-4 h-full min-h-0 flex flex-col pt-0 pb-0">
+              {/* The Dark Receipt - COMPACT */}
+              <div className="bg-[#1C1917] rounded-sm shadow-2xl overflow-hidden flex flex-col h-full border border-[#333] font-mono text-gray-200 relative">
+
+                {/* Header */}
+                <div className="text-center pt-6 pb-4 flex-none">
+                  <div className="flex justify-center items-center gap-2 mb-1 opacity-50">
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Packaging & Other</span>
-                    <span className="font-semibold text-gray-900 dark:text-white">₱{(builder.ingredients.filter(ri => getIngredient(ri.id)?.type === 'other').reduce((sum, ri) => sum + (getIngredient(ri.id)?.cost || 0) * ri.qty, 0) / (builder.batchSize || 1)).toFixed(2)}</span>
-                  </div>
-                  <div className="h-px bg-gray-100 dark:bg-white/10 my-2"></div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-300 font-medium">Total Unit Cost</span>
-                    <span className="font-bold text-gray-900 dark:text-white text-base">₱{(calculateRecipeCost(builder.ingredients) / (builder.batchSize || 1)).toFixed(2)}</span>
-                  </div>
+                  <h2 className="text-xl font-bold text-white mb-0.5">Cost Analysis</h2>
                 </div>
-              </div>
 
-              {/* Pricing Strategy */}
-              {(() => {
-                // Calculate prices based on user's spreadsheet formula: =ROUNDUP(cost / (1-margin), 0)
-                const unitCost = calculateRecipeCost(builder.ingredients) / (builder.batchSize || 1);
-                const priceBeforeVAT = Math.ceil(unitCost / (1 - builder.margin / 100)); // ROUNDUP to whole number
-                const vatRate = data.settings.isVatRegistered ? 0.12 : 0;
-                const vatAmount = priceBeforeVAT * vatRate;
-                const regularSellingPrice = priceBeforeVAT + vatAmount; // Price with VAT
-                const profitPerOrder = priceBeforeVAT - unitCost;
+                <div className="border-b border-dashed border-gray-800 mb-4 mx-4 flex-none"></div>
 
-                return (
-                  <div className="surface-opaque rounded-2xl p-5">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Pricing Strategy</h3>
-                      <span className="text-sm font-bold text-[#007AFF]">{builder.margin}% Margin</span>
+                {/* Scrollable Body - with minimal padding */}
+                <div className="flex-1 overflow-y-auto px-6 pb-6 no-scrollbar">
+
+                  {/* Costs */}
+                  <div className="space-y-2 text-sm font-medium mb-5">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Ingredients Cost</span>
+                      <span className="font-bold">₱{ingredientsCost.toFixed(2)}</span>
                     </div>
-
-                    {/* Margin Slider */}
-                    <input
-                      type="range" min="10" max="80" step="1" value={builder.margin}
-                      onChange={e => setBuilder({ ...builder, margin: parseInt(e.target.value) })}
-                      style={{
-                        WebkitAppearance: 'none',
-                        appearance: 'none',
-                        width: '100%',
-                        height: '8px',
-                        borderRadius: '9999px',
-                        background: `linear-gradient(to right, #007AFF 0%, #007AFF ${((builder.margin - 10) / 70) * 100}%, #e5e5e5 ${((builder.margin - 10) / 70) * 100}%, #e5e5e5 100%)`,
-                        cursor: 'pointer',
-                        marginBottom: '16px'
-                      }}
-                      className="slider-styled"
-                    />
-
-                    {/* Per Order Calculations */}
-                    <div className="space-y-2 mb-4 mt-5 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Price before VAT</span>
-                        <span className="font-medium text-gray-900 dark:text-white">₱{priceBeforeVAT.toFixed(2)}</span>
-                      </div>
-                      {data.settings.isVatRegistered && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">VAT (12%)</span>
-                          <span className="font-medium text-gray-900 dark:text-white">₱{vatAmount.toFixed(2)}</span>
-                        </div>
-                      )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Packaging & Other</span>
+                      <span className="font-bold">₱{packagingCost.toFixed(2)}</span>
                     </div>
-
-                    {/* Regular Selling Price */}
-                    <div className="text-center mb-4 py-3 bg-[#007AFF]/10 rounded-xl">
-                      <p className="text-xs text-gray-500 mb-1">Regular Selling Price</p>
-                      <p className="text-4xl font-bold text-gray-900 dark:text-white">₱{regularSellingPrice.toFixed(2)}</p>
-                      {data.settings.isVatRegistered && (
-                        <p className="text-[10px] text-gray-400 mt-1">VAT Inclusive</p>
-                      )}
+                    <div className="flex justify-between text-white mt-1 pt-2 border-t border-gray-800">
+                      <span className="font-bold">Total Unit Cost</span>
+                      <span className="font-bold text-base">₱{totalUnitCost.toFixed(2)}</span>
                     </div>
-
-                    {/* Profit Per Serving */}
-                    <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] font-bold text-green-600 uppercase tracking-wide">Profit Per Order</p>
-                        <p className="text-2xl font-bold text-green-600">₱{profitPerOrder.toFixed(2)}</p>
-                      </div>
-                      <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                        <iconify-icon icon="lucide:trending-up" width="20" class="text-green-600"></iconify-icon>
-                      </div>
-                    </div>
-
-                    {/* Note about rounding */}
-                    <p className="text-[11px] text-gray-400 mt-4 leading-relaxed">
-                      <span className="font-semibold text-gray-500">Note:</span> The selling price is automatically rounded up for easier pricing. The actual margin may be slightly higher than your target.
-                    </p>
                   </div>
-                );
-              })()}
 
-              {/* Discount Impact Accordion */}
-              <div className="surface-opaque rounded-2xl overflow-hidden">
-                <button
-                  onClick={() => setShowDiscountDetails(!showDiscountDetails)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left"
-                >
-                  <span className="text-sm font-medium text-gray-500">VAT & Discount Breakdown</span>
-                  <iconify-icon icon={showDiscountDetails ? "lucide:chevron-up" : "lucide:chevron-down"} width="16" class="text-gray-400"></iconify-icon>
-                </button>
-                {showDiscountDetails && (() => {
-                  const unitCost = calculateRecipeCost(builder.ingredients) / (builder.batchSize || 1);
-                  const priceBeforeVAT = Math.ceil(unitCost / (1 - builder.margin / 100)); // ROUNDUP to whole number
-                  const vatRate = data.settings.isVatRegistered ? 0.12 : 0;
-                  const vatAmount = priceBeforeVAT * vatRate;
-                  const regularSellingPrice = priceBeforeVAT + vatAmount;
-                  const pwdDiscountRate = 0.20; // 20% discount for PWD/Senior
-                  const pwdDiscountAmount = priceBeforeVAT * pwdDiscountRate;
-                  const pwdFinalPrice = priceBeforeVAT - pwdDiscountAmount;
-                  const profitAfterDiscount = pwdFinalPrice - unitCost;
-                  const profitDifference = priceBeforeVAT - pwdFinalPrice;
+                  <div className="border-b border-dashed border-gray-800 w-full mb-5"></div>
 
-                  return (
-                    <div className="px-5 pb-4 space-y-3 text-sm">
-                      {/* VAT Breakdown */}
-                      {data.settings.isVatRegistered && (
-                        <div className="pb-3 border-b border-gray-100 dark:border-white/10">
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">VAT Breakdown</p>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-gray-500">Price before VAT:</span>
-                            <span className="text-gray-900 dark:text-white">₱{priceBeforeVAT.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-gray-500">VAT (12%):</span>
-                            <span className="text-gray-900 dark:text-white">₱{vatAmount.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between font-semibold">
-                            <span className="text-gray-600 dark:text-gray-300">Regular selling price:</span>
-                            <span className="text-gray-900 dark:text-white">₱{regularSellingPrice.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      )}
+                  {/* Slider Section */}
+                  <div className="mb-5">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Target Margin</span>
+                      <span className="text-sm font-bold text-[#FCD34D]">{targetMargin}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="90"
+                      value={targetMargin}
+                      onChange={(e) => handleMarginChange(parseInt(e.target.value))}
+                      className="w-full h-1 rounded-lg appearance-none cursor-pointer bg-gray-700 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#FCD34D] [&::-webkit-slider-thumb]:mt-[-6px]"
+                      style={{
+                        background: `linear-gradient(to right, #FCD34D 0%, #FCD34D ${(targetMargin / 90) * 100}%, #374151 ${(targetMargin / 90) * 100}%, #374151 100%)`
+                      }}
+                    />
+                  </div>
 
-                      {/* PWD/Senior Discount */}
-                      <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">With Discount (PWD/Senior - 20%)</p>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-gray-500">VAT-Exempt Price:</span>
-                          <span className="text-gray-900 dark:text-white">₱{priceBeforeVAT.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-gray-500">Discount (20%):</span>
-                          <span className="text-red-500">-₱{pwdDiscountAmount.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between font-semibold">
-                          <span className="text-gray-600 dark:text-gray-300">Discounted price:</span>
-                          <span className="text-green-600">₱{pwdFinalPrice.toFixed(2)}</span>
-                        </div>
-                        <div className="h-px bg-gray-100 dark:bg-white/10 my-2"></div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-gray-500">Profit (after discount):</span>
-                          <span className="text-green-600">₱{profitAfterDiscount.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-500">Profit difference (vs regular):</span>
-                          <span className="text-orange-500">₱{profitDifference.toFixed(2)}</span>
-                        </div>
+                  <div className="border-b border-dashed border-gray-800 w-full mb-5"></div>
+
+                  {/* VAT info */}
+                  <div className="space-y-2 text-sm font-medium mb-5">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Price before VAT</span>
+                      <span className="text-gray-400">₱{priceBeforeVAT.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">VAT (12%)</span>
+                      <span className="text-gray-400">₱{vatAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Selling Price - Big */}
+                  <div className="border-t border-gray-800 py-4 mb-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">REGULAR SELLING PRICE</span>
+                    </div>
+                    <div className="flex flex-col items-start group">
+                      <div className="flex items-center text-4xl font-bold text-white tracking-tighter">
+                        <span className="mr-1 text-2xl text-gray-600">₱</span>
+                        <input
+                          type="number"
+                          value={localRecipe.price}
+                          onChange={(e) => handlePriceChange(parseFloat(e.target.value))}
+                          className="bg-transparent text-gray-400 text-left w-36 outline-none border-b border-transparent group-hover:border-gray-700 focus:border-white transition-colors"
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mt-1">VAT INCLUSIVE</span>
+                    </div>
+                  </div>
+
+                  <div className="border-b border-dashed border-gray-800 w-full mb-5"></div>
+
+                  {/* Profit Card */}
+                  <div className="bg-[#1C1C1E] border border-gray-800 rounded-lg p-3 flex justify-between items-center mb-5">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">PROFIT PER ORDER</span>
+                    <div className="flex items-center gap-2 text-[#10B981]">
+                      <iconify-icon icon="lucide:trending-up" width="14"></iconify-icon>
+                      <span className="text-xl font-bold text-[#10B981]">₱{simpleProfit.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-gray-600 italic text-center mb-5 px-2 leading-relaxed">
+                    The selling price is automatically rounded. Actual margin: {currentMargin.toFixed(1)}%
+                  </p>
+
+                  <div className="border-b border-dashed border-gray-800 w-full mb-3"></div>
+
+                  {/* Breakdown Collapsible */}
+                  <details className="group">
+                    <summary className="flex justify-between items-center cursor-pointer text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-300 transition list-none mb-3">
+                      <span>VAT & Discount Breakdown</span>
+                      <iconify-icon icon="lucide:chevron-down" class="group-open:rotate-180 transition-transform"></iconify-icon>
+                    </summary>
+                    <div className="space-y-2 text-xs font-medium animate-fade-in pl-2 border-l border-gray-800 text-gray-400">
+                      <div className="flex justify-between">
+                        <span>VAT-Exempt Price</span>
+                        <span>₱{vatExemptPrice.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>PWD/Senior Disc. (20%)</span>
+                        <span>-₱{pwdDiscount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-white font-bold mt-1">
+                        <span>Discounted Price</span>
+                        <span>₱{discountedPrice.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-[#10B981] font-bold">
+                        <span>Profit (Discounted)</span>
+                        <span>₱{profitDiscounted.toFixed(2)}</span>
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
+                  </details>
 
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => { resetBuilder(); setSelectedIds([]); }} className="w-full py-3.5 text-sm font-semibold text-gray-500 bg-gray-100 dark:bg-white/10 rounded-xl hover:bg-gray-200 dark:hover:bg-white/15 active-scale">
-                  Cancel
-                </button>
-                <button onClick={handleSave} className="w-full bg-[#007AFF] text-white py-3.5 rounded-xl text-sm font-semibold active-scale shadow-lg shadow-blue-200 dark:shadow-none">
-                  Save Recipe
-                </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      )}
+      </div>
+
+
+    );
+  }
+
+  // LIST Grid View
+  return (
+    <div id="view-recipes" className="flex-1 overflow-y-auto no-scrollbar pb-12 animate-fade-in text-[#303030] p-6 lg:p-8 space-y-8">
+
+      {/* Header + Filters */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex bg-[#F2F2F0] p-1 rounded-full border border-gray-200/50 overflow-x-auto max-w-full no-scrollbar">
+          {/* "All Items" Button */}
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className={`px-5 py-2 rounded-full text-xs font-bold flex-shrink-0 transition ${selectedCategory === null ? 'bg-[#303030] text-white' : 'text-gray-500 hover:bg-white/50'
+              }`}
+          >
+            All Items
+          </button>
+          {/* Dynamic Category Buttons */}
+          {allCategories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-5 py-2 rounded-full text-xs font-bold flex-shrink-0 transition ${selectedCategory === cat ? 'bg-[#303030] text-white' : 'text-gray-500 hover:bg-white/50'
+                }`}
+            >
+              {cat}
+            </button>
+          ))}
+          <button
+            onClick={() => openPrompt("Add Category", "New category name:", (val) => addRecipeCategory(val))}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white ml-2 flex-shrink-0 text-gray-400 hover:text-[#303030] transition hover:shadow-sm"
+            title="Add Category"
+          >
+            <iconify-icon icon="lucide:plus" width="14"></iconify-icon>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:flex-none">
+            <iconify-icon icon="lucide:search" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" width="16"></iconify-icon>
+            <input
+              type="text"
+              placeholder="Search recipes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="soft-input rounded-full pl-6 pr-10 py-2.5"
+            />
+          </div>
+          <button onClick={toggleBuilder} className="bg-[#303030] text-white px-6 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 hover:shadow-lg transition">
+            <iconify-icon icon="lucide:plus" width="16"></iconify-icon> New Recipe
+          </button>
+        </div>
+      </div>
+
+      {/* Recipe Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+        {filteredRecipes.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-gray-400">
+            {data.recipes.length === 0
+              ? "No recipes found. Create one to get started!"
+              : `No recipes match "${selectedCategory || 'none'}${searchQuery ? ` or "${searchQuery}"` : ''}". Try a different filter.`
+            }
+          </div>
+        ) : (
+          filteredRecipes.map(recipe => {
+            const { cost, margin, status } = getRecipeStats(recipe);
+            const isMenuOpen = activeMenuId === recipe.id;
+
+            return (
+              <div key={recipe.id} className="soft-card p-6 hover:shadow-lg transition-all group cursor-default">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="flex items-start gap-4 w-full">
+                    {/* Updated Image Container Size */}
+                    <div className="w-20 h-20 flex-shrink-0 rounded-2xl bg-white shadow-sm flex items-center justify-center text-2xl border border-[#FCD34D]/10 overflow-hidden relative">
+                      {recipe.image ? <img src={recipe.image} className="w-full h-full object-cover" /> : '🍽️'}
+                      {/* Overlay Gradient for depth */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-lg leading-tight text-[#303030] group-hover:text-orange-500 transition line-clamp-2">{recipe.name}</h3>
+                      <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md mt-1 inline-block bg-gray-100 text-gray-500`}>
+                        {recipe.category}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Menu */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenuId(isMenuOpen ? null : recipe.id);
+                      }}
+                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${isMenuOpen ? 'bg-gray-200 text-[#303030]' : 'text-gray-300 hover:text-[#303030] hover:bg-gray-100'}`}
+                    >
+                      <iconify-icon icon="lucide:more-horizontal" width="20"></iconify-icon>
+                    </button>
+
+                    {isMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)}></div>
+                        <div className="absolute right-0 top-8 z-20 w-32 bg-white border border-gray-100 rounded-xl shadow-xl py-1 animate-in fade-in zoom-in-95 duration-200 flex flex-col text-left overflow-hidden">
+                          <button
+                            onClick={() => { setActiveMenuId(null); setSelectedRecipeId(recipe.id); setViewMode('builder'); }}
+                            className="px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors w-full text-left"
+                          >
+                            <iconify-icon icon="lucide:edit-2" width="14"></iconify-icon>
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              openConfirm("Duplicate Recipe", `Copy ${recipe.name}?`, () => duplicateRecipe(recipe.id));
+                            }}
+                            className="px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors w-full text-left"
+                          >
+                            <iconify-icon icon="lucide:copy" width="14"></iconify-icon>
+                            Clone
+                          </button>
+                          <div className="h-px bg-gray-50 my-1"></div>
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
+                              openConfirm("Delete Recipe", `Delete ${recipe.name}?`, () => deleteRecipe(recipe.id), true);
+                            }}
+                            className="px-4 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 flex items-center gap-2 transition-colors w-full text-left"
+                          >
+                            <iconify-icon icon="lucide:trash-2" width="14"></iconify-icon>
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-4 mb-8">
+                  <div className="flex-1 bg-white/60 rounded-xl p-3 border border-gray-100">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Selling Price</p>
+                    <p className="font-bold text-[#303030] text-lg">₱{(recipe.price || 0).toFixed(0)}</p>
+                  </div>
+                  <div className="flex-1 bg-white/60 rounded-xl p-3 border border-gray-100">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Plate Cost</p>
+                    <p className="font-bold text-[#303030] text-lg">₱{cost.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-[#FCD34D]/10 pt-4">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${status === 'Excellent' ? 'bg-[#10B981]'
+                      : status === 'Good' ? 'bg-[#FCD34D]' : 'bg-red-500'}`}></span>
+                    <span className="text-xs font-medium text-gray-500">{status}</span>
+                  </div>
+                  <span className="text-xl font-bold text-[#303030] opacity-80">{margin.toFixed(0)}%</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="flex justify-between items-center bg-[#F9F9F7] p-4 rounded-xl text-xs text-gray-400">
+        <p>Showing <strong>{filteredRecipes.length}</strong> of {data.recipes.length} recipes</p>
+      </div>
+
     </div>
   );
 };

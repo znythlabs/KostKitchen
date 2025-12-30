@@ -250,7 +250,7 @@ export const TourGuide = () => {
                 {/* Highlight Ring */}
                 {!isCenter && targetRect && targetRect.width > 0 && (
                     <motion.div
-                        className="absolute border-2 border-[#007AFF] rounded-xl shadow-[0_0_20px_rgba(0,122,255,0.5)] pointer-events-none"
+                        className="absolute border-2 border-[#FCD34D] rounded-xl shadow-[0_0_20px_rgba(252,211,77,0.5)] pointer-events-none"
                         initial={isFirstHighlight ? {
                             left: targetRect.left - 8,
                             top: targetRect.top - 8,
@@ -281,10 +281,10 @@ export const TourGuide = () => {
                 className="absolute pointer-events-auto bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl border border-gray-100 dark:border-white/10 overflow-hidden flex flex-col max-w-[calc(100vw-32px)]"
                 style={popoverStyle}
             >
-                <div className="h-1.5 sm:h-2 bg-gradient-to-r from-blue-500 to-purple-500 w-full" />
+                <div className="h-1.5 sm:h-2 bg-gradient-to-r from-[#FCD34D] to-orange-400 w-full" />
                 <div className="p-4 sm:p-5 pb-5 sm:pb-6">
                     <div className="flex justify-between items-start mb-3 sm:mb-4">
-                        <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-500">
+                        <div className="w-10 h-10 rounded-full bg-[#FCD34D]/10 dark:bg-[#FCD34D]/20 flex items-center justify-center text-[#FCD34D]">
                             {isSearching ? (
                                 <iconify-icon icon="lucide:loader-2" width="20" class="animate-spin"></iconify-icon>
                             ) : (
@@ -306,7 +306,7 @@ export const TourGuide = () => {
                             {TOUR_STEPS.map((_, i) => (
                                 <div
                                     key={i}
-                                    className={`w-1.5 h-1.5 rounded-full transition-colors ${i === currentStepIndex ? 'bg-blue-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+                                    className={`w-1.5 h-1.5 rounded-full transition-colors ${i === currentStepIndex ? 'bg-[#FCD34D]' : 'bg-gray-200 dark:bg-gray-700'}`}
                                 />
                             ))}
                         </div>
@@ -322,7 +322,7 @@ export const TourGuide = () => {
                             )}
                             <button
                                 onClick={nextStep}
-                                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-[#007AFF] hover:bg-blue-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm active:scale-95 transition-all"
+                                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-[#FCD34D] hover:opacity-90 text-[#303030] text-xs sm:text-sm font-bold rounded-xl shadow-sm active:scale-95 transition-all"
                             >
                                 {currentStepIndex === TOUR_STEPS.length - 1 ? 'Finish' : 'Next'}
                             </button>

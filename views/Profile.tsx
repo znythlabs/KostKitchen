@@ -26,8 +26,8 @@ export const Profile = () => {
     e.preventDefault();
     if (!newPassword) return;
     if (newPassword.length < 6) {
-        setStatusMsg({ type: 'error', text: 'Password must be at least 6 characters' });
-        return;
+      setStatusMsg({ type: 'error', text: 'Password must be at least 6 characters' });
+      return;
     }
 
     setIsLoading(true);
@@ -37,16 +37,16 @@ export const Profile = () => {
 
     setIsLoading(false);
     if (error) {
-        setStatusMsg({ type: 'error', text: error.message });
+      setStatusMsg({ type: 'error', text: error.message });
     } else {
-        setStatusMsg({ type: 'success', text: 'Password updated successfully. You may receive a confirmation email.' });
-        setNewPassword("");
+      setStatusMsg({ type: 'success', text: 'Password updated successfully. You may receive a confirmation email.' });
+      setNewPassword("");
     }
   };
 
   return (
     <div className="view-section fade-enter space-y-6">
-      <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-sm border border-gray-100 dark:border-[#38383A] overflow-hidden">
+      <div className="soft-card overflow-hidden">
         <div className="p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 border-b border-gray-100 dark:border-[#38383A]">
           <div className="relative group cursor-pointer">
             <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 dark:border-[#2C2C2E]">
@@ -60,7 +60,7 @@ export const Profile = () => {
           <div className="text-center md:text-left">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Administrator</h2>
             <p className="text-sm text-gray-500 dark:text-[#8E8E93]">{user?.email || 'admin@costkitchen.local'}</p>
-            <span className="inline-block mt-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-[#007AFF] rounded-full text-xs font-semibold">Super Admin</span>
+            <span className="inline-block mt-2 px-3 py-1 bg-[#FCD34D]/10 dark:bg-[#FCD34D]/20 text-[#FCD34D] rounded-full text-xs font-bold">Super Admin</span>
           </div>
         </div>
         <div className="p-6 space-y-8">
@@ -70,30 +70,30 @@ export const Profile = () => {
               <div>
                 <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 block">New Password</label>
                 <div className="relative">
-                    <input 
-                        type={showPassword ? "text" : "password"} 
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 pr-12 text-gray-900 dark:text-white outline-none focus:border-[#007AFF] transition-all font-medium" 
-                        placeholder="••••••••" 
-                    />
-                    <button 
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-0 top-0 h-full px-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors flex items-center justify-center"
-                    >
-                        <iconify-icon icon={showPassword ? "lucide:eye-off" : "lucide:eye"} width="18"></iconify-icon>
-                    </button>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="soft-input pr-12"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-0 top-0 h-full px-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors flex items-center justify-center"
+                  >
+                    <iconify-icon icon={showPassword ? "lucide:eye-off" : "lucide:eye"} width="18"></iconify-icon>
+                  </button>
                 </div>
                 {statusMsg && (
-                    <div className={`mt-2 text-xs font-medium ${statusMsg.type === 'error' ? 'text-red-500' : 'text-green-500'} flex items-center gap-1.5`}>
-                        <iconify-icon icon={statusMsg.type === 'error' ? "lucide:alert-circle" : "lucide:check-circle"} width="14"></iconify-icon>
-                        {statusMsg.text}
-                    </div>
+                  <div className={`mt-2 text-xs font-medium ${statusMsg.type === 'error' ? 'text-red-500' : 'text-green-500'} flex items-center gap-1.5`}>
+                    <iconify-icon icon={statusMsg.type === 'error' ? "lucide:alert-circle" : "lucide:check-circle"} width="14"></iconify-icon>
+                    {statusMsg.text}
+                  </div>
                 )}
               </div>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={isLoading || !newPassword}
                 className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-bold shadow-lg shadow-gray-200/50 dark:shadow-none hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >

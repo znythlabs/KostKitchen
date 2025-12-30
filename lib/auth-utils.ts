@@ -63,7 +63,7 @@ export const getPasswordStrengthLabel = (score: number): { label: string; color:
         case 3:
             return { label: "Good", color: "#34c759" };
         case 4:
-            return { label: "Strong", color: "#007aff" };
+            return { label: "Strong", color: "#FCD34D" };
         default:
             return { label: "Weak", color: "#ff3b30" };
     }
