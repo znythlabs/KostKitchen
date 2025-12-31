@@ -6,7 +6,7 @@ import { CustomSelect } from '../components/CustomSelect';
 // const CATEGORY_OPTIONS = ['Main Course', 'Mains', 'Appetizers', 'Beverages', 'Desserts']; // REMOVED
 
 export const Recipes = () => {
-  const { builder, setBuilder, selectedRecipeId, setSelectedRecipeId, data, saveRecipeDirectly, duplicateRecipe, deleteRecipe, openConfirm, recipeCategories, addRecipeCategory, openPrompt } = useApp();
+  const { builder, setBuilder, selectedRecipeId, setSelectedRecipeId, data, saveRecipeDirectly, duplicateRecipe, deleteRecipe, openConfirm, recipeCategories, addRecipeCategory, openPrompt, activeModal, setActiveModal, setPickerFilter } = useApp();
   const [viewMode, setViewMode] = useState<'grid' | 'builder'>(selectedRecipeId ? 'builder' : 'grid');
   const [isSaving, setIsSaving] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
@@ -66,6 +66,16 @@ export const Recipes = () => {
       setLocalRecipe({ name: 'New Recipe', category: 'Main Course', price: 0, image: '', ingredients: [], description: '', batchSize: 1 });
     }
   }, [selectedRecipeId, viewMode, data.recipes]);
+
+  // Sync Global Builder ingredients back to Local Recipe when Picker is active
+  React.useEffect(() => {
+    if (activeModal === 'picker') {
+      setLocalRecipe((prev: any) => ({
+        ...prev,
+        ingredients: builder.ingredients
+      }));
+    }
+  }, [builder.ingredients, activeModal]);
 
   // Filtered Ingredients for Builder List (uses different name to avoid conflict)
   const builderFilteredIngredients = useMemo(() => {
@@ -342,7 +352,13 @@ export const Recipes = () => {
                     </button>
                   </div>
 
-                  <button className="text-xs font-bold bg-[#303030] text-white px-4 py-2 rounded-full flex items-center gap-1 hover:shadow-lg transition transform active:scale-95">
+                  <button
+                    onClick={() => {
+                      setBuilder(prev => ({ ...prev, ingredients: localRecipe.ingredients }));
+                      setPickerFilter(activeTab);
+                      setActiveModal('picker');
+                    }}
+                    className="text-xs font-bold bg-[#303030] text-white px-4 py-2 rounded-full flex items-center gap-1 hover:shadow-lg transition transform active:scale-95">
                     <iconify-icon icon="lucide:plus" width="14"></iconify-icon> Add Item
                   </button>
                 </div>

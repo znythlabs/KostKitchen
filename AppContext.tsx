@@ -513,8 +513,13 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       alert("Failed to add ingredient - please check input");
       refreshData(); // Revert
     } else {
-      // Sync real ID in background if needed, or wait for next refresh
-      if (result.id !== optimisticId) refreshData(true);
+      // If we got a real ID, swap the optimistic one immediately
+      if (result.id !== optimisticId) {
+        setData(prev => ({
+          ...prev,
+          ingredients: prev.ingredients.map(i => i.id === optimisticId ? { ...i, id: result.id } : i)
+        }));
+      }
     }
   };
 

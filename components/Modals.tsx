@@ -14,7 +14,7 @@ const ConfirmationModal = () => {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-md transition-opacity" onClick={closeConfirmation}></div>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-md transition-opacity" onClick={closeConfirmation}></div>
       <div className="bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl rounded-[2rem] shadow-2xl max-w-sm w-full relative z-10 overflow-hidden fade-enter border border-white/20 dark:border-white/10 ring-1 ring-black/5">
         <div className="p-6 text-center">
           <div className={`w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-4 ${confirmModal.isDestructive ? 'bg-red-100 dark:bg-red-900/30 text-red-500' : 'bg-[#FCD34D]/20 text-[#FCD34D]'}`}>
@@ -71,7 +71,7 @@ const CookModal = () => {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-md transition-opacity" onClick={closeCookModal}></div>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-md transition-opacity" onClick={closeCookModal}></div>
       <div className="bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl max-w-sm w-full relative z-10 overflow-hidden fade-enter border border-white/20 dark:border-white/10 ring-1 ring-black/5 p-8 flex flex-col items-center text-center transition-all duration-300">
 
         {isSuccess ? (
@@ -158,7 +158,7 @@ const PromptModal = () => {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-md transition-opacity" onClick={closePrompt}></div>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-md transition-opacity" onClick={closePrompt}></div>
       <div className="bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl rounded-[2rem] shadow-2xl max-w-sm w-full relative z-10 overflow-hidden fade-enter border border-white/20 dark:border-white/10 ring-1 ring-black/5">
         <form onSubmit={handleSubmit} className="p-8 text-center flex flex-col gap-6">
           <div className="w-14 h-14 rounded-full mx-auto flex items-center justify-center shadow-sm bg-[#FCD34D]/10 text-[#FCD34D] dark:bg-[#FCD34D]/20 dark:text-[#FCD34D]">
@@ -326,7 +326,7 @@ export const Modals = () => {
     <>
       {activeModal && (
         <div
-          className="fixed inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-md z-40 transition-opacity duration-300"
+          className="fixed inset-0 bg-black/50 backdrop-blur-md z-40 transition-opacity duration-300"
           onClick={closeModal}
         ></div>
       )}

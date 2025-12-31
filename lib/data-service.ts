@@ -441,7 +441,12 @@ class DataService {
                 ingredient_id: ri.id,
                 qty: ri.qty
             }));
-            await supabase.from('recipe_ingredients').insert(ingPayload);
+            const { error: ingError } = await supabase.from('recipe_ingredients').insert(ingPayload);
+            if (ingError) {
+                console.error('Create recipe ingredients error:', ingError);
+                // Consider whether to delete the recipe if ingredients fail?
+                // For now, at least logging it helps debugging.
+            }
         }
 
         return { id: data.id };
@@ -471,7 +476,11 @@ class DataService {
                     ingredient_id: ri.id,
                     qty: ri.qty
                 }));
-                await supabase.from('recipe_ingredients').insert(ingPayload);
+                const { error: ingError } = await supabase.from('recipe_ingredients').insert(ingPayload);
+                if (ingError) {
+                    console.error('Update recipe ingredients error:', ingError);
+                    return false;
+                }
             }
         }
 
