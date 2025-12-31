@@ -62,8 +62,8 @@ const pricingData = {
         {
             name: "Micro",
             target: "Carinderia, stalls",
-            monthly: "₱199",
-            annual: "₱1,990",
+            monthly: "₱0.00",
+            annual: "₱0.00",
             highlight: false,
             btnText: "Start Free",
             features: [true, true, true]
@@ -71,8 +71,8 @@ const pricingData = {
         {
             name: "Starter",
             target: "Small restaurants",
-            monthly: "₱399",
-            annual: "₱3,990",
+            monthly: "₱0.00",
+            annual: "₱0.00",
             highlight: false,
             btnText: "Start Free",
             features: [true, true, true]
@@ -80,8 +80,8 @@ const pricingData = {
         {
             name: "Professional",
             target: "Medium restaurants",
-            monthly: "₱699",
-            annual: "₱6,990",
+            monthly: "₱0.00",
+            annual: "₱0.00",
             highlight: true,
             btnText: "Start Free Trial",
             features: [true, true, true]
@@ -89,8 +89,8 @@ const pricingData = {
         {
             name: "Business",
             target: "Multi-branch, catering",
-            monthly: "₱1,499",
-            annual: "₱14,990",
+            monthly: "₱0.00",
+            annual: "₱0.00",
             highlight: false,
             btnText: "Contact Sales",
             features: [true, true, true]
@@ -100,8 +100,8 @@ const pricingData = {
         {
             name: "Professional",
             target: "Restaurants",
-            monthly: "€19",
-            annual: "€190",
+            monthly: "€0.00",
+            annual: "€0.00",
             highlight: true,
             btnText: "Start Free Trial",
             features: [true, true, true]
@@ -109,8 +109,8 @@ const pricingData = {
         {
             name: "Business",
             target: "Multi-branch",
-            monthly: "€39",
-            annual: "€390",
+            monthly: "€0.00",
+            annual: "€0.00",
             highlight: false,
             btnText: "Contact Sales",
             features: [true, true, true]
