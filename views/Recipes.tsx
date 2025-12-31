@@ -465,102 +465,110 @@ export const Recipes = () => {
                     </div>
                   </div>
 
-                  <div className="border-b border-dashed border-gray-800 w-full mb-5"></div>
-
-                  {/* Slider Section */}
-                  <div className="mb-5">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Target Margin</span>
-                      <span className="text-sm font-bold text-[#FCD34D]">{targetMargin}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="90"
-                      value={targetMargin}
-                      onChange={(e) => handleMarginChange(parseInt(e.target.value))}
-                      className="w-full h-1 rounded-lg appearance-none cursor-pointer bg-gray-700 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#FCD34D] [&::-webkit-slider-thumb]:mt-[-6px]"
-                      style={{
-                        background: `linear-gradient(to right, #FCD34D 0%, #FCD34D ${(targetMargin / 90) * 100}%, #374151 ${(targetMargin / 90) * 100}%, #374151 100%)`
-                      }}
-                    />
-                  </div>
-
-                  <div className="border-b border-dashed border-gray-800 w-full mb-5"></div>
-
-                  {/* VAT info */}
-                  <div className="space-y-2 text-sm font-medium mb-5">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Price before VAT</span>
-                      <span className="text-gray-400">₱{priceBeforeVAT.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">VAT (12%)</span>
-                      <span className="text-gray-400">₱{vatAmount.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  {/* Selling Price - Big */}
-                  <div className="border-t border-gray-800 py-4 mb-2">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">REGULAR SELLING PRICE</span>
-                    </div>
-                    <div className="flex flex-col items-start group">
-                      <div className="flex items-center text-4xl font-bold text-white tracking-tighter">
-                        <span className="mr-1 text-2xl text-gray-600">₱</span>
+                  {totalUnitCost > 0 ? (
+                    <>
+                      {/* Slider Section */}
+                      <div className="mb-5">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Target Margin</span>
+                          <span className="text-sm font-bold text-[#FCD34D]">{targetMargin}%</span>
+                        </div>
                         <input
-                          type="number"
-                          value={localRecipe.price}
-                          onChange={(e) => handlePriceChange(parseFloat(e.target.value))}
-                          className="bg-transparent text-gray-400 text-left w-36 outline-none border-b border-transparent group-hover:border-gray-700 focus:border-white transition-colors"
+                          type="range"
+                          min="0"
+                          max="90"
+                          value={targetMargin}
+                          onChange={(e) => handleMarginChange(parseInt(e.target.value))}
+                          className="w-full h-1 rounded-lg appearance-none cursor-pointer bg-gray-700 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#FCD34D] [&::-webkit-slider-thumb]:mt-[-6px]"
+                          style={{
+                            background: `linear-gradient(to right, #FCD34D 0%, #FCD34D ${(targetMargin / 90) * 100}%, #374151 ${(targetMargin / 90) * 100}%, #374151 100%)`
+                          }}
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mt-1">VAT INCLUSIVE</span>
+
+                      <div className="border-b border-dashed border-gray-800 w-full mb-5"></div>
+
+                      {/* VAT info */}
+                      <div className="space-y-2 text-sm font-medium mb-5">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Price before VAT</span>
+                          <span className="text-gray-400">₱{priceBeforeVAT.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">VAT (12%)</span>
+                          <span className="text-gray-400">₱{vatAmount.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      {/* Selling Price - Big */}
+                      <div className="border-t border-gray-800 py-4 mb-2">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">REGULAR SELLING PRICE</span>
+                        </div>
+                        <div className="flex flex-col items-start group">
+                          <div className="flex items-center text-4xl font-bold text-white tracking-tighter">
+                            <span className="mr-1 text-2xl text-gray-600">₱</span>
+                            <input
+                              type="number"
+                              value={localRecipe.price}
+                              onChange={(e) => handlePriceChange(parseFloat(e.target.value))}
+                              className="bg-transparent text-gray-400 text-left w-36 outline-none border-b border-transparent group-hover:border-gray-700 focus:border-white transition-colors"
+                            />
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mt-1">VAT INCLUSIVE</span>
+                        </div>
+                      </div>
+
+                      <div className="border-b border-dashed border-gray-800 w-full mb-5"></div>
+
+                      {/* Profit Card */}
+                      <div className="bg-[#1C1C1E] border border-gray-800 rounded-lg p-3 flex justify-between items-center mb-5">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">PROFIT PER ORDER</span>
+                        <div className="flex items-center gap-2 text-[#10B981]">
+                          <iconify-icon icon="lucide:trending-up" width="14"></iconify-icon>
+                          <span className="text-xl font-bold text-[#10B981]">₱{simpleProfit.toFixed(2)}</span>
+                        </div>
+                      </div>
+
+                      <p className="text-[10px] text-gray-600 italic text-center mb-5 px-2 leading-relaxed">
+                        The selling price is automatically rounded. Actual margin: {currentMargin.toFixed(1)}%
+                      </p>
+
+                      <div className="border-b border-dashed border-gray-800 w-full mb-3"></div>
+
+                      {/* Breakdown Collapsible */}
+                      <details className="group">
+                        <summary className="flex justify-between items-center cursor-pointer text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-300 transition list-none mb-3">
+                          <span>VAT & Discount Breakdown</span>
+                          <iconify-icon icon="lucide:chevron-down" class="group-open:rotate-180 transition-transform"></iconify-icon>
+                        </summary>
+                        <div className="space-y-2 text-xs font-medium animate-fade-in pl-2 border-l border-gray-800 text-gray-400">
+                          <div className="flex justify-between">
+                            <span>VAT-Exempt Price</span>
+                            <span>₱{vatExemptPrice.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>PWD/Senior Disc. (20%)</span>
+                            <span>-₱{pwdDiscount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-white font-bold mt-1">
+                            <span>Discounted Price</span>
+                            <span>₱{discountedPrice.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-[#10B981] font-bold">
+                            <span>Profit (Discounted)</span>
+                            <span>₱{profitDiscounted.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </details>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center py-10">
+                      <iconify-icon icon="lucide:package-open" width="48" class="text-gray-700 mb-4"></iconify-icon>
+                      <p className="text-sm font-medium text-gray-500 mb-2">No cost data yet</p>
+                      <p className="text-xs text-gray-600 max-w-[200px]">Add ingredients or packaging items to see pricing calculations.</p>
                     </div>
-                  </div>
-
-                  <div className="border-b border-dashed border-gray-800 w-full mb-5"></div>
-
-                  {/* Profit Card */}
-                  <div className="bg-[#1C1C1E] border border-gray-800 rounded-lg p-3 flex justify-between items-center mb-5">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">PROFIT PER ORDER</span>
-                    <div className="flex items-center gap-2 text-[#10B981]">
-                      <iconify-icon icon="lucide:trending-up" width="14"></iconify-icon>
-                      <span className="text-xl font-bold text-[#10B981]">₱{simpleProfit.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-[10px] text-gray-600 italic text-center mb-5 px-2 leading-relaxed">
-                    The selling price is automatically rounded. Actual margin: {currentMargin.toFixed(1)}%
-                  </p>
-
-                  <div className="border-b border-dashed border-gray-800 w-full mb-3"></div>
-
-                  {/* Breakdown Collapsible */}
-                  <details className="group">
-                    <summary className="flex justify-between items-center cursor-pointer text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-300 transition list-none mb-3">
-                      <span>VAT & Discount Breakdown</span>
-                      <iconify-icon icon="lucide:chevron-down" class="group-open:rotate-180 transition-transform"></iconify-icon>
-                    </summary>
-                    <div className="space-y-2 text-xs font-medium animate-fade-in pl-2 border-l border-gray-800 text-gray-400">
-                      <div className="flex justify-between">
-                        <span>VAT-Exempt Price</span>
-                        <span>₱{vatExemptPrice.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>PWD/Senior Disc. (20%)</span>
-                        <span>-₱{pwdDiscount.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-white font-bold mt-1">
-                        <span>Discounted Price</span>
-                        <span>₱{discountedPrice.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-[#10B981] font-bold">
-                        <span>Profit (Discounted)</span>
-                        <span>₱{profitDiscounted.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </details>
+                  )}
 
                 </div>
               </div>
