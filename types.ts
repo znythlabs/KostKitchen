@@ -191,7 +191,9 @@ export interface AppContextType {
 
   // Modals
   activeModal: 'picker' | 'stock' | null;
+  setActiveModal: React.Dispatch<React.SetStateAction<'picker' | 'stock' | null>>;
   pickerFilter: 'ingredient' | 'other' | null;
+  setPickerFilter: React.Dispatch<React.SetStateAction<'ingredient' | 'other' | null>>;
   openModal: (m: 'picker' | 'stock', itemToEdit?: Ingredient, filter?: 'ingredient' | 'other') => void;
   closeModal: () => void;
   editingStockItem: Ingredient | null;

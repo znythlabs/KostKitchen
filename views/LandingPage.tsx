@@ -602,7 +602,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
             </section>
 
             {/* Features Section */}
-            <section className="py-24 bg-[#F8F6F1]">
+            <section id="features" className="py-24 bg-[#F8F6F1]">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center mb-16">
                         <h2 className="text-3xl md:text-5xl font-semibold text-[#111111] tracking-tight mb-4">
@@ -704,7 +704,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
             </section>
 
             {/* How It Works */}
-            <section className="py-24 px-6">
+            <section id="how-it-works" className="py-24 px-6">
                 <div className="max-w-7xl mx-auto bg-white border border-[#E6E2D6] rounded-[3rem] p-8 md:p-12 shadow-xl shadow-[#E6E2D6]/20 relative overflow-hidden">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-8 mb-10 relative z-10">
@@ -1112,7 +1112,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
 
             {/* Pricing Section */}
             {/* Pricing Section */}
-            <section className="py-24 bg-[#F3EFE0]">
+            <section id="pricing" className="py-24 bg-[#F3EFE0]">
                 <div className="max-w-7xl mx-auto px-6">
                     {/* Header */}
                     <div className="flex flex-col text-center mb-12 items-center">
@@ -1242,7 +1242,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
             </section>
 
             {/* Bottom CTA */}
-            <section className="py-24 bg-white border-b border-[#E6E2D6]">
+            <section id="faq" className="py-24 bg-white border-b border-[#E6E2D6]">
                 <div className="max-w-7xl mx-auto px-6">
                     {/* Main Card Container */}
                     <div className="md:p-10 rounded-[2.5rem] pt-6 pr-6 pb-6 pl-6">
@@ -1497,10 +1497,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                         <div>
                             <h4 className="font-semibold text-[#111111] mb-6">Product</h4>
                             <ul className="space-y-4 text-sm text-[#666666]">
-                                <li><a href="#" className="hover:text-[#111111] transition-colors">Features</a></li>
-                                <li><a href="#" className="hover:text-[#111111] transition-colors">Pricing</a></li>
-                                <li><a href="#" className="hover:text-[#111111] transition-colors">Case Studies</a></li>
-                                <li><a href="#" className="hover:text-[#111111] transition-colors">Reviews</a></li>
+                                <li><a href="#features" className="hover:text-[#111111] transition-colors">Features</a></li>
+                                <li><a href="#how-it-works" className="hover:text-[#111111] transition-colors">How It Works</a></li>
+                                <li><a href="#platform" className="hover:text-[#111111] transition-colors">Platform</a></li>
+                                <li><a href="#pricing" className="hover:text-[#111111] transition-colors">Pricing</a></li>
+                                <li><a href="#faq" className="hover:text-[#111111] transition-colors">FAQs</a></li>
                             </ul>
                         </div>
 
@@ -1526,7 +1527,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
 
                     <div className="border-t border-[#E6E2D6] pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="text-sm text-[#888888]">
-                            &copy; 2024 KostKitchen Inc. All rights reserved.
+                            &copy; 2025 KostKitchen By ZNYTH LABS
                         </div>
                         <div className="flex gap-2">
                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>

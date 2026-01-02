@@ -909,7 +909,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       builder, setBuilder, loadRecipeToBuilder,
       selectedRecipeId, setSelectedRecipeId,
       inventoryEditMode, toggleInventoryEdit,
-      activeModal, pickerFilter, editingStockItem,
+      activeModal, setActiveModal, pickerFilter, setPickerFilter, editingStockItem,
       confirmModal, cookModal, cookRecipe,
       // Modals
       setConfirmModal, openConfirm,
