@@ -1270,16 +1270,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                             <details className="group rounded-2xl border border-[#E6E2D6] bg-white p-4 md:p-5 [&_svg]:open:rotate-45 transition-all hover:border-[#FFD646]" open>
                                 <summary className="flex w-full items-center justify-between gap-4 text-left cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                                     <span className="text-base md:text-lg font-semibold leading-6 tracking-tight text-[#111111]">
-                                        How long does setup take?
+                                        Do I need internet to use the app?
                                     </span>
                                     <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E6E2D6] bg-[#F8F6F1] group-hover:bg-[#FFD646] transition-colors">
                                         <Plus className="w-4 h-4 text-[#111111] transition-transform duration-200" />
                                     </span>
                                 </summary>
                                 <div className="mt-3 text-sm leading-6 text-[#666666]">
-                                    Most kitchens are fully operational within 48 hours. Our
-                                    onboarding team handles your menu digitization and supplier
-                                    connection for you.
+                                    No! The app works offline. Your data syncs when you reconnect.
                                 </div>
                             </details>
 
@@ -1287,16 +1285,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                             <details className="group rounded-2xl border border-[#E6E2D6] bg-white p-4 md:p-5 [&_svg]:open:rotate-45 transition-all hover:border-[#FFD646]">
                                 <summary className="flex w-full items-center justify-between gap-4 text-left cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                                     <span className="text-base md:text-lg font-semibold leading-6 tracking-tight text-[#111111]">
-                                        Do I need specific hardware?
+                                        Can multiple people use one account?
                                     </span>
                                     <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E6E2D6] bg-[#F8F6F1] group-hover:bg-[#FFD646] transition-colors">
                                         <Plus className="w-4 h-4 text-[#111111] transition-transform duration-200" />
                                     </span>
                                 </summary>
                                 <div className="mt-3 text-sm leading-6 text-[#666666]">
-                                    KostKitchen works on any tablet, laptop, or smartphone. No
-                                    proprietary hardware is required, though we recommend
-                                    kitchen-grade rugged cases.
+                                    Yes! Share login credentials with your manager/kitchen staff (1-3 users recommended).
                                 </div>
                             </details>
 
@@ -1304,16 +1300,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                             <details className="group rounded-2xl border border-[#E6E2D6] bg-white p-4 md:p-5 [&_svg]:open:rotate-45 transition-all hover:border-[#FFD646]">
                                 <summary className="flex w-full items-center justify-between gap-4 text-left cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                                     <span className="text-base md:text-lg font-semibold leading-6 tracking-tight text-[#111111]">
-                                        Can I manage multiple locations?
+                                        Can I change my recipes after creating them?
                                     </span>
                                     <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E6E2D6] bg-[#F8F6F1] group-hover:bg-[#FFD646] transition-colors">
                                         <Plus className="w-4 h-4 text-[#111111] transition-transform duration-200" />
                                     </span>
                                 </summary>
                                 <div className="mt-3 text-sm leading-6 text-[#666666]">
-                                    Yes, our Enterprise plan allows for centralized management of
-                                    unlimited locations, with aggregate reporting and transfer
-                                    management.
+                                    Yes! Edit anytime. Costs recalculate automatically.
                                 </div>
                             </details>
 
@@ -1321,16 +1315,44 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                             <details className="group rounded-2xl border border-[#E6E2D6] bg-white p-4 md:p-5 [&_svg]:open:rotate-45 transition-all hover:border-[#FFD646]">
                                 <summary className="flex w-full items-center justify-between gap-4 text-left cursor-pointer list-none [&::-webkit-details-marker]:hidden">
                                     <span className="text-base md:text-lg font-semibold leading-6 tracking-tight text-[#111111]">
-                                        Is there a contract?
+                                        What happens if ingredient prices change?
                                     </span>
                                     <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E6E2D6] bg-[#F8F6F1] group-hover:bg-[#FFD646] transition-colors">
                                         <Plus className="w-4 h-4 text-[#111111] transition-transform duration-200" />
                                     </span>
                                 </summary>
                                 <div className="mt-3 text-sm leading-6 text-[#666666]">
-                                    No, all our plans are month-to-month. You can upgrade,
-                                    downgrade, or cancel your subscription at any time with no
-                                    penalties.
+                                    Update the ingredient cost in Inventory. All recipe prices update automatically.
+                                </div>
+                            </details>
+
+                            {/* Item 5 */}
+                            <details className="group rounded-2xl border border-[#E6E2D6] bg-white p-4 md:p-5 [&_svg]:open:rotate-45 transition-all hover:border-[#FFD646]">
+                                <summary className="flex w-full items-center justify-between gap-4 text-left cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                                    <span className="text-base md:text-lg font-semibold leading-6 tracking-tight text-[#111111]">
+                                        Is there a mobile app?
+                                    </span>
+                                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E6E2D6] bg-[#F8F6F1] group-hover:bg-[#FFD646] transition-colors">
+                                        <Plus className="w-4 h-4 text-[#111111] transition-transform duration-200" />
+                                    </span>
+                                </summary>
+                                <div className="mt-3 text-sm leading-6 text-[#666666]">
+                                    Yes! Available for Android and iOS, or use the web app on any device.
+                                </div>
+                            </details>
+
+                            {/* Item 6 */}
+                            <details className="group rounded-2xl border border-[#E6E2D6] bg-white p-4 md:p-5 [&_svg]:open:rotate-45 transition-all hover:border-[#FFD646]">
+                                <summary className="flex w-full items-center justify-between gap-4 text-left cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                                    <span className="text-base md:text-lg font-semibold leading-6 tracking-tight text-[#111111]">
+                                        Can I export my data?
+                                    </span>
+                                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#E6E2D6] bg-[#F8F6F1] group-hover:bg-[#FFD646] transition-colors">
+                                        <Plus className="w-4 h-4 text-[#111111] transition-transform duration-200" />
+                                    </span>
+                                </summary>
+                                <div className="mt-3 text-sm leading-6 text-[#666666]">
+                                    Yes! Export shopping lists and reports as PDF.
                                 </div>
                             </details>
                         </div>
