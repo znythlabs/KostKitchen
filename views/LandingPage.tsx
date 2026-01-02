@@ -1172,6 +1172,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                         <div className={`min-w-[1000px] grid grid-cols-${region === 'PH' ? '5' : '3'} divide-x divide-white/5 relative z-10 text-sm text-gray-400`}>
                             {/* Labels Column */}
                             <div className="flex flex-col bg-white/5 sticky left-0 z-20 backdrop-blur-md">
+                                <div className="h-10 border-b border-white/5"></div>
                                 <div className="p-6 h-40 flex flex-col justify-end pb-4 border-b border-white/5">
                                     <h3 className="text-xl font-semibold text-white tracking-tight">
                                         Compare Plans
