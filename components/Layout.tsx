@@ -33,7 +33,7 @@ const NavItemMobile = ({ target, label, icon }: { target: View, label: string, i
 export const DesktopSidebar = () => {
   const { setView } = useApp();
   return (
-    <aside className="hidden lg:flex w-[250px] glass-regular border-l-0 border-y-0 flex-col h-full z-20 relative">
+    <aside className="hidden lg:flex w-[250px] glass-regular border-l-0 border-y-0 flex-col h-full z-20 relative bg-white/80 dark:bg-[#1A1A1A]/90 border-r border-[#E5E7EB] dark:border-[#27272A]">
       <div className="h-16 flex items-center px-5">
         <div className="w-8 h-8 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-black flex items-center justify-center shadow-md mr-3">
           <iconify-icon icon="lucide:chef-hat" width="18"></iconify-icon>
@@ -47,6 +47,7 @@ export const DesktopSidebar = () => {
         <div id="nav-inventory"><NavItemDesktop target="inventory" label="Inventory" icon="lucide:package" /></div>
         <div id="nav-finance"><NavItemDesktop target="finance" label="Financials" icon="lucide:pie-chart" /></div>
         <div id="nav-calendar"><NavItemDesktop target="calendar" label="Reports" icon="lucide:calendar" /></div>
+        <div id="nav-pos"><NavItemDesktop target="pos" label="POS" icon="lucide:store" /></div>
       </div>
       <div className="p-3 border-t border-black/5 dark:border-white/10">
         <button type="button" onClick={() => setView('profile')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors group text-gray-500 dark:text-gray-400">
@@ -67,13 +68,14 @@ export const MobileNav = () => {
   const { view, setView } = useApp();
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 glass-regular border-x-0 border-b-0 z-40 pb-safe-b">
-      <div className="grid grid-cols-6 h-[52px]">
+      <div className="grid grid-cols-7 h-[52px]">
         <NavItemMobile target="dashboard" label="Overview" icon="lucide:layout-grid" />
         <NavItemMobile target="recipes" label="Menu" icon="lucide:chef-hat" />
         <NavItemMobile target="engineering" label="Matrix" icon="lucide:scatter-chart" />
         <NavItemMobile target="inventory" label="Inv" icon="lucide:package-open" />
         <NavItemMobile target="finance" label="Finance" icon="lucide:banknote" />
         <NavItemMobile target="calendar" label="Reports" icon="lucide:calendar" />
+        <NavItemMobile target="pos" label="POS" icon="lucide:store" />
       </div>
     </nav>
   );
@@ -91,7 +93,8 @@ export const Header = () => {
     inventory: 'Inventory',
     finance: 'Financials',
     calendar: 'Reports',
-    profile: 'Profile'
+    profile: 'Profile',
+    pos: 'Point of Sale'
   };
 
   const cycleTheme = () => {
@@ -108,7 +111,7 @@ export const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 glass-regular border-x-0 border-t-0 px-4 md:px-8 h-[58px] md:h-16 flex items-center justify-between shrink-0 mb-0">
+    <header className="sticky top-0 z-30 glass-regular border-x-0 border-t-0 px-4 md:px-8 h-[58px] md:h-16 flex items-center justify-between shrink-0 mb-0 bg-white/80 dark:bg-[#1A1A1A]/90 border-b border-[#E5E7EB] dark:border-[#27272A]">
 
       {/* LEFT / CENTER: Title */}
       <div className="flex items-center gap-4 md:gap-6 flex-1 overflow-hidden">

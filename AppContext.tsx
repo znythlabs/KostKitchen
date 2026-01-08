@@ -74,7 +74,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
 
   // Data State
   const [data, setData] = useState<AppData>({
-    settings: INITIAL_DATA.settings,
+    settings: { ...INITIAL_DATA.settings, currency: 'PHP', measurementUnit: 'Metric' },
     ingredients: [],
     recipes: [],
     dailySnapshots: []
@@ -277,7 +277,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             expenses: cachedData.expenses || [],
             isVatRegistered: cachedData.settings?.isVatRegistered || false,
             isPwdSeniorActive: cachedData.settings?.isPwdSeniorActive || false,
-            otherDiscountRate: cachedData.settings?.otherDiscountRate || 0
+            otherDiscountRate: cachedData.settings?.otherDiscountRate || 0,
+            currency: cachedData.settings?.currency || 'PHP',
+            measurementUnit: cachedData.settings?.measurementUnit || 'Metric'
           }
         });
         // Hide loading since we have cached data
@@ -326,7 +328,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
           settings: {
             isVatRegistered: settings?.isVatRegistered || false,
             isPwdSeniorActive: settings?.isPwdSeniorActive || false,
-            otherDiscountRate: settings?.otherDiscountRate || 0
+            otherDiscountRate: settings?.otherDiscountRate || 0,
+            currency: settings?.currency || 'PHP',
+            measurementUnit: settings?.measurementUnit || 'Metric'
           },
           expenses,
           dailySnapshots,
@@ -788,6 +792,14 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       settings: { ...prev.settings, dailySalesTarget: amount }
     }));
     await dataService.updateSettings({ daily_sales_target: amount });
+  };
+
+  const updateSettings = async (newSettings: Partial<AppData['settings']>) => {
+    setData(prev => ({
+      ...prev,
+      settings: { ...prev.settings, ...newSettings }
+    }));
+    await dataService.updateSettings(newSettings);
   };
 
   const captureDailySnapshot = async () => {

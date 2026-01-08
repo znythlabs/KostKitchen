@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../AppContext';
+import { getCurrencySymbol } from '../lib/format-utils';
 
 
 export const Analytics = () => {
     const { data } = useApp();
+    const currencySymbol = getCurrencySymbol(data.settings.currency || 'PHP');
     const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
 
     // --- HELPER: Filter Snapshots based on Period ---
@@ -124,7 +126,7 @@ export const Analytics = () => {
             const snap = data.dailySnapshots.find(s => s.date === dateStr);
             const isToday = day === now.getDate();
 
-            let statusColor = 'text-gray-500 hover:bg-black/5';
+            let statusColor = 'text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5';
             let bgClass = '';
 
             if (snap) {
@@ -136,7 +138,7 @@ export const Analytics = () => {
                 } else if (m < 0.2) {
                     bgClass = 'bg-[#FEE2E2] text-[#B91C1C]'; // Low
                 } else {
-                    statusColor = 'text-[#303030] font-bold'; // Has data but neutral
+                    statusColor = 'text-[#303030] dark:text-white font-bold'; // Has data but neutral
                 }
             }
 
@@ -144,7 +146,7 @@ export const Analytics = () => {
                 <div key={i} className="flex items-center justify-center p-1">
                     <div className={`
                         w-8 h-8 shrink-0 aspect-square rounded-full flex items-center justify-center text-xs font-medium transition-all cursor-pointer
-                        ${isToday ? 'bg-[#303030] text-white shadow-lg scale-110' : bgClass || statusColor}
+                        ${isToday ? 'bg-[#303030] text-white dark:bg-white dark:text-black shadow-lg scale-110' : bgClass || statusColor}
                      `}>
                         {day}
                     </div>
@@ -202,33 +204,35 @@ export const Analytics = () => {
         return {
             name,
             volume: `${st.volume} items`,
-            sales: `₱${st.sales.toLocaleString()}`,
+            sales: `{currencySymbol}${st.sales.toLocaleString()}`,
             costPct: costPct.toFixed(0),
-            profit: `₱${profit.toLocaleString()}`,
+            profit: `{currencySymbol}${profit.toLocaleString()}`,
             trend: trend.toFixed(1)
         };
     }).sort((a, b) => parseFloat(b.sales.replace(/[^0-9.-]+/g, "")) - parseFloat(a.sales.replace(/[^0-9.-]+/g, ""))); // Sort by sales desc
 
 
     return (
-        <div id="view-analytics" className="flex-1 overflow-y-auto no-scrollbar pb-12 space-y-8 animate-fade-in text-[#303030] p-6 lg:p-8">
+        <div id="view-analytics" className="flex-1 overflow-y-auto no-scrollbar pb-12 space-y-8 animate-fade-in text-[#303030] dark:text-[#E7E5E4]">
 
             {/* Header Section */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div>
-                    <h2 className="text-3xl font-light tracking-tight text-[#303030]">Business Intelligence</h2>
+                    <h2 className="text-3xl font-light tracking-tight text-[#303030] dark:text-white">Business Intelligence</h2>
                     <p className="text-sm text-gray-400 mt-1">Financial performance and operational metrics</p>
                 </div>
 
+
                 <div className="flex items-center gap-2">
-                    <div className="flex bg-[#F2F2F0] p-1 rounded-full border border-gray-200/50">
+                    <div className="flex bg-[#F2F2F0] dark:bg-[#1A1A1A] p-1 rounded-full border border-gray-200/50 dark:border-white/5">
+
                         {['Day', 'Week', 'Month'].map((p) => (
                             <button
                                 key={p}
                                 onClick={() => setPeriod(p.toLowerCase() as any)}
                                 className={`px-6 py-1.5 rounded-full text-xs font-semibold transition-all ${period === p.toLowerCase()
-                                    ? 'bg-[#303030] text-white shadow-md'
-                                    : 'text-gray-500 hover:bg-white/50'
+                                    ? 'bg-[#303030] dark:bg-white text-white dark:text-black shadow-md'
+                                    : 'text-gray-500 hover:bg-white/50 dark:hover:bg-white/10 dark:text-gray-400'
                                     }`}
                             >
                                 {p}
@@ -242,10 +246,11 @@ export const Analytics = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                 {/* Gross Revenue */}
                 <div className="soft-card p-6 flex flex-col h-40 justify-between">
+
                     <div>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">GROSS REVENUE</p>
-                        <h3 className="text-4xl font-semibold tracking-tight text-[#303030]">
-                            ₱{(kpiData.revenue / 1000).toFixed(1)}k
+                        <h3 className="text-4xl font-semibold tracking-tight text-[#303030] dark:text-white">
+                            {currencySymbol}{(kpiData.revenue / 1000).toFixed(1)}k
                         </h3>
                     </div>
                     <div className={`flex items-center gap-2 ${revenueTrend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -258,8 +263,8 @@ export const Analytics = () => {
                 <div className="soft-card p-6 flex flex-col h-40 justify-between">
                     <div>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">FOOD COST</p>
-                        <h3 className="text-4xl font-semibold tracking-tight text-[#303030]">
-                            ₱{(kpiData.foodCost / 1000).toFixed(1)}k
+                        <h3 className="text-4xl font-semibold tracking-tight text-[#303030] dark:text-white">
+                            {currencySymbol}{(kpiData.foodCost / 1000).toFixed(1)}k
                         </h3>
                     </div>
                     <div className="flex items-center gap-2">
@@ -271,8 +276,8 @@ export const Analytics = () => {
                 <div className="soft-card p-6 flex flex-col h-40 justify-between">
                     <div>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">OPEX / LABOR</p>
-                        <h3 className="text-4xl font-semibold tracking-tight text-[#303030]">
-                            ₱{(kpiData.laborCost / 1000).toFixed(1)}k
+                        <h3 className="text-4xl font-semibold tracking-tight text-[#303030] dark:text-white">
+                            {currencySymbol}{(kpiData.laborCost / 1000).toFixed(1)}k
                         </h3>
                     </div>
                     <div className="flex items-center gap-2 text-red-500">
@@ -283,9 +288,9 @@ export const Analytics = () => {
                 {/* Net Profit */}
                 <div className="soft-card p-6 flex flex-col h-40 justify-between">
                     <div>
-                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">NET PROFIT</p>
-                        <h3 className="text-4xl font-semibold tracking-tight text-[#303030]">
-                            ₱{(kpiData.netProfit / 1000).toFixed(1)}k
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">NET PROFIT</p>
+                        <h3 className="text-4xl font-semibold tracking-tight text-[#303030] dark:text-white">
+                            {currencySymbol}{(kpiData.netProfit / 1000).toFixed(1)}k
                         </h3>
                     </div>
                     <div className={`flex items-center gap-2 ${profitTrend >= 0 ? 'text-green-600' : 'text-red-500'}`}>
@@ -299,12 +304,12 @@ export const Analytics = () => {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
                 {/* Revenue Breakdown Chart */}
-                <div className="xl:col-span-2 soft-card p-8 flex flex-col">
+                <div className="xl:col-span-2 soft-card p-8 flex flex-col h-full">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-light tracking-tight text-[#303030]">Revenue Breakdown</h3>
+                        <h3 className="text-lg font-light tracking-tight text-[#303030] dark:text-white">Revenue Breakdown</h3>
                         <div className="flex items-center gap-4 text-xs font-medium">
                             <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-[#303030]"></span> Sales
+                                <span className="w-2 h-2 rounded-full bg-[#303030] dark:bg-white"></span> Sales
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-[#FCD34D]"></span> Cost
@@ -330,14 +335,14 @@ export const Analytics = () => {
                                     <div key={i} className="flex-1 flex flex-col justify-end gap-1 group h-full relative cursor-pointer hover:bg-gray-50/50 rounded-xl transition p-1">
                                         {/* Tooltip */}
                                         <div className="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-[#303030] text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-10 transition-opacity">
-                                            ₱{d.sales.toLocaleString()} Sales
+                                            {currencySymbol}{d.sales.toLocaleString()} Sales
                                         </div>
 
                                         {/* Stacked Bar Container */}
                                         <div className="w-full flex flex-col gap-1 justify-end rounded-t-2xl overflow-hidden" style={{ height: `${((d.sales + d.cost) / maxVal) * 80}%` }}>
                                             {/* Sales Part (Dark) */}
                                             <div
-                                                className="w-full bg-[#303030] rounded-sm relative transition-all flex-1"
+                                                className="w-full bg-[#303030] dark:bg-white rounded-sm relative transition-all flex-1"
                                                 style={{ flexGrow: d.sales }}
                                             ></div>
                                             {/* Cost Part (Yellow) */}
@@ -355,11 +360,11 @@ export const Analytics = () => {
                 </div>
 
                 {/* Profit Calendar */}
-                <div className="soft-card p-8 flex flex-col">
+                <div className="soft-card p-8 flex flex-col h-full">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-light tracking-tight text-[#303030]">Profit Calendar</h3>
+                        <h3 className="text-lg font-light tracking-tight text-[#303030] dark:text-white">Profit Calendar</h3>
                         <div className="flex items-center gap-4">
-                            <span className="text-xs font-bold text-[#303030] uppercase">
+                            <span className="text-xs font-bold text-[#303030] dark:text-white uppercase">
                                 {new Date().toLocaleDateString('en-US', { month: 'short' })}
                             </span>
                         </div>
@@ -382,7 +387,7 @@ export const Analytics = () => {
                             <span className="text-[10px] font-bold text-gray-400 uppercase">High</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#303030]"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#303030] dark:bg-white"></span>
                             <span className="text-[10px] font-bold text-gray-400 uppercase">Today</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -396,7 +401,7 @@ export const Analytics = () => {
             {/* Category Performance Table */}
             <div className="soft-card p-8">
                 <div className="flex justify-between items-center mb-8">
-                    <h3 className="text-xl font-light tracking-tight text-[#303030]">Category Performance</h3>
+                    <h3 className="text-xl font-light tracking-tight text-[#303030] dark:text-white">Category Performance</h3>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -416,14 +421,14 @@ export const Analytics = () => {
                                 <tr><td colSpan={6} className="py-6 text-center text-gray-400">No category data available</td></tr>
                             ) : (
                                 categories.map((cat, i) => (
-                                    <tr key={i} className="group hover:bg-white/40 transition-colors border-b border-dashed border-[#FCD34D]/20 last:border-0">
-                                        <td className="py-6 pl-4 font-bold text-[#303030]">{cat.name}</td>
-                                        <td className="py-6 text-gray-500">{cat.volume}</td>
-                                        <td className="py-6 font-bold text-[#303030]">{cat.sales}</td>
+                                    <tr key={i} className="group hover:bg-white/40 dark:hover:bg-white/5 transition-colors border-b border-dashed border-[#FCD34D]/20 last:border-0">
+                                        <td className="py-6 pl-4 font-bold text-[#303030] dark:text-gray-200">{cat.name}</td>
+                                        <td className="py-6 text-gray-500 dark:text-gray-400">{cat.volume}</td>
+                                        <td className="py-6 font-bold text-[#303030] dark:text-white">{cat.sales}</td>
                                         <td className="py-6">
                                             <div className="flex items-center gap-3">
-                                                <span className="text-xs font-bold text-gray-500 w-8">{cat.costPct}%</span>
-                                                <div className="h-1.5 flex-1 bg-gray-200/40 group-hover:bg-gray-200 rounded-full overflow-hidden transition-colors">
+                                                <span className="text-xs font-bold text-gray-500 dark:text-gray-400 w-8">{cat.costPct}%</span>
+                                                <div className="h-1.5 flex-1 bg-gray-200/40 dark:bg-gray-700/40 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 rounded-full overflow-hidden transition-colors">
                                                     <div
                                                         className={`h-full rounded-full ${parseInt(cat.costPct) > 35 ? 'bg-[#FCD34D]' : 'bg-[#10B981]'}`}
                                                         style={{ width: `${cat.costPct}%` }}
@@ -431,7 +436,7 @@ export const Analytics = () => {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="py-6 font-bold text-[#303030]">{cat.profit}</td>
+                                        <td className="py-6 font-bold text-[#303030] dark:text-white">{cat.profit}</td>
                                         <td className={`py-6 text-right pr-4 font-bold ${parseFloat(cat.trend) > 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
                                             {parseFloat(cat.trend) > 0 ? '+' : ''}{cat.trend}%
                                         </td>

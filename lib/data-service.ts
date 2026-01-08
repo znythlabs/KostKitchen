@@ -80,7 +80,9 @@ const toSnakeCase = (obj: Record<string, any>): Record<string, any> => {
         netRevenue: 'net_revenue',
         grossProfit: 'gross_profit',
         netProfit: 'net_profit',
-        totalOrders: 'total_orders'
+        totalOrders: 'total_orders',
+        currency: 'currency',
+        measurementUnit: 'measurement_unit'
     };
 
     for (const [key, value] of Object.entries(obj)) {
@@ -114,6 +116,8 @@ const toCamelCase = (obj: Record<string, any>): Record<string, any> => {
         gross_profit: 'grossProfit',
         net_profit: 'netProfit',
         total_orders: 'totalOrders',
+        currency: 'currency',
+        measurement_unit: 'measurementUnit',
         created_at: 'createdAt',
         updated_at: 'updatedAt'
     };
@@ -514,7 +518,9 @@ class DataService {
             isVatRegistered: data.is_vat_registered || false,
             isPwdSeniorActive: data.is_pwd_senior_active || false,
             otherDiscountRate: Number(data.other_discount_rate || 0),
-            dailySalesTarget: Number(data.daily_sales_target || 35000)
+            dailySalesTarget: Number(data.daily_sales_target || 35000),
+            currency: data.currency || 'PHP',
+            measurementUnit: (data.measurement_unit as 'Metric' | 'Imperial') || 'Metric'
         } : null;
     }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { CustomSelect } from './CustomSelect';
+import { getCurrencySymbol } from '../lib/format-utils';
 
 const ConfirmationModal = () => {
   const { confirmModal, closeConfirmation } = useApp();
@@ -202,6 +203,7 @@ const PromptModal = () => {
 
 export const Modals = () => {
   const { activeModal, closeModal, data, builder, setBuilder, addStockItem, updateStockItemFull, deleteStockItem, editingStockItem, pickerFilter, inventoryCategories, addInventoryCategory } = useApp();
+  const currencySymbol = getCurrencySymbol(data.settings.currency || 'PHP');
   const [pickerSearch, setPickerSearch] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [stockForm, setStockForm] = useState({
@@ -363,7 +365,7 @@ export const Modals = () => {
               <div key={i.id} onClick={() => handlePickerToggle(i.id)} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-[#38383A] last:border-0 cursor-pointer hover:opacity-70 group">
                 <div>
                   <p className={`text-sm font-medium ${isSelected ? 'text-[#FCD34D]' : 'text-gray-900 dark:text-white'}`}>{i.name}</p>
-                  <p className="text-[10px] text-gray-400">₱{i.cost} / {i.unit}</p>
+                  <p className="text-[10px] text-gray-400">{currencySymbol}{i.cost} / {i.unit}</p>
                 </div>
                 <iconify-icon
                   icon={isSelected ? "lucide:minus-circle" : "lucide:plus-circle"}

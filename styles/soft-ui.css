@@ -23,13 +23,11 @@ body {
 
 /* Dark Mode Global Body */
 .dark body {
-    background-color: #1F1C15;
-    background-image: linear-gradient(150deg,
-            #1A1A1A 0%,
-            #1B1B19 25%,
-            #1F1C15 55%,
-            #1F1C15 100%);
-    color: #E5E7EB;
+    background-color: #09090b;
+    /* Zinc 950 approx fallback */
+    background-image: linear-gradient(180deg, #1A1A1A 0%, #1B1B19 24.6%, #1F1C15 54.5%, #1F1C15 100%);
+    background-attachment: fixed;
+    color: #EDEDED;
 }
 
 /* Soft UI Card System */
@@ -51,6 +49,19 @@ body {
         0 10px 15px -3px rgba(0, 0, 0, 0.02),
         0 20px 50px -5px rgba(0, 0, 0, 0.05);
     transform: translateY(-2px);
+}
+
+.dark .soft-card {
+    background-color: #1A1A1A;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .soft-card:hover {
+    background-color: #1F1C15;
+    /* Warm dark brown from gradient end */
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.3);
 }
 
 .yellow-card {
@@ -109,7 +120,7 @@ body {
 
 /* Dark variant */
 .soft-card-dark {
-    background-color: #303030;
+    background-color: #1A1A1A;
     color: white;
     border-radius: 2rem;
     box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2);
@@ -217,6 +228,7 @@ input.soft-input[type="number"]::-webkit-inner-spin-button {
 
 input.soft-input[type="number"] {
     -moz-appearance: textfield;
+    appearance: textfield;
     /* Firefox */
 }
 

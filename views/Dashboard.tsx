@@ -1,8 +1,10 @@
 import React from 'react';
 import { useApp } from '../AppContext';
+import { getCurrencySymbol } from '../lib/format-utils';
 
 export const Dashboard = () => {
   const { data, getProjection, getWeeklySummary, updateDailyTarget, getStockStatus, openPrompt, isLoading } = useApp();
+  const currencySymbol = getCurrencySymbol(data.settings.currency || 'PHP');
 
   // Helper to calculate financials for a recipe
   const getRecipeFinancials = (recipe: any) => {
@@ -97,7 +99,7 @@ export const Dashboard = () => {
             </div>
           </div>
           <div>
-            <h3 className="text-3xl font-medium tracking-tight text-[#303030]">₱{totalSales.toLocaleString(undefined, { maximumFractionDigits: 0 })}</h3>
+            <h3 className="text-3xl font-medium tracking-tight text-[#303030]">{currencySymbol}{totalSales.toLocaleString(undefined, { maximumFractionDigits: 0 })}</h3>
             <div className="flex items-center gap-2 mt-2">
               {yesterdaySnapshot ? (
                 <span className={`${isPositive ? 'bg-green-500 text-white' : 'bg-red-500 text-white'} text-[10px] uppercase font-bold px-2 py-0.5 rounded-md`}>
@@ -154,7 +156,7 @@ export const Dashboard = () => {
             </div>
           </div>
           <div>
-            <h3 className="text-3xl font-light tracking-tight text-[#303030] dark:text-[#E7E5E4]">₱{dailyProj.grossProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</h3>
+            <h3 className="text-3xl font-light tracking-tight text-[#303030] dark:text-[#E7E5E4]">{currencySymbol}{dailyProj.grossProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</h3>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-gray-400">{profitMargin}% margin</span>
             </div>
@@ -187,7 +189,7 @@ export const Dashboard = () => {
                   <div key={i} className="flex-1 flex flex-col justify-end group relative">
                     {/* Tooltip */}
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
-                      ₱{snap.netProfit.toLocaleString()}
+                      {currencySymbol}{snap.netProfit.toLocaleString()}
                     </div>
                     <div style={{ height: `${Math.max(h, 5)}%` }} className={`w-full rounded-xl transition-all duration-300 bg-[#FCD34D] hover:bg-[#303030] dark:hover:bg-[#E7E5E4]`}></div>
                   </div>
@@ -235,11 +237,11 @@ export const Dashboard = () => {
                     });
                   }}>
                     <p className="text-xs text-gray-400 uppercase font-semibold flex items-center gap-1 justify-center">Target <iconify-icon icon="lucide:edit-2" width="10" class="opacity-0 group-hover:opacity-100 transition-opacity"></iconify-icon></p>
-                    <p className="text-lg font-medium text-[#303030] dark:text-[#E7E5E4]">₱{target.toLocaleString()}</p>
+                    <p className="text-lg font-medium text-[#303030] dark:text-[#E7E5E4]">{currencySymbol}{target.toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 uppercase font-semibold">Current</p>
-                    <p className="text-lg font-medium text-[#303030] dark:text-[#E7E5E4]">₱{current.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                    <p className="text-lg font-medium text-[#303030] dark:text-[#E7E5E4]">{currencySymbol}{current.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                   </div>
                 </div>
               </>
@@ -306,7 +308,7 @@ export const Dashboard = () => {
                         <td className="py-4"><span className="px-2 py-1 rounded-md bg-orange-50 text-orange-600 text-xs font-semibold dark:bg-orange-500/20 dark:text-orange-400">{r.category}</span></td>
                         <td className="py-4 text-gray-500 dark:text-gray-400">{r.dailyVolume}</td>
                         <td className="py-4 font-semibold text-gray-600 dark:text-gray-400">{costPct.toFixed(0)}%</td>
-                        <td className="py-4 text-right pr-2 rounded-r-xl font-medium text-[#303030] dark:text-[#E7E5E4]">₱{(fin.unitPrice - fin.unitCost).toFixed(2)}</td>
+                        <td className="py-4 text-right pr-2 rounded-r-xl font-medium text-[#303030] dark:text-[#E7E5E4]">{currencySymbol}{(fin.unitPrice - fin.unitCost).toFixed(2)}</td>
                       </tr>
                     );
                   })

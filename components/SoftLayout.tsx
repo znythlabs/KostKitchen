@@ -53,9 +53,25 @@ export const SoftLayout = ({ children, headerAction, disableScroll = false }: So
                     </div>
                     <div>
                         <h2 className="font-semibold text-sm text-[#303030] dark:text-[#E7E5E4]">KostKitchen</h2>
-                        <p className="text-xs text-gray-400 font-medium">Pro Workspace</p>
                     </div>
                 </div>
+
+                {/* POS Button - Sidebar Location */}
+                <button
+                    onClick={() => setView('pos')}
+                    className="w-full bg-gradient-to-br from-[#FCD34D] to-[#FBBF24] hover:to-[#F59E0B] p-4 rounded-[1.25rem] shadow-lg shadow-yellow-500/20 flex flex-col items-center justify-center gap-2 transition-all group active:scale-[0.98] relative overflow-hidden"
+                >
+                    {/* Shine effect */}
+                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+
+                    <div className="flex items-center gap-2 relative z-10">
+                        <div className="w-8 h-8 rounded-full bg-[#202020] text-[#FCD34D] flex items-center justify-center">
+                            <iconify-icon icon="lucide:store" width="16"></iconify-icon></div>
+                            <span className="text-lg font-black text-[#202020] tracking-tight">OPEN POS</span>
+                            <iconify-icon icon="lucide:arrow-right" class="group-hover:translate-x-1 transition-transform text-[#202020]"></iconify-icon>
+                        
+                    </div>
+                </button>
 
                 {/* Navigation Card */}
                 <nav className="flex-1 soft-card p-4 space-y-2 overflow-y-auto no-scrollbar dark:bg-white/5 dark:border-white/10">
@@ -77,14 +93,10 @@ export const SoftLayout = ({ children, headerAction, disableScroll = false }: So
                 {/* Header */}
                 <header className="flex justify-between items-center py-2 px-2 shrink-0 mb-4">
                     <div>
-                        <h1 className="text-4xl font-light tracking-tight text-[#303030] dark:text-[#E7E5E4]">Welcome in, <span className="font-normal">Chef Marco</span></h1>
+                        <h1 className="text-4xl font-light tracking-tight text-[#303030] dark:text-[#E7E5E4]">Welcome in, <span className="font-normal">Marco</span></h1>
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <div className="bg-white px-5 py-2 rounded-full border border-gray-100 shadow-sm flex items-center gap-2 dark:bg-white/5 dark:border-white/10">
-                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Kitchen Live</span>
-                        </div>
                         <button
                             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                             className="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition dark:bg-white/5 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/10"
@@ -120,6 +132,7 @@ export const SoftLayout = ({ children, headerAction, disableScroll = false }: So
                         <button onClick={() => setView('analytics')} className={`flex flex-col items-center justify-center ${view === 'analytics' ? 'text-[#303030] dark:text-[#E7E5E4]' : 'text-gray-400'}`}>
                             <iconify-icon icon="lucide:bar-chart-2" width="24"></iconify-icon>
                         </button>
+
                         <button onClick={() => setView('settings')} className={`flex flex-col items-center justify-center ${view === 'settings' ? 'text-[#303030] dark:text-[#E7E5E4]' : 'text-gray-400'}`}>
                             <iconify-icon icon="lucide:settings" width="24"></iconify-icon>
                         </button>

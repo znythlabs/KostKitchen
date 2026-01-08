@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../AppContext';
 import { dataService } from '../lib/data-service';
+import { getCurrencySymbol } from '../lib/format-utils';
 
 export const Finance = () => {
   const { getProjection, data, setData, theme } = useApp();
+  const currencySymbol = getCurrencySymbol(data.settings.currency || 'PHP');
   const [financePeriod, setFinancePeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const f = getProjection(financePeriod);
 
@@ -119,7 +121,7 @@ export const Finance = () => {
       {/* STICKY FINANCIAL OVERVIEW HEADER */}
       <div
         ref={stickyRef}
-        className={`sticky top-[58px] md:top-16 z-20 -mx-4 md:-mx-8 px-4 md:px-8 py-4 bg-[#F2F2F0]/90 backdrop-blur-xl transition-shadow duration-700 ${isScrolled ? 'shadow-lg shadow-black/5' : ''}`}
+        className={`sticky top-[58px] md:top-16 z-20 -mx-4 md:-mx-8 px-4 md:px-8 py-4 bg-[#F2F2F0]/90 dark:bg-[#1A1A1A]/90 backdrop-blur-xl transition-shadow duration-700 ${isScrolled ? 'shadow-lg shadow-black/5' : ''}`}
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">Financial Overview</h2>
@@ -136,21 +138,21 @@ export const Finance = () => {
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2 md:gap-4">
-          <div className="soft-card-static bg-[#1C1C1E] dark:bg-[#1C1C1E] p-3 md:p-6 rounded-xl md:rounded-2xl">
+          <div className="soft-card-static bg-[#1C1C1E] dark:bg-[#1A1A1A] p-3 md:p-6 rounded-xl md:rounded-2xl">
             <p className="text-[10px] md:text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 md:mb-2 truncate">Gross Profit</p>
-            <p className="text-lg md:text-3xl font-bold text-[#34C759] dark:text-[#34C759]">₱{Math.floor(f.grossProfit).toLocaleString()}</p>
+            <p className="text-lg md:text-3xl font-bold text-[#34C759] dark:text-[#34C759]">{currencySymbol}{Math.floor(f.grossProfit).toLocaleString()}</p>
             <p className="text-[9px] md:text-xs text-gray-400 mt-1 hidden md:block">Net Revenue minus Total Cost</p>
           </div>
           <div className="soft-card-static p-3 md:p-6 rounded-xl md:rounded-2xl text-gray-900 dark:text-white relative overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
             <div className="relative z-10">
               <p className="text-[10px] md:text-xs font-medium opacity-70 uppercase tracking-wider mb-1 md:mb-2 truncate">Net Revenue</p>
-              <p className="text-lg md:text-2xl font-semibold">₱{Math.floor(f.netRevenue).toLocaleString()}</p>
+              <p className="text-lg md:text-2xl font-semibold">{currencySymbol}{Math.floor(f.netRevenue).toLocaleString()}</p>
               <p className="text-[9px] md:text-xs text-gray-400 mt-1 hidden md:block">After VAT & Discounts</p>
             </div>
           </div>
           <div className="soft-card-static p-3 md:p-6 rounded-xl md:rounded-2xl">
             <p className="text-[10px] md:text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 md:mb-2 truncate">Total Cost</p>
-            <p className="text-lg md:text-2xl font-semibold text-red-600 dark:text-red-400">₱{Math.floor(f.cogs).toLocaleString()}</p>
+            <p className="text-lg md:text-2xl font-semibold text-red-600 dark:text-red-400">{currencySymbol}{Math.floor(f.cogs).toLocaleString()}</p>
             <p className="text-[9px] md:text-xs text-gray-400 mt-1 hidden md:block">Total Cost of Goods Sold</p>
           </div>
         </div>
@@ -285,26 +287,26 @@ export const Finance = () => {
             <div className="bg-black/5 dark:bg-white/5 p-4 rounded-xl border border-black/5 dark:border-white/10 text-sm">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-900 dark:text-white font-semibold">Gross Sales</span>
-                <span className="text-gray-900 dark:text-white font-semibold">₱{Math.floor(f.grossSales).toLocaleString()}</span>
+                <span className="text-gray-900 dark:text-white font-semibold">{currencySymbol}{Math.floor(f.grossSales).toLocaleString()}</span>
               </div>
 
               <div className="space-y-1 mb-3 pt-2 border-t border-black/5 dark:border-white/5">
                 {data.settings.isVatRegistered && (
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> Less: VAT (12%)</span>
-                    <span className="text-red-600 font-medium">-₱{Math.floor(f.vat).toLocaleString()}</span>
+                    <span className="text-red-600 font-medium">-{currencySymbol}{Math.floor(f.vat).toLocaleString()}</span>
                   </div>
                 )}
                 {data.settings.isPwdSeniorActive && (
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-[#FCD34D]"></div> Less: PWD/Senior</span>
-                    <span className="text-[#FCD34D] font-medium">-₱{Math.floor(f.pwdDiscount).toLocaleString()}</span>
+                    <span className="text-[#FCD34D] font-medium">-{currencySymbol}{Math.floor(f.pwdDiscount).toLocaleString()}</span>
                   </div>
                 )}
                 {data.settings.otherDiscountRate > 0 && (
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500 flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div> Less: Other Discounts</span>
-                    <span className="text-orange-500 font-medium">-₱{Math.floor(f.otherDiscount).toLocaleString()}</span>
+                    <span className="text-orange-500 font-medium">-{currencySymbol}{Math.floor(f.otherDiscount).toLocaleString()}</span>
                   </div>
                 )}
                 {!data.settings.isVatRegistered && !data.settings.isPwdSeniorActive && data.settings.otherDiscountRate === 0 && (
@@ -314,7 +316,7 @@ export const Finance = () => {
 
               <div className="flex justify-between items-center pt-2 border-t border-black/5 dark:border-white/10">
                 <span className="text-gray-900 dark:text-white font-bold">Net Revenue</span>
-                <span className="text-[#FCD34D] font-bold">₱{Math.floor(f.netRevenue).toLocaleString()}</span>
+                <span className="text-[#FCD34D] font-bold">{currencySymbol}{Math.floor(f.netRevenue).toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -332,18 +334,18 @@ export const Finance = () => {
               <tbody>
                 <tr>
                   <td className="py-2 text-gray-500">Gross Profit (Before OPEX)</td>
-                  <td className="py-2 text-right font-semibold text-gray-900 dark:text-white">₱{Math.floor(f.grossProfit).toLocaleString()}</td>
+                  <td className="py-2 text-right font-semibold text-gray-900 dark:text-white">{currencySymbol}{Math.floor(f.grossProfit).toLocaleString()}</td>
                 </tr>
                 <tr>
                   <td className="py-2 text-gray-500 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-[#FCD34D]"></div>
                     Less: OPEX
                   </td>
-                  <td className="py-2 text-right font-semibold text-[#FCD34D]">-₱{Math.floor(f.opex).toLocaleString()}</td>
+                  <td className="py-2 text-right font-semibold text-[#FCD34D]">-{currencySymbol}{Math.floor(f.opex).toLocaleString()}</td>
                 </tr>
                 <tr className="border-t border-black/5 dark:border-white/5">
                   <td className="py-3 text-gray-900 dark:text-white font-bold">Operating Profit (After OPEX)</td>
-                  <td className="py-3 text-right font-bold text-[#34C759]">₱{Math.floor(f.netProfit).toLocaleString()}</td>
+                  <td className="py-3 text-right font-bold text-[#34C759]">{currencySymbol}{Math.floor(f.netProfit).toLocaleString()}</td>
                 </tr>
               </tbody>
             </table>
@@ -362,7 +364,7 @@ export const Finance = () => {
                   <p className="text-[10px] text-gray-400 uppercase tracking-wide">Monthly Billing</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-gray-700 dark:text-gray-400">₱{e.amount.toLocaleString()}</span>
+                  <span className="text-sm font-bold text-gray-700 dark:text-gray-400">{currencySymbol}{e.amount.toLocaleString()}</span>
                   <button onClick={() => removeExpense(e.id)} className="text-red-500 p-1 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
                     <iconify-icon icon="lucide:trash-2" width="14"></iconify-icon>
                   </button>
@@ -399,7 +401,7 @@ export const Finance = () => {
           {/* Total Monthly OPEX */}
           <div className="pt-3 border-t border-black/5 dark:border-white/10 flex justify-between items-center">
             <span className="text-xs font-medium text-gray-400">Total Monthly OPEX</span>
-            <span className="text-base font-bold text-gray-900 dark:text-white">₱{totalMonthlyEx.toLocaleString()}</span>
+            <span className="text-base font-bold text-gray-900 dark:text-white">{currencySymbol}{totalMonthlyEx.toLocaleString()}</span>
           </div>
 
           {/* Contingency Section */}
@@ -431,7 +433,7 @@ export const Finance = () => {
             <div className="flex justify-between items-center bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-xl">
               <span className="text-xs text-amber-700 dark:text-amber-300 font-medium">Contingency Amount</span>
               <span className="text-base font-bold text-amber-600 dark:text-amber-400">
-                ₱{Math.floor(totalMonthlyEx * ((data.settings.contingencyRate ?? 5) / 100)).toLocaleString()}
+                {currencySymbol}{Math.floor(totalMonthlyEx * ((data.settings.contingencyRate ?? 5) / 100)).toLocaleString()}
               </span>
             </div>
           </div>
@@ -440,7 +442,7 @@ export const Finance = () => {
           <div className="pt-3 border-t-2 border-gray-300 dark:border-white/20 flex justify-between items-center">
             <span className="text-sm font-bold text-gray-900 dark:text-white">Total OPEX + Contingency</span>
             <span className="text-lg font-bold text-[#FCD34D]">
-              ₱{Math.floor(totalMonthlyEx * (1 + ((data.settings.contingencyRate ?? 5) / 100))).toLocaleString()}
+              {currencySymbol}{Math.floor(totalMonthlyEx * (1 + ((data.settings.contingencyRate ?? 5) / 100))).toLocaleString()}
             </span>
           </div>
         </div>

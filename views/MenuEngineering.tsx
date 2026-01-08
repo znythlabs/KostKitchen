@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../AppContext';
+import { getCurrencySymbol } from '../lib/format-utils';
 
 type MatrixCategory = 'Winner' | 'Staple' | 'Opportunity' | 'Underperformer';
 
@@ -36,10 +37,10 @@ const CATEGORY_CONFIG: Record<MatrixCategory, {
     },
     'Staple': {
         label: 'Staples',
-        color: 'text-yellow-500',
-        bg: 'bg-yellow-500',
-        lightBg: 'bg-yellow-50 dark:bg-yellow-500/20',
-        zoneBg: 'bg-yellow-500/10 dark:bg-yellow-500/10',
+        color: 'text-yellow-600',
+        bg: 'bg-[#FCD34D]',
+        lightBg: 'bg-[#FCD34D]/20 dark:bg-[#FCD34D]/20',
+        zoneBg: 'bg-[#FCD34D]/10 dark:bg-[#FCD34D]/10',
         desc: 'Low Profit, High Volume',
         strategy: 'Reprice carefully or lower costs.',
         icon: 'lucide:anchor'
@@ -69,6 +70,7 @@ const CATEGORY_CONFIG: Record<MatrixCategory, {
 
 export const MenuEngineering = () => {
     const { data } = useApp();
+    const currencySymbol = getCurrencySymbol(data.settings.currency || 'PHP');
     const [selectedCategory, setSelectedCategory] = useState<MatrixCategory | 'All'>('All');
     const [hoveredItem, setHoveredItem] = useState<number | null>(null);
 
@@ -160,8 +162,8 @@ export const MenuEngineering = () => {
                                 className={`
                                     relative p-4 rounded-2xl border text-left transition-all duration-300
                                     ${isActive
-                                        ? `bg-white dark:bg-[#1C1C1E] ring-2 ring-inset ring-${config.color.split('-')[1]}-500 border-transparent shadow-lg transform scale-[1.02] z-10`
-                                        : 'bg-white dark:bg-[#1C1C1E] border-gray-200/50 dark:border-white/5 hover:border-gray-300 hover:shadow-md'
+                                        ? `bg-white dark:bg-[#1A1A1A] ring-2 ring-inset ring-${config.color.split('-')[1]}-500 border-transparent shadow-lg transform scale-[1.02] z-10`
+                                        : 'bg-white dark:bg-[#1A1A1A] border-gray-200/50 dark:border-white/5 hover:border-gray-300 hover:shadow-md'
                                     }
                                 `}
                             >
@@ -277,7 +279,7 @@ export const MenuEngineering = () => {
                                             <div className="font-bold text-sm mb-1">{item.name}</div>
                                             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-white/5 pt-2 mt-1">
                                                 <span>Daily Volume</span> <span className="font-mono font-medium text-gray-900 dark:text-white text-right">{item.volume}</span>
-                                                <span>Unit Profit</span> <span className="font-mono font-medium text-gray-900 dark:text-white text-right">₱{item.contribution.toFixed(0)}</span>
+                                                <span>Unit Profit</span> <span className="font-mono font-medium text-gray-900 dark:text-white text-right">{currencySymbol}{item.contribution.toFixed(0)}</span>
                                             </div>
                                             <div className={`mt-2 text-[10px] font-bold uppercase tracking-wider ${config.color} flex items-center gap-1`}>
                                                 <iconify-icon icon={config.icon} width="12"></iconify-icon>
@@ -356,7 +358,7 @@ export const MenuEngineering = () => {
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-base font-mono font-bold text-gray-900 dark:text-white">₱{item.contribution.toFixed(0)}</div>
+                                                        <div className="text-base font-mono font-bold text-gray-900 dark:text-white">{currencySymbol}{item.contribution.toFixed(0)}</div>
                                                         <div className="text-[10px] text-gray-400">Margin</div>
                                                     </div>
                                                 </div>

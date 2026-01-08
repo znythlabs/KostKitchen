@@ -2,11 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useApp } from '../AppContext';
 import { DailySnapshot } from '../types';
+import { getCurrencySymbol } from '../lib/format-utils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export const Calendar = () => {
     const { data, getMonthlySummary, getProjection, getRecipeFinancials } = useApp();
+    const currencySymbol = getCurrencySymbol(data.settings.currency || 'PHP');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<DailySnapshot | null>(null);
     const [selectedWeek, setSelectedWeek] = useState<{ start: Date; end: Date; snapshots: DailySnapshot[] } | null>(null);
@@ -115,9 +117,9 @@ export const Calendar = () => {
 
         doc.setFontSize(14);
         doc.setTextColor(0);
-        doc.text(`PHP ${summary.netProfit.toLocaleString()}`, 20, 65);
-        doc.text(`PHP ${summary.revenue.toLocaleString()}`, 80, 65);
-        doc.text(`PHP ${summary.costs.toLocaleString()}`, 140, 65);
+        doc.text(`${currencySymbol} ${summary.netProfit.toLocaleString()}`, 20, 65);
+        doc.text(`${currencySymbol} ${summary.revenue.toLocaleString()}`, 80, 65);
+        doc.text(`${currencySymbol} ${summary.costs.toLocaleString()}`, 140, 65);
 
         // Table
         autoTable(doc, {
@@ -149,9 +151,9 @@ export const Calendar = () => {
 
         const rows = sortedSnapshots.map(s => [
             s.date,
-            `PHP ${Math.floor(s.netRevenue).toLocaleString()}`,
-            `PHP ${Math.floor(s.cogs).toLocaleString()}`,
-            `PHP ${Math.floor(s.netProfit).toLocaleString()}`
+            `${currencySymbol} ${Math.floor(s.netRevenue).toLocaleString()}`,
+            `${currencySymbol} ${Math.floor(s.cogs).toLocaleString()}`,
+            `${currencySymbol} ${Math.floor(s.netProfit).toLocaleString()}`
         ]);
 
         generatePDF(`Monthly Report - ${monthNames[month]} ${year}`, summary, rows, 'monthly');
@@ -259,7 +261,7 @@ export const Calendar = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-20 bg-gray-50/95 dark:bg-[#121212]/95 backdrop-blur-sm py-2 -mx-4 px-4 md:mx-0 md:px-0 md:static md:bg-transparent md:py-0">
                 <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto">
-                    <div className="flex items-center gap-2 bg-white dark:bg-[#1C1C1E] rounded-full p-1.5 shadow-sm border border-gray-100 dark:border-white/5">
+                    <div className="flex items-center gap-2 bg-white dark:bg-[#1A1A1A] rounded-full p-1.5 shadow-sm border border-gray-100 dark:border-white/5">
                         <button
                             onClick={prevMonth}
                             className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-900 dark:text-white transition-all active:scale-90 touch-manipulation"
@@ -283,7 +285,7 @@ export const Calendar = () => {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setIsHeatmapEnabled(!isHeatmapEnabled)}
-                            className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95 touch-manipulation shadow-sm border ${isHeatmapEnabled ? 'bg-[#FCD34D] text-[#303030] border-[#FCD34D]' : 'bg-white dark:bg-[#1C1C1E] text-gray-500 border-gray-100 dark:border-white/5'}`}
+                            className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95 touch-manipulation shadow-sm border ${isHeatmapEnabled ? 'bg-[#FCD34D] text-[#303030] border-[#FCD34D]' : 'bg-white dark:bg-[#1A1A1A] text-gray-500 border-gray-100 dark:border-white/5'}`}
                             aria-label="Toggle Heatmap"
                         >
                             <iconify-icon icon="lucide:flame" width="20"></iconify-icon>
@@ -299,11 +301,11 @@ export const Calendar = () => {
                 </div>
 
                 {/* Monthly Summary */}
-                <div className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 flex justify-between items-center gap-6 shadow-sm border border-gray-100 dark:border-white/5">
+                <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl p-4 flex justify-between items-center gap-6 shadow-sm border border-gray-100 dark:border-white/5">
                     <div>
                         <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Net Profit</div>
                         <div className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-                            ₱{Math.floor(monthSummary.totalNetProfit + (isTodayInCurrentMonth() && !data.dailySnapshots.find(s => s.date === liveSnapshot.date) ? liveSnapshot.netProfit : 0)).toLocaleString()}
+                            {currencySymbol}{Math.floor(monthSummary.totalNetProfit + (isTodayInCurrentMonth() && !data.dailySnapshots.find(s => s.date === liveSnapshot.date) ? liveSnapshot.netProfit : 0)).toLocaleString()}
                         </div>
                     </div>
                     <div className="text-right pl-6 border-l border-gray-100 dark:border-white/10">
@@ -314,7 +316,7 @@ export const Calendar = () => {
             </div>
 
             {/* Calendar Grid */}
-            <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl p-3 md:p-6 shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden">
+            <div className="bg-white dark:bg-[#1A1A1A] rounded-3xl p-3 md:p-6 shadow-sm border border-gray-100 dark:border-white/5 overflow-hidden">
                 {/* Week Headers */}
                 <div className="grid grid-cols-[3rem_repeat(7,1fr)] mb-3 text-center">
                     <div className="text-[11px] font-bold text-gray-400 dark:text-gray-600 self-center uppercase tracking-wider">Week</div>
@@ -449,7 +451,7 @@ export const Calendar = () => {
                                                         </span>
                                                         {/* Desktop: Full View */}
                                                         <span className="hidden md:inline">
-                                                            ₱{Math.floor(profit).toLocaleString()}
+                                                            {currencySymbol}{Math.floor(profit).toLocaleString()}
                                                         </span>
                                                     </span>
                                                 </div>
@@ -473,14 +475,14 @@ export const Calendar = () => {
                     ></div>
 
                     {/* Content */}
-                    <div className="relative w-full md:w-[600px] h-[calc(85dvh-env(safe-area-inset-top))] md:h-[670px] md:max-h-[85vh] bg-white dark:bg-[#1C1C1E] rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-slide-up">
+                    <div className="relative w-full md:w-[600px] h-[calc(85dvh-env(safe-area-inset-top))] md:h-[670px] md:max-h-[85vh] bg-white dark:bg-[#1A1A1A] rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-slide-up">
                         {/* Mobile Drag Handle */}
-                        <div className="md:hidden w-full h-6 flex items-center justify-center shrink-0 bg-white dark:bg-[#1C1C1E] pt-2" onClick={() => setSelectedDay(null)}>
+                        <div className="md:hidden w-full h-6 flex items-center justify-center shrink-0 bg-white dark:bg-[#1A1A1A] pt-2" onClick={() => setSelectedDay(null)}>
                             <div className="w-10 h-1 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
                         </div>
 
                         {/* Header */}
-                        <div className="px-6 pb-4 pt-0 md:pt-6 md:px-6 md:pb-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl sticky top-0 z-10 shrink-0">
+                        <div className="px-6 pb-4 pt-0 md:pt-6 md:px-6 md:pb-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-xl sticky top-0 z-10 shrink-0">
                             <div>
                                 <h3 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
                                     {new Date(selectedDay.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -512,7 +514,7 @@ export const Calendar = () => {
                                 <div className="p-6 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/20 rounded-3xl flex justify-between items-center shadow-sm">
                                     <div>
                                         <p className="text-xs font-bold text-green-700 dark:text-green-400 uppercase tracking-widest">Net Profit</p>
-                                        <p className="text-4xl font-bold text-green-700 dark:text-green-400 mt-2 tracking-tight">₱{Math.floor(selectedDay.netProfit).toLocaleString()}</p>
+                                        <p className="text-4xl font-bold text-green-700 dark:text-green-400 mt-2 tracking-tight">{currencySymbol}{Math.floor(selectedDay.netProfit).toLocaleString()}</p>
                                     </div>
                                     <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 shadow-inner">
                                         <iconify-icon icon="lucide:trending-up" width="24"></iconify-icon>
@@ -521,11 +523,11 @@ export const Calendar = () => {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="p-5 bg-gray-50 dark:bg-white/5 rounded-3xl">
                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Revenue</p>
-                                        <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">₱{Math.floor(selectedDay.netRevenue).toLocaleString()}</p>
+                                        <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{currencySymbol}{Math.floor(selectedDay.netRevenue).toLocaleString()}</p>
                                     </div>
                                     <div className="p-5 bg-gray-50 dark:bg-white/5 rounded-3xl">
                                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Costs</p>
-                                        <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">₱{Math.floor(selectedDay.cogs).toLocaleString()}</p>
+                                        <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{currencySymbol}{Math.floor(selectedDay.cogs).toLocaleString()}</p>
                                     </div>
                                 </div>
                             </div>
@@ -542,7 +544,7 @@ export const Calendar = () => {
                                                 <p className="text-sm font-semibold text-gray-900 dark:text-white">{r.recipeName}</p>
                                                 <p className="text-xs text-gray-500 mt-0.5">{r.quantity} orders</p>
                                             </div>
-                                            <p className="text-sm font-bold text-gray-900 dark:text-white">₱{Math.floor(r.revenue).toLocaleString()}</p>
+                                            <p className="text-sm font-bold text-gray-900 dark:text-white">{currencySymbol}{Math.floor(r.revenue).toLocaleString()}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -560,13 +562,13 @@ export const Calendar = () => {
                         className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity duration-300"
                         onClick={() => setSelectedWeek(null)}
                     ></div>
-                    <div className="relative w-full md:w-[500px] h-[calc(60dvh-env(safe-area-inset-top))] md:h-auto md:max-h-[85vh] bg-white dark:bg-[#1C1C1E] rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-slide-up">
+                    <div className="relative w-full md:w-[500px] h-[calc(60dvh-env(safe-area-inset-top))] md:h-auto md:max-h-[85vh] bg-white dark:bg-[#1A1A1A] rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-slide-up">
                         {/* Mobile Drag Handle */}
-                        <div className="md:hidden w-full h-6 flex items-center justify-center shrink-0 bg-white dark:bg-[#1C1C1E] pt-2" onClick={() => setSelectedWeek(null)}>
+                        <div className="md:hidden w-full h-6 flex items-center justify-center shrink-0 bg-white dark:bg-[#1A1A1A] pt-2" onClick={() => setSelectedWeek(null)}>
                             <div className="w-10 h-1 bg-gray-300 dark:bg-gray-700 rounded-full"></div>
                         </div>
 
-                        <div className="px-6 pb-4 pt-0 md:pt-6 md:px-6 md:pb-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-xl sticky top-0 z-10 shrink-0">
+                        <div className="px-6 pb-4 pt-0 md:pt-6 md:px-6 md:pb-6 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-xl sticky top-0 z-10 shrink-0">
                             <div>
                                 <h3 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Weekly Summary</h3>
                                 <p className="text-sm font-medium text-gray-500">
@@ -597,20 +599,20 @@ export const Calendar = () => {
                                     <div className="text-center py-4">
                                         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Total Weekly Profit</p>
                                         <p className="text-4xl font-bold text-gray-900 dark:text-white">
-                                            ₱{selectedWeek.snapshots.reduce((sum, s) => sum + s.netProfit, 0).toLocaleString()}
+                                            {currencySymbol}{selectedWeek.snapshots.reduce((sum, s) => sum + s.netProfit, 0).toLocaleString()}
                                         </p>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl text-center">
                                             <p className="text-[10px] font-bold text-gray-400 uppercase">Revenue</p>
                                             <p className="text-lg font-bold text-gray-900 dark:text-white">
-                                                ₱{selectedWeek.snapshots.reduce((sum, s) => sum + s.netRevenue, 0).toLocaleString()}
+                                                {currencySymbol}{selectedWeek.snapshots.reduce((sum, s) => sum + s.netRevenue, 0).toLocaleString()}
                                             </p>
                                         </div>
                                         <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl text-center">
                                             <p className="text-[10px] font-bold text-gray-400 uppercase">Avg Daily Profit</p>
                                             <p className="text-lg font-bold text-green-600">
-                                                ₱{Math.floor(selectedWeek.snapshots.reduce((sum, s) => sum + s.netProfit, 0) / selectedWeek.snapshots.length).toLocaleString()}
+                                                {currencySymbol}{Math.floor(selectedWeek.snapshots.reduce((sum, s) => sum + s.netProfit, 0) / selectedWeek.snapshots.length).toLocaleString()}
                                             </p>
                                         </div>
                                     </div>

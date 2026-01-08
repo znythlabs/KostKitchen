@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export type View = 'dashboard' | 'recipes' | 'inventory' | 'finance' | 'calendar' | 'profile' | 'engineering' | 'analytics' | 'settings';
+export type View = 'dashboard' | 'recipes' | 'inventory' | 'finance' | 'calendar' | 'profile' | 'engineering' | 'analytics' | 'settings' | 'pos';
 
 export interface TourStep {
   targetId: string;
@@ -123,6 +123,8 @@ export interface AppData {
     otherDiscountRate: number;
     dailySalesTarget?: number;
     contingencyRate?: number; // Default 5%
+    currency: string;
+    measurementUnit: 'Metric' | 'Imperial';
   };
   ingredients: Ingredient[];
   recipes: Recipe[];
@@ -220,6 +222,7 @@ export interface AppContextType {
   user: { email?: string } | null;
 
   updateDailyTarget: (amount: number) => void;
+  updateSettings: (settings: Partial<AppData['settings']>) => Promise<void>;
   // Categories
   inventoryCategories: string[];
   addInventoryCategory: (cat: string) => void;

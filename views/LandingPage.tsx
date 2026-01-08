@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { useApp } from '../AppContext';
 import {
     ChefHat,
@@ -55,6 +56,8 @@ import {
     Package,
     ClipboardList,
     TrendingUp,
+    Sun,
+    Moon,
 } from 'lucide-react';
 
 const pricingData = {
@@ -155,477 +158,633 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
     }, []);
 
     return (
-        <div id="marketing-site" className={`w-full block bg-[#F3EFE0] text-[#111111] antialiased selection:bg-[#FFD646] selection:text-black font-sans transition-opacity duration-700 ease-in-out overflow-y-auto h-screen ${!isVisible ? 'opacity-0' : 'opacity-100'}`}>
+        <div id="marketing-site" className={`w-full block bg-[#F3EFE0] dark:bg-[#0C0C0C] text-[#111111] dark:text-white antialiased selection:bg-[#FFD646] selection:text-black font-sans transition-opacity duration-700 ease-in-out overflow-y-auto h-screen ${!isVisible ? 'opacity-0' : 'opacity-100'}`}>
             {/* Navbar placeholder */}
-            <nav className="fixed top-0 w-full z-50 bg-[#F3EFE0]/90 backdrop-blur-md border-b border-[#E6E2D6]">
+            <nav className="fixed top-0 w-full z-50 bg-[#F3EFE0]/90 dark:bg-[#0C0C0C]/90 backdrop-blur-md border-b border-[#E6E2D6] dark:border-white/10">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <div className="w-10 h-10 rounded-full bg-[#111111] flex items-center justify-center text-white">
                             <ChefHat className="w-5 h-5" />
                         </div>
-                        <span className="text-xl font-semibold tracking-tight text-[#111111]">
+                        <span className="text-xl font-semibold tracking-tight text-[#111111] dark:text-white">
                             KostKitchen
                         </span>
                     </div>
 
-                    <div className="hidden md:flex items-center gap-8 text-sm font-medium text-[#666666]">
-                        <a href="#" className="hover:text-black transition-colors">Features</a>
-                        <a href="#" className="hover:text-black transition-colors">How It Works</a>
-                        <a href="#" className="hover:text-black transition-colors">Pricing</a>
-                        <a href="#" className="hover:text-black transition-colors">Resources</a>
+                    <div className="hidden md:flex items-center gap-8 text-sm font-medium text-[#666666] dark:text-gray-400">
+                        <a href="#" className="hover:text-black dark:hover:text-white transition-colors">Features</a>
+                        <a href="#" className="hover:text-black dark:hover:text-white transition-colors">How It Works</a>
+                        <a href="#" className="hover:text-black dark:hover:text-white transition-colors">Pricing</a>
+                        <a href="#" className="hover:text-black dark:hover:text-white transition-colors">Resources</a>
                     </div>
 
-                    <button onClick={handleEnter} className="bg-[#111111] hover:bg-black/80 text-white px-6 py-2.5 rounded-2xl text-sm font-medium transition-all shadow-lg shadow-gray-300/50 flex items-center gap-2 group">
-                        Get Started
-                        <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-[#111111] dark:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                            aria-label="Toggle Dark Mode"
+                        >
+                            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                        </button>
+
+                        <button onClick={handleEnter} className="bg-[#111111] dark:bg-white hover:bg-black/80 dark:hover:bg-gray-200 text-white dark:text-black px-6 py-2.5 rounded-2xl text-sm font-medium transition-all shadow-lg shadow-gray-300/50 dark:shadow-none flex items-center gap-2 group">
+                            Get Started
+                            <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                        </button>
+                    </div>
                 </div>
             </nav>
 
             {/* Hero Section */}
-            <section className="relative pt-36 pb-20 overflow-hidden">
-                {/* Background Gradients (Warm) */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[800px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-yellow-200/40 via-[#F3EFE0] to-transparent -z-10"></div>
-
-                <div className="max-w-7xl mx-auto px-6 text-center">
-                    <h1 className="text-5xl md:text-7xl font-semibold text-[#111111] tracking-tight leading-[1.1] mb-6">
-                        The Operating System
-                        <br />
-                        for
-                        <span className="relative inline-block ml-2">
-                            <span className="relative z-10">Modern Kitchens</span>
-                        </span>
-                    </h1>
-                    <p className="text-lg md:text-xl text-[#666666] max-w-2xl mx-auto mb-8 font-normal leading-relaxed">
-                        Control food costs, manage inventory, and track real-time
-                        profitability with an interface designed for business owners, not accountants.
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 text-sm">
-                        <div className="flex items-center gap-2 text-[#444444]">
-                            <CheckCircle2 className="w-4 h-4 text-[#FFD646] fill-black" />
-                            No credit card Required
-                        </div>
-                        <div className="flex items-center gap-2 text-[#444444]">
-                            <CheckCircle2 className="w-4 h-4 text-[#FFD646] fill-black" />
-                            Cancel Anytime
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-                        <button onClick={handleEnter} className="bg-[#FFD646] hover:bg-[#FFC920] text-[#111111] px-8 py-3.5 rounded-2xl text-base font-medium transition-all shadow-xl shadow-yellow-200/50 flex items-center gap-2">
-                            Start Free Trial
-                            <ArrowRight className="w-4 h-4" />
-                        </button>
-                        <button className="bg-white hover:bg-gray-50 text-[#111111] border border-[#E6E2D6] px-8 py-3.5 rounded-2xl text-base font-medium transition-all shadow-sm flex items-center gap-2">
-                            Request a Demo
-                        </button>
-                    </div>
-
-                    {/* Dashboard Mockup */}
-                    <div className="relative max-w-6xl mx-auto rounded-[2.5rem] p-3 bg-white/40 backdrop-blur-xl border border-white/60 shadow-2xl shadow-stone-200/50">
-                        <div className="rounded-[2rem] bg-[#E3E5E6] bg-[linear-gradient(150deg,#E3E5E6_0%,#E3E5E6_24.65%,#FFF4D2_58.78%,#F3E8C9_100%)] bg-fixed bg-cover overflow-hidden relative min-h-[700px] text-left flex">
-                            {/* Sidebar */}
-                            <div className="hidden md:flex w-64 flex-col p-6 border-r border-[#E6E2D6]/30">
-                                <div className="flex items-center gap-3 mb-10">
-                                    <div className="w-8 h-8 rounded-full bg-[#111111] flex items-center justify-center text-white text-xs font-bold">
-                                        K
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-semibold text-[#111111]">
-                                            KostKitchen
-                                        </div>
-                                        <div className="text-[10px] text-[#888888]">Pro Plan</div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="h-10 w-full bg-[#111111] text-white rounded-xl flex items-center px-4 gap-3 text-sm font-medium shadow-lg shadow-black/10">
-                                        <LayoutGrid className="w-4 h-4" />
-                                        Overview
-                                    </div>
-                                    <div className="h-10 w-full hover:bg-black/5 text-[#666666] rounded-xl flex items-center px-4 gap-3 text-sm font-medium transition-colors">
-                                        <Utensils className="w-4 h-4" />
-                                        Menu
-                                    </div>
-                                    <div className="h-10 w-full hover:bg-black/5 text-[#666666] rounded-xl flex items-center px-4 gap-3 text-sm font-medium transition-colors">
-                                        <ScatterChart className="w-4 h-4" />
-                                        Matrix
-                                    </div>
-                                    <div className="h-10 w-full hover:bg-black/5 text-[#666666] rounded-xl flex items-center px-4 gap-3 text-sm font-medium transition-colors">
-                                        <Package className="w-4 h-4" />
-                                        Inventory
-                                    </div>
-                                    <div className="h-10 w-full hover:bg-black/5 text-[#666666] rounded-xl flex items-center px-4 gap-3 text-sm font-medium transition-colors">
-                                        <PieChart className="w-4 h-4" />
-                                        Financials
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Main Content */}
-                            <div className="flex-1 p-6 md:p-8 overflow-y-auto no-scrollbar">
-                                {/* Header */}
-                                <div className="flex justify-between items-center mb-8">
-                                    <h3 className="text-3xl font-light text-[#111111] tracking-tight">
-                                        Welcome in,
-                                        <span className="font-medium ml-2">Marco</span>
-                                    </h3>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-2 bg-white rounded-full px-3 py-1.5 shadow-sm border border-gray-100">
-                                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                                            <span className="text-xs font-medium">Kitchen Live</span>
-                                        </div>
-                                        <button className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-gray-100">
-                                            <Bell className="w-4 h-4 text-gray-500" />
-                                        </button>
-                                        <img src="https://i.pravatar.cc/150?img=12" className="w-10 h-10 rounded-full border-2 border-white shadow-sm" alt="Profile" />
-                                    </div>
-                                </div>
-
-                                {/* Stats Grid, Charts, Bottom Section */}
-                                {/* Stats Grid */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                                    {/* Card 1 (Yellow Accent) */}
-                                    <div className="bg-[#FFD646] p-5 rounded-[1.5rem] relative overflow-hidden group hover:shadow-lg transition-shadow">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <span className="text-xs font-medium text-[#111111]/80">
-                                                Total Sales
-                                            </span>
-                                            <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center">
-                                                <span className="font-serif italic text-sm">$</span>
-                                            </div>
-                                        </div>
-                                        <div className="text-2xl font-semibold text-[#111111] mb-2">
-                                            ₱24,500
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs font-medium">
-                                            <span className="bg-white/40 px-1.5 py-0.5 rounded-md">
-                                                +12%
-                                            </span>
-                                            <span className="text-[#111111]/70">vs yesterday</span>
-                                        </div>
-                                    </div>
-                                    {/* Card 2 */}
-                                    <div className="bg-white/60 p-5 rounded-[1.5rem] border border-[#E6E2D6]/50">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <span className="text-xs font-medium text-gray-500">
-                                                Food Cost
-                                            </span>
-                                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
-                                                <TrendingDown className="w-4 h-4 text-gray-400" />
-                                            </div>
-                                        </div>
-                                        <div className="text-2xl font-semibold text-[#111111] mb-2">
-                                            28.5%
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs font-medium">
-                                            <span className="bg-gray-100 px-1.5 py-0.5 rounded-md text-gray-600">
-                                                -2.1%
-                                            </span>
-                                            <span className="text-gray-400">Optimization</span>
-                                        </div>
-                                    </div>
-                                    {/* Card 3 */}
-                                    <div className="bg-white/60 p-5 rounded-[1.5rem] border border-[#E6E2D6]/50">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <span className="text-xs font-medium text-gray-500">
-                                                Low Stock Items
-                                            </span>
-                                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
-                                                <AlertCircle className="w-4 h-4 text-gray-400" />
-                                            </div>
-                                        </div>
-                                        <div className="text-2xl font-semibold text-[#111111] mb-2">
-                                            3
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs font-medium">
-                                            <span className="text-gray-400">Requires attention</span>
-                                        </div>
-                                    </div>
-                                    {/* Card 4 */}
-                                    <div className="bg-white/60 p-5 rounded-[1.5rem] border border-[#E6E2D6]/50">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <span className="text-xs font-medium text-gray-500">
-                                                Gross Profit
-                                            </span>
-                                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
-                                                <Wallet className="w-4 h-4 text-gray-400" />
-                                            </div>
-                                        </div>
-                                        <div className="text-2xl font-semibold text-[#111111] mb-2">
-                                            ₱17,522
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs font-medium">
-                                            <span className="text-gray-400">71.5% margin</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Charts Section */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                                    {/* Bar Chart */}
-                                    <div className="md:col-span-2 bg-white/60 p-6 rounded-[2rem] border border-[#E6E2D6]/50">
-                                        <div className="flex justify-between items-start mb-8">
-                                            <div>
-                                                <h4 className="text-lg font-medium text-[#111111]">
-                                                    Profitability Trend
-                                                </h4>
-                                                <p className="text-xs text-gray-400 mt-1">
-                                                    Net profit margin over last 7 days
-                                                </p>
-                                            </div>
-                                            <ArrowUpRight className="w-4 h-4 text-gray-300" />
-                                        </div>
-                                        <div className="h-48 flex items-end justify-between gap-2 px-2">
-                                            {/* Bars */}
-                                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
-                                                const heights = ['40%', '55%', '45%', '70%', '85%', '60%', '75%'];
-                                                const isFri = day === 'Fri';
-                                                return (
-                                                    <div key={day} className={`w-full ${isFri ? 'bg-[#303030] border-2 border-[#E6E2D6] -mt-2 z-10 shadow-lg' : 'bg-[#FFD646] group hover:bg-[#FFD646]'} rounded-t-lg relative transition-colors`} style={{ height: heights[i] }}>
-                                                        {isFri && (
-                                                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#111111] text-white text-[10px] px-2 py-1 rounded">
-                                                                ₱24k
-                                                            </div>
-                                                        )}
-                                                        <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] ${isFri ? 'text-[#111111] font-bold' : 'text-gray-400'}`}>
-                                                            {day}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Donut Chart */}
-                                    <div className="bg-white/60 p-6 rounded-[2rem] border border-[#E6E2D6]/50 flex flex-col items-center justify-center relative">
-                                        <h4 className="absolute top-6 left-6 text-sm font-medium text-[#111111]">
-                                            Daily Goal
-                                        </h4>
-                                        <div className="relative w-40 h-40 flex items-center justify-center mt-4">
-                                            <svg className="w-full h-full transform -rotate-90">
-                                                <circle cx="80" cy="80" r="70" stroke="#F3EFE0" strokeWidth="12" fill="none"></circle>
-                                                <circle cx="80" cy="80" r="70" stroke="#FFD646" strokeWidth="12" fill="none" strokeDasharray="440" strokeDashoffset="110" strokeLinecap="round"></circle>
-                                            </svg>
-                                            <div className="absolute text-center">
-                                                <div className="text-3xl font-semibold text-[#111111]">
-                                                    70%
-                                                </div>
-                                                <div className="text-[10px] text-gray-400 uppercase tracking-wider">
-                                                    Achieved
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex justify-between w-full mt-6 px-2 text-center">
-                                            <div>
-                                                <div className="text-[10px] text-gray-400 uppercase">
-                                                    Target
-                                                </div>
-                                                <div className="text-sm font-semibold">₱35k</div>
-                                            </div>
-                                            <div>
-                                                <div className="text-[10px] text-gray-400 uppercase">
-                                                    Current
-                                                </div>
-                                                <div className="text-sm font-semibold">₱24.5k</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Bottom Section */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Action Required (Black Card) */}
-                                    <div className="bg-[#1F1F1F] p-6 rounded-[2rem] text-white border border-[#333]">
-                                        <div className="flex justify-between items-center mb-6">
-                                            <h4 className="text-lg font-medium tracking-tight">
-                                                Action Required
-                                            </h4>
-                                            <div className="flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-                                                <span className="text-xs text-gray-400">3 Pending</span>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {/* Item 1 */}
-                                            <div className="flex items-center justify-between p-4 bg-[#2A2A2A] rounded-2xl border border-white/5 group hover:bg-[#333] transition-all cursor-pointer shadow-sm">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-semibold text-gray-100 group-hover:text-white transition-colors">
-                                                        Chicken Breast
-                                                    </span>
-                                                    <span className="text-xs text-gray-500 font-medium mt-1">
-                                                        2000 g (Min: 5000)
-                                                    </span>
-                                                </div>
-                                                <button className="bg-[#3A2D28] hover:bg-[#4A3830] border border-orange-500/20 text-orange-400 text-[10px] font-bold px-3 py-1.5 rounded-lg tracking-wider uppercase transition-colors">
-                                                    Low Stock
-                                                </button>
-                                            </div>
-
-                                            {/* Item 2 */}
-                                            <div className="flex items-center justify-between p-4 bg-[#2A2A2A] rounded-2xl border border-white/5 group hover:bg-[#333] transition-all cursor-pointer shadow-sm">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-semibold text-gray-100 group-hover:text-white transition-colors">
-                                                        Heavy Cream
-                                                    </span>
-                                                    <span className="text-xs text-gray-500 font-medium mt-1">
-                                                        2 L (Min: 8 L)
-                                                    </span>
-                                                </div>
-                                                <button className="bg-[#3A2D28] hover:bg-[#4A3830] border border-orange-500/20 text-orange-400 text-[10px] font-bold px-3 py-1.5 rounded-lg tracking-wider uppercase transition-colors">
-                                                    Low Stock
-                                                </button>
-                                            </div>
-
-                                            {/* Item 3 */}
-                                            <div className="flex items-center justify-between p-4 bg-[#2A2A2A] rounded-2xl border border-white/5 group hover:bg-[#333] transition-all cursor-pointer shadow-sm">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-semibold text-gray-100 group-hover:text-white transition-colors">
-                                                        Truffle Oil
-                                                    </span>
-                                                    <span className="text-xs text-gray-500 font-medium mt-1">
-                                                        1 Bottle (Min: 3)
-                                                    </span>
-                                                </div>
-                                                <button className="bg-[#3A2D28] hover:bg-[#4A3830] border border-orange-500/20 text-orange-400 text-[10px] font-bold px-3 py-1.5 rounded-lg tracking-wider uppercase transition-colors">
-                                                    Low Stock
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Top Movers Table (White Card) */}
-                                    <div className="bg-white/60 p-6 rounded-[2rem] border border-[#E6E2D6]/50">
-                                        <div className="flex justify-between items-center mb-6">
-                                            <h4 className="text-lg font-medium text-[#111111]">
-                                                Top Movers
-                                            </h4>
-                                            <span className="text-xs text-gray-400 hover:text-black cursor-pointer">
-                                                View Full Menu
-                                            </span>
-                                        </div>
-                                        <table className="w-full text-left text-xs">
-                                            <thead>
-                                                <tr className="text-gray-400 uppercase tracking-wider border-b border-gray-100">
-                                                    <th className="pb-3 font-medium">Item Name</th>
-                                                    <th className="pb-3 font-medium">Category</th>
-                                                    <th className="pb-3 font-medium">Vol</th>
-                                                    <th className="pb-3 font-medium">Cost %</th>
-                                                    <th className="pb-3 font-medium text-right">Profit</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50">
-                                                <tr>
-                                                    <td className="py-3 font-medium text-[#111111]">
-                                                        Wagyu Burger
-                                                    </td>
-                                                    <td className="py-3">
-                                                        <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                                                            Mains
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3 text-gray-500">42</td>
-                                                    <td className="py-3 text-gray-500">32%</td>
-                                                    <td className="py-3 text-right font-medium">₱8,400</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="py-3 font-medium text-[#111111]">
-                                                        Truffle Pasta
-                                                    </td>
-                                                    <td className="py-3">
-                                                        <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                                                            Mains
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3 text-gray-500">28</td>
-                                                    <td className="py-3 text-gray-500">25%</td>
-                                                    <td className="py-3 text-right font-medium">₱6,125</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="py-3 font-medium text-[#111111]">
-                                                        Iced Tea Pitcher
-                                                    </td>
-                                                    <td className="py-3">
-                                                        <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                                            Bev
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3 text-gray-500">140</td>
-                                                    <td className="py-3 text-gray-500">12%</td>
-                                                    <td className="py-3 text-right font-medium">₱2,800</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Floating Elements decoration */}
-                        <div className="absolute -left-12 top-1/4 bg-white p-3 rounded-2xl shadow-xl shadow-gray-200/50 flex items-center gap-3 animate-bounce" style={{ animationDuration: '3s' }}>
-                            <div className="w-10 h-10 rounded-full bg-[#FFD646] flex items-center justify-center text-black">
-                                <ChefHat className="w-5 h-5" />
-                            </div>
-                            <div className="text-xs pr-2">
-                                <div className="font-semibold text-[#111111]">Store Owner</div>
-                                <div className="text-gray-400">Just Now</div>
-                            </div>
-                        </div>
-                    </div>
+            <section className="relative pt-32 pb-20 overflow-hidden min-h-screen flex flex-col justify-center">
+                {/* Background Gradients (Animated) */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{
+                            opacity: 1,
+                            x: [0, 50, 0],
+                            y: [0, 30, 0],
+                            scale: [1, 1.1, 1]
+                        }}
+                        transition={{
+                            opacity: { duration: 1.5 },
+                            default: {
+                                duration: 20,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                            }
+                        }}
+                        className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-yellow-200/30 blur-[120px]"
+                    />
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{
+                            opacity: 1,
+                            x: [0, -30, 0],
+                            y: [0, 50, 0],
+                            scale: [1, 1.2, 1]
+                        }}
+                        transition={{
+                            opacity: { duration: 1.5, delay: 0.5 },
+                            default: {
+                                duration: 25,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                                delay: 2
+                            }
+                        }}
+                        className="absolute top-[20%] right-[-5%] w-[40%] h-[60%] rounded-full bg-[#FFD646]/10 blur-[100px]"
+                    />
+                    <motion.div
+                        className="absolute bottom-[-10%] left-[20%] w-[60%] h-[40%] rounded-full bg-orange-100/30 blur-[100px]"
+                        animate={{
+                            x: [0, 40, 0],
+                            y: [0, -40, 0],
+                        }}
+                        transition={{
+                            duration: 22,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: 1
+                        }}
+                    />
                 </div>
 
-                {/* Trusted By */}
-                <div className="max-w-6xl mx-auto px-6 mt-20 text-center">
-                    <p className="text-sm font-medium text-gray-400 mb-8 uppercase tracking-wide">
-                        Trusted by Top Kitchens
-                    </p>
-                    <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-40 hover:opacity-100 transition-opacity duration-500 grayscale">
-                        <div className="text-xl font-bold text-[#111111] flex items-center gap-2">
-                            <Triangle className="fill-current w-5 h-5" />
-                            BISTRO
+                <div className="max-w-7xl mx-auto px-6 text-center z-10">
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/50 border border-[#E6E2D6] backdrop-blur-sm mb-8">
+                            <span className="flex h-2 w-2 rounded-full bg-[#FFD646]"></span>
+                            <span className="text-xs font-medium text-gray-600 tracking-wide uppercase">The Future of Kitchen Management</span>
                         </div>
-                        <div className="text-xl font-bold text-[#111111] flex items-center gap-2">
-                            <Coffee className="w-5 h-5" />
-                            Roast&Co
+
+                        <h1 className="text-6xl md:text-8xl font-bold text-[#111111] dark:text-white tracking-tighter leading-[1.05] mb-8">
+                            The Operating System
+                            <br />
+                            <span className="relative inline-block">
+                                for
+                                <span className="relative z-10 ml-4 bg-clip-text text-transparent bg-gradient-to-r from-[#111111] to-[#555555] dark:from-white dark:to-gray-400">
+                                    Modern Kitchens
+                                </span>
+                                <motion.svg
+                                    initial={{ pathLength: 0, opacity: 0 }}
+                                    animate={{ pathLength: 1, opacity: 1 }}
+                                    transition={{ duration: 1.5, delay: 0.8, ease: "easeInOut" }}
+                                    className="absolute -bottom-2 left-4 w-full h-4 text-[#FFD646] -z-10"
+                                    viewBox="0 0 100 10"
+                                    preserveAspectRatio="none"
+                                >
+                                    <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" />
+                                </motion.svg>
+                            </span>
+                        </h1>
+                    </motion.div>
+                    <motion.p
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                        className="text-lg md:text-xl text-[#555555] dark:text-[#A1A1AA] max-w-2xl mx-auto mb-10 font-normal leading-relaxed"
+                    >
+                        Control food costs, manage inventory, and track real-time
+                        profitability with an interface designed for business owners, not accountants.
+                    </motion.p>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                        className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20"
+                    >
+                        <button onClick={handleEnter} className="group relative overflow-hidden bg-[#111111] dark:bg-white text-white dark:text-black px-8 py-4 rounded-2xl text-base font-medium transition-all shadow-xl shadow-black/10 flex items-center gap-3 hover:scale-105 active:scale-95 duration-300">
+                            <span className="relative z-10">Start Free Trial</span>
+                            <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
+                            <div className="absolute inset-0 bg-neutral-800 dark:bg-gray-100 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500"></div>
+                        </button>
+                        <button className="bg-white/80 dark:bg-white/5 backdrop-blur-sm hover:bg-white dark:hover:bg-white/10 text-[#111111] dark:text-white border border-[#E6E2D6] dark:border-white/10 px-8 py-4 rounded-2xl text-base font-medium transition-all shadow-sm hover:shadow-md flex items-center gap-2 hover:scale-105 active:scale-95 duration-300">
+                            <span className="w-6 h-6 rounded-full bg-[#FFD646] flex items-center justify-center mr-1">
+                                <Triangle className="w-3 h-3 fill-current rotate-90 text-black" />
+                            </span>
+                            Watch Demo
+                        </button>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 1, delay: 0.5 }}
+                        className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-16 text-sm text-[#666666] dark:text-[#A1A1AA]"
+                    >
+                        <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-[#111111] dark:text-white" />
+                            No credit card Required
                         </div>
-                        <div className="text-xl font-bold text-[#111111] flex items-center gap-2">
-                            <UtensilsCrossed className="w-5 h-5" />
-                            FINE.DINE
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#E6E2D6] dark:bg-[#333] hidden sm:block"></div>
+                        <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-[#111111] dark:text-white" />
+                            14-day free trial
                         </div>
-                        <div className="text-xl font-bold text-[#111111] flex items-center gap-2">
-                            <Soup className="w-5 h-5" />
-                            bowl.
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#E6E2D6] dark:bg-[#333] hidden sm:block"></div>
+                        <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-[#111111] dark:text-white" />
+                            Cancel Anytime
+                        </div>
+                    </motion.div>
+
+                    {/* Dashboard Mockup - 3D Container */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 100, rotateX: 20 }}
+                        animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                        transition={{ duration: 1.2, delay: 0.4, type: "spring", bounce: 0.2 }}
+                        className="relative max-w-6xl mx-auto perspective-1000"
+                        style={{ perspective: '2000px' }}
+                    >
+                        <motion.div
+                            animate={{ y: [0, -15, 0] }}
+                            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                            className="relative rounded-[2.5rem] p-3 bg-white/40 backdrop-blur-xl border border-white/60 shadow-2xl shadow-stone-200/80 ring-1 ring-white/50"
+                        >
+                            <div className="rounded-[2rem] bg-[#E3E5E6] bg-[linear-gradient(150deg,#E3E5E6_0%,#E3E5E6_24.65%,#FFF4D2_58.78%,#F3E8C9_100%)] bg-fixed bg-cover overflow-hidden relative min-h-[700px] text-left flex">
+                                {/* Sidebar */}
+                                <div className="hidden md:flex w-64 flex-col p-6 border-r border-[#E6E2D6]/30">
+                                    <div className="flex items-center gap-3 mb-10">
+                                        <div className="w-8 h-8 rounded-full bg-[#111111] flex items-center justify-center text-white text-xs font-bold">
+                                            K
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-semibold text-[#111111]">
+                                                KostKitchen
+                                            </div>
+                                            <div className="text-[10px] text-[#888888]">Pro Plan</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <div className="h-10 w-full bg-[#111111] text-white rounded-xl flex items-center px-4 gap-3 text-sm font-medium shadow-lg shadow-black/10">
+                                            <LayoutGrid className="w-4 h-4" />
+                                            Overview
+                                        </div>
+                                        <div className="h-10 w-full hover:bg-black/5 text-[#666666] rounded-xl flex items-center px-4 gap-3 text-sm font-medium transition-colors">
+                                            <Utensils className="w-4 h-4" />
+                                            Menu
+                                        </div>
+                                        <div className="h-10 w-full hover:bg-black/5 text-[#666666] rounded-xl flex items-center px-4 gap-3 text-sm font-medium transition-colors">
+                                            <ScatterChart className="w-4 h-4" />
+                                            Matrix
+                                        </div>
+                                        <div className="h-10 w-full hover:bg-black/5 text-[#666666] rounded-xl flex items-center px-4 gap-3 text-sm font-medium transition-colors">
+                                            <Package className="w-4 h-4" />
+                                            Inventory
+                                        </div>
+                                        <div className="h-10 w-full hover:bg-black/5 text-[#666666] rounded-xl flex items-center px-4 gap-3 text-sm font-medium transition-colors">
+                                            <PieChart className="w-4 h-4" />
+                                            Financials
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Main Content */}
+                                <div className="flex-1 p-6 md:p-8 overflow-y-auto no-scrollbar">
+                                    {/* Header */}
+                                    <div className="flex justify-between items-center mb-8">
+                                        <h3 className="text-3xl font-light text-[#111111] tracking-tight">
+                                            Welcome in,
+                                            <span className="font-medium ml-2">Marco</span>
+                                        </h3>
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-2 bg-white rounded-full px-3 py-1.5 shadow-sm border border-gray-100">
+                                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                                <span className="text-xs font-medium">Kitchen Live</span>
+                                            </div>
+                                            <button className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm border border-gray-100">
+                                                <Bell className="w-4 h-4 text-gray-500" />
+                                            </button>
+                                            <img src="https://i.pravatar.cc/150?img=12" className="w-10 h-10 rounded-full border-2 border-white shadow-sm" alt="Profile" />
+                                        </div>
+                                    </div>
+
+                                    {/* Stats Grid, Charts, Bottom Section */}
+                                    {/* Stats Grid */}
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                        {/* Card 1 (Yellow Accent) */}
+                                        <div className="bg-[#FFD646] p-5 rounded-[1.5rem] relative overflow-hidden group hover:shadow-lg transition-shadow">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <span className="text-xs font-medium text-[#111111]/80">
+                                                    Total Sales
+                                                </span>
+                                                <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center">
+                                                    <span className="font-serif italic text-sm">$</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-2xl font-semibold text-[#111111] mb-2">
+                                                ₱24,500
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs font-medium">
+                                                <span className="bg-white/40 px-1.5 py-0.5 rounded-md">
+                                                    +12%
+                                                </span>
+                                                <span className="text-[#111111]/70">vs yesterday</span>
+                                            </div>
+                                        </div>
+                                        {/* Card 2 */}
+                                        <div className="bg-white/60 p-5 rounded-[1.5rem] border border-[#E6E2D6]/50">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <span className="text-xs font-medium text-gray-500">
+                                                    Food Cost
+                                                </span>
+                                                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
+                                                    <TrendingDown className="w-4 h-4 text-gray-400" />
+                                                </div>
+                                            </div>
+                                            <div className="text-2xl font-semibold text-[#111111] mb-2">
+                                                28.5%
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs font-medium">
+                                                <span className="bg-gray-100 px-1.5 py-0.5 rounded-md text-gray-600">
+                                                    -2.1%
+                                                </span>
+                                                <span className="text-gray-400">Optimization</span>
+                                            </div>
+                                        </div>
+                                        {/* Card 3 */}
+                                        <div className="bg-white/60 p-5 rounded-[1.5rem] border border-[#E6E2D6]/50">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <span className="text-xs font-medium text-gray-500">
+                                                    Low Stock Items
+                                                </span>
+                                                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
+                                                    <AlertCircle className="w-4 h-4 text-gray-400" />
+                                                </div>
+                                            </div>
+                                            <div className="text-2xl font-semibold text-[#111111] mb-2">
+                                                3
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs font-medium">
+                                                <span className="text-gray-400">Requires attention</span>
+                                            </div>
+                                        </div>
+                                        {/* Card 4 */}
+                                        <div className="bg-white/60 p-5 rounded-[1.5rem] border border-[#E6E2D6]/50">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <span className="text-xs font-medium text-gray-500">
+                                                    Gross Profit
+                                                </span>
+                                                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
+                                                    <Wallet className="w-4 h-4 text-gray-400" />
+                                                </div>
+                                            </div>
+                                            <div className="text-2xl font-semibold text-[#111111] mb-2">
+                                                ₱17,522
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs font-medium">
+                                                <span className="text-gray-400">71.5% margin</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Charts Section */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                                        {/* Bar Chart */}
+                                        <div className="md:col-span-2 bg-white/60 p-6 rounded-[2rem] border border-[#E6E2D6]/50">
+                                            <div className="flex justify-between items-start mb-8">
+                                                <div>
+                                                    <h4 className="text-lg font-medium text-[#111111]">
+                                                        Profitability Trend
+                                                    </h4>
+                                                    <p className="text-xs text-gray-400 mt-1">
+                                                        Net profit margin over last 7 days
+                                                    </p>
+                                                </div>
+                                                <ArrowUpRight className="w-4 h-4 text-gray-300" />
+                                            </div>
+                                            <div className="h-48 flex items-end justify-between gap-2 px-2">
+                                                {/* Bars */}
+                                                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
+                                                    const heights = ['40%', '55%', '45%', '70%', '85%', '60%', '75%'];
+                                                    const isFri = day === 'Fri';
+                                                    return (
+                                                        <div key={day} className={`w-full ${isFri ? 'bg-[#303030] border-2 border-[#E6E2D6] -mt-2 z-10 shadow-lg' : 'bg-[#FFD646] group hover:bg-[#FFD646]'} rounded-t-lg relative transition-colors`} style={{ height: heights[i] }}>
+                                                            {isFri && (
+                                                                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[#111111] text-white text-[10px] px-2 py-1 rounded">
+                                                                    ₱24k
+                                                                </div>
+                                                            )}
+                                                            <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] ${isFri ? 'text-[#111111] font-bold' : 'text-gray-400'}`}>
+                                                                {day}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* Donut Chart */}
+                                        <div className="bg-white/60 p-6 rounded-[2rem] border border-[#E6E2D6]/50 flex flex-col items-center justify-center relative">
+                                            <h4 className="absolute top-6 left-6 text-sm font-medium text-[#111111]">
+                                                Daily Goal
+                                            </h4>
+                                            <div className="relative w-40 h-40 flex items-center justify-center mt-4">
+                                                <svg className="w-full h-full transform -rotate-90">
+                                                    <circle cx="80" cy="80" r="70" stroke="#F3EFE0" strokeWidth="12" fill="none"></circle>
+                                                    <circle cx="80" cy="80" r="70" stroke="#FFD646" strokeWidth="12" fill="none" strokeDasharray="440" strokeDashoffset="110" strokeLinecap="round"></circle>
+                                                </svg>
+                                                <div className="absolute text-center">
+                                                    <div className="text-3xl font-semibold text-[#111111]">
+                                                        70%
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-400 uppercase tracking-wider">
+                                                        Achieved
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between w-full mt-6 px-2 text-center">
+                                                <div>
+                                                    <div className="text-[10px] text-gray-400 uppercase">
+                                                        Target
+                                                    </div>
+                                                    <div className="text-sm font-semibold">₱35k</div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[10px] text-gray-400 uppercase">
+                                                        Current
+                                                    </div>
+                                                    <div className="text-sm font-semibold">₱24.5k</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Bottom Section */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Action Required (Black Card) */}
+                                        <div className="bg-[#1F1F1F] p-6 rounded-[2rem] text-white border border-[#333]">
+                                            <div className="flex justify-between items-center mb-6">
+                                                <h4 className="text-lg font-medium tracking-tight">
+                                                    Action Required
+                                                </h4>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+                                                    <span className="text-xs text-gray-400">3 Pending</span>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-3">
+                                                {/* Item 1 */}
+                                                <div className="flex items-center justify-between p-4 bg-[#2A2A2A] rounded-2xl border border-white/5 group hover:bg-[#333] transition-all cursor-pointer shadow-sm">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-semibold text-gray-100 group-hover:text-white transition-colors">
+                                                            Chicken Breast
+                                                        </span>
+                                                        <span className="text-xs text-gray-500 font-medium mt-1">
+                                                            2000 g (Min: 5000)
+                                                        </span>
+                                                    </div>
+                                                    <button className="bg-[#3A2D28] hover:bg-[#4A3830] border border-orange-500/20 text-orange-400 text-[10px] font-bold px-3 py-1.5 rounded-lg tracking-wider uppercase transition-colors">
+                                                        Low Stock
+                                                    </button>
+                                                </div>
+
+                                                {/* Item 2 */}
+                                                <div className="flex items-center justify-between p-4 bg-[#2A2A2A] rounded-2xl border border-white/5 group hover:bg-[#333] transition-all cursor-pointer shadow-sm">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-semibold text-gray-100 group-hover:text-white transition-colors">
+                                                            Heavy Cream
+                                                        </span>
+                                                        <span className="text-xs text-gray-500 font-medium mt-1">
+                                                            2 L (Min: 8 L)
+                                                        </span>
+                                                    </div>
+                                                    <button className="bg-[#3A2D28] hover:bg-[#4A3830] border border-orange-500/20 text-orange-400 text-[10px] font-bold px-3 py-1.5 rounded-lg tracking-wider uppercase transition-colors">
+                                                        Low Stock
+                                                    </button>
+                                                </div>
+
+                                                {/* Item 3 */}
+                                                <div className="flex items-center justify-between p-4 bg-[#2A2A2A] rounded-2xl border border-white/5 group hover:bg-[#333] transition-all cursor-pointer shadow-sm">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-semibold text-gray-100 group-hover:text-white transition-colors">
+                                                            Truffle Oil
+                                                        </span>
+                                                        <span className="text-xs text-gray-500 font-medium mt-1">
+                                                            1 Bottle (Min: 3)
+                                                        </span>
+                                                    </div>
+                                                    <button className="bg-[#3A2D28] hover:bg-[#4A3830] border border-orange-500/20 text-orange-400 text-[10px] font-bold px-3 py-1.5 rounded-lg tracking-wider uppercase transition-colors">
+                                                        Low Stock
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Top Movers Table (White Card) */}
+                                        <div className="bg-white/60 p-6 rounded-[2rem] border border-[#E6E2D6]/50">
+                                            <div className="flex justify-between items-center mb-6">
+                                                <h4 className="text-lg font-medium text-[#111111]">
+                                                    Top Movers
+                                                </h4>
+                                                <span className="text-xs text-gray-400 hover:text-black cursor-pointer">
+                                                    View Full Menu
+                                                </span>
+                                            </div>
+                                            <table className="w-full text-left text-xs">
+                                                <thead>
+                                                    <tr className="text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                                                        <th className="pb-3 font-medium">Item Name</th>
+                                                        <th className="pb-3 font-medium">Category</th>
+                                                        <th className="pb-3 font-medium">Vol</th>
+                                                        <th className="pb-3 font-medium">Cost %</th>
+                                                        <th className="pb-3 font-medium text-right">Profit</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-50">
+                                                    <tr>
+                                                        <td className="py-3 font-medium text-[#111111]">
+                                                            Wagyu Burger
+                                                        </td>
+                                                        <td className="py-3">
+                                                            <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                                                                Mains
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 text-gray-500">42</td>
+                                                        <td className="py-3 text-gray-500">32%</td>
+                                                        <td className="py-3 text-right font-medium">₱8,400</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="py-3 font-medium text-[#111111]">
+                                                            Truffle Pasta
+                                                        </td>
+                                                        <td className="py-3">
+                                                            <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                                                                Mains
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 text-gray-500">28</td>
+                                                        <td className="py-3 text-gray-500">25%</td>
+                                                        <td className="py-3 text-right font-medium">₱6,125</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="py-3 font-medium text-[#111111]">
+                                                            Iced Tea Pitcher
+                                                        </td>
+                                                        <td className="py-3">
+                                                            <span className="text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                                                Bev
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3 text-gray-500">140</td>
+                                                        <td className="py-3 text-gray-500">12%</td>
+                                                        <td className="py-3 text-right font-medium">₱2,800</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Floating Elements decoration */}
+                            {/* Floating Card 1: Store Owner (Top Left) */}
+                            <motion.div
+                                animate={{ y: [0, -10, 0] }}
+                                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                className="absolute -left-4 md:-left-12 top-[20%] bg-white dark:bg-[#1A1A1A] p-3 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-white/5 flex items-center gap-3 z-20"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-[#FFD646] flex items-center justify-center text-black">
+                                    <ChefHat className="w-5 h-5" />
+                                </div>
+                                <div className="text-xs pr-2">
+                                    <div className="font-semibold text-[#111111] dark:text-white">Store Owner</div>
+                                    <div className="text-gray-400">Just Now</div>
+                                </div>
+                            </motion.div>
+
+                            {/* Floating Card 2: Low Stock Alert (Bottom Right) */}
+                            <motion.div
+                                animate={{ y: [0, -12, 0] }}
+                                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                                className="absolute -right-4 md:-right-8 bottom-[15%] bg-white dark:bg-[#1A1A1A] p-3 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-white/5 flex items-center gap-3 z-20"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center text-orange-600 dark:text-orange-400">
+                                    <AlertCircle className="w-5 h-5" />
+                                </div>
+                                <div className="text-xs pr-2">
+                                    <div className="font-semibold text-[#111111] dark:text-white">Low Stock Alert</div>
+                                    <div className="text-orange-500 font-medium">Truffle Oil (1)</div>
+                                </div>
+                            </motion.div>
+
+                            {/* Floating Card 3: Daily Profit (Middle Right) */}
+                            <motion.div
+                                animate={{ y: [0, -8, 0] }}
+                                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                                className="absolute -right-8 md:-right-16 top-[30%] bg-white dark:bg-[#1A1A1A] p-3 rounded-2xl shadow-xl shadow-gray-200/50 dark:shadow-none border border-gray-100 dark:border-white/5 flex items-center gap-3 z-20 hidden md:flex"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center text-green-600 dark:text-green-400">
+                                    <TrendingUp className="w-5 h-5" />
+                                </div>
+                                <div className="text-xs pr-2">
+                                    <div className="font-semibold text-[#111111] dark:text-white">Daily Profit</div>
+                                    <div className="text-green-600 dark:text-green-400 font-medium">+12% vs yest.</div>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    </motion.div>
+
+                    {/* Trusted By */}
+                    <div className="max-w-6xl mx-auto px-6 mt-20 text-center">
+                        <p className="text-sm font-medium text-gray-400 mb-8 uppercase tracking-wide">
+                            Trusted by Top Kitchens
+                        </p>
+                        <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-40 hover:opacity-100 transition-opacity duration-500 grayscale">
+                            <div className="text-xl font-bold text-[#111111] flex items-center gap-2">
+                                <Triangle className="fill-current w-5 h-5" />
+                                BISTRO
+                            </div>
+                            <div className="text-xl font-bold text-[#111111] flex items-center gap-2">
+                                <Coffee className="w-5 h-5" />
+                                Roast&Co
+                            </div>
+                            <div className="text-xl font-bold text-[#111111] flex items-center gap-2">
+                                <UtensilsCrossed className="w-5 h-5" />
+                                FINE.DINE
+                            </div>
+                            <div className="text-xl font-bold text-[#111111] flex items-center gap-2">
+                                <Soup className="w-5 h-5" />
+                                bowl.
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
 
             {/* Features Section */}
-            <section id="features" className="py-24 bg-[#F8F6F1]">
+            <section id="features" className="py-24 bg-[#F8F6F1] dark:bg-black">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-5xl font-semibold text-[#111111] tracking-tight mb-4">
+                        <h2 className="text-3xl md:text-5xl font-semibold text-[#111111] dark:text-white tracking-tight mb-4">
                             Ingredients for
                             <br />
                             <span className="text-[#888888]">Success</span>
                         </h2>
-                        <p className="text-lg text-[#666666] max-w-2xl mx-auto">
+                        <p className="text-lg text-[#666666] dark:text-[#A1A1AA] max-w-2xl mx-auto">
                             Discover the features that will optimize your kitchen's workflow.
                         </p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Feature 1 */}
-                        <div className="bg-white rounded-[2.5rem] p-10 md:p-14 relative overflow-hidden group hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300">
+                        <div className="bg-white dark:bg-[#1A1A1A] rounded-[2.5rem] p-10 md:p-14 relative overflow-hidden group hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-none transition-all duration-300">
                             <div className="max-w-md relative z-10">
                                 <div className="w-12 h-12 bg-[#FFD646] rounded-2xl flex items-center justify-center mb-6">
                                     <ClipboardList className="w-6 h-6 text-[#111111]" />
                                 </div>
-                                <h3 className="text-2xl font-semibold text-[#111111] mb-3 tracking-tight">
+                                <h3 className="text-2xl font-semibold text-[#111111] dark:text-white mb-3 tracking-tight">
                                     Smart Purchase Orders
                                 </h3>
-                                <p className="text-[#666666] leading-relaxed mb-8">
+                                <p className="text-[#666666] dark:text-[#A1A1AA] leading-relaxed mb-8">
                                     Generate PDF purchase orders instantly based on low stock items.
                                 </p>
                             </div>
@@ -649,15 +808,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                         </div>
 
                         {/* Feature 2 */}
-                        <div className="bg-white rounded-[2.5rem] p-10 md:p-14 relative overflow-hidden group hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300">
+                        <div className="bg-white dark:bg-[#1A1A1A] rounded-[2.5rem] p-10 md:p-14 relative overflow-hidden group hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-none transition-all duration-300">
                             <div className="max-w-md relative z-10">
-                                <div className="w-12 h-12 bg-[#111111] rounded-2xl flex items-center justify-center mb-6">
-                                    <Clock className="w-6 h-6 text-white" />
+                                <div className="w-12 h-12 bg-[#111111] dark:bg-white rounded-2xl flex items-center justify-center mb-6">
+                                    <Clock className="w-6 h-6 text-white dark:text-black" />
                                 </div>
-                                <h3 className="text-2xl font-semibold text-[#111111] mb-3 tracking-tight">
+                                <h3 className="text-2xl font-semibold text-[#111111] dark:text-white mb-3 tracking-tight">
                                     Real-Time Costing
                                 </h3>
-                                <p className="text-[#666666] leading-relaxed mb-8">
+                                <p className="text-[#666666] dark:text-[#A1A1AA] leading-relaxed mb-8">
                                     Know your exact plate cost as market prices fluctuate. Never
                                     serve at a loss.
                                 </p>
@@ -671,15 +830,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                         </div>
 
                         {/* Feature 3 */}
-                        <div className="bg-white rounded-[2.5rem] p-10 md:p-14 relative overflow-hidden group hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300">
+                        <div className="bg-white dark:bg-[#1A1A1A] rounded-[2.5rem] p-10 md:p-14 relative overflow-hidden group hover:shadow-xl hover:shadow-gray-200/50 dark:hover:shadow-none transition-all duration-300">
                             <div className="max-w-md relative z-10">
-                                <div className="w-12 h-12 bg-[#F3EFE0] rounded-2xl flex items-center justify-center mb-6">
-                                    <BarChart3 className="w-6 h-6 text-[#111111]" />
+                                <div className="w-12 h-12 bg-[#F3EFE0] dark:bg-white/10 rounded-2xl flex items-center justify-center mb-6">
+                                    <BarChart3 className="w-6 h-6 text-[#111111] dark:text-white" />
                                 </div>
-                                <h3 className="text-2xl font-semibold text-[#111111] mb-3 tracking-tight">
+                                <h3 className="text-2xl font-semibold text-[#111111] dark:text-white mb-3 tracking-tight">
                                     Financial Reporting
                                 </h3>
-                                <p className="text-[#666666] leading-relaxed mb-8">
+                                <p className="text-[#666666] dark:text-[#A1A1AA] leading-relaxed mb-8">
                                     Export detailed daily, weekly, and monthly profit & loss reports.
                                 </p>
                             </div>
@@ -704,29 +863,29 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
             </section>
 
             {/* How It Works */}
-            <section id="how-it-works" className="py-24 px-6">
-                <div className="max-w-7xl mx-auto bg-white border border-[#E6E2D6] rounded-[3rem] p-8 md:p-12 shadow-xl shadow-[#E6E2D6]/20 relative overflow-hidden">
+            <section id="how-it-works" className="py-24 px-6 dark:bg-black">
+                <div className="max-w-7xl mx-auto bg-white dark:bg-[#1A1A1A] border border-[#E6E2D6] dark:border-white/10 rounded-[3rem] p-8 md:p-12 shadow-xl shadow-[#E6E2D6]/20 dark:shadow-none relative overflow-hidden">
                     {/* Header */}
                     <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-8 mb-10 relative z-10">
-                        <h2 className="text-5xl md:text-7xl font-semibold text-[#111111] tracking-tighter leading-[0.9]">
+                        <h2 className="text-5xl md:text-7xl font-semibold text-[#111111] dark:text-white tracking-tighter leading-[0.9]">
                             How it works.
                         </h2>
-                        <div className="hidden md:block w-px h-12 bg-[#E6E2D6]"></div>
-                        <p className="text-[#666666] font-medium text-sm md:text-base max-w-sm">
+                        <div className="hidden md:block w-px h-12 bg-[#E6E2D6] dark:bg-white/10"></div>
+                        <p className="text-[#666666] dark:text-[#A1A1AA] font-medium text-sm md:text-base max-w-sm">
                             Three simple steps to automate your inventory and cost control.
                         </p>
                     </div>
 
-                    <div className="h-px w-full bg-[#E6E2D6] mb-12"></div>
+                    <div className="h-px w-full bg-[#E6E2D6] dark:bg-white/10 mb-12"></div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {/* Step 1 */}
-                        <div className="group relative flex flex-col h-full bg-white border border-[#E6E2D6] rounded-[2rem] p-8 hover:shadow-lg hover:shadow-[#F3EFE0] transition-all duration-300">
-                            <div className="absolute -top-3.5 left-8 bg-white border border-[#E6E2D6] px-4 py-1.5 rounded-full text-[10px] font-bold text-[#111111] uppercase tracking-widest z-10">
+                        <div className="group relative flex flex-col h-full bg-white dark:bg-[#111] border border-[#E6E2D6] dark:border-white/10 rounded-[2rem] p-8 hover:shadow-lg hover:shadow-[#F3EFE0] dark:hover:shadow-none transition-all duration-300">
+                            <div className="absolute -top-3.5 left-8 bg-white dark:bg-[#111] border border-[#E6E2D6] dark:border-white/10 px-4 py-1.5 rounded-full text-[10px] font-bold text-[#111111] dark:text-white uppercase tracking-widest z-10">
                                 Step 1
                             </div>
 
-                            <div className="bg-[#F8F6F1] rounded-2xl h-56 mb-8 relative overflow-hidden flex items-center justify-center group-hover:bg-[#F3EFE0] transition-colors">
+                            <div className="bg-[#F8F6F1] dark:bg-black rounded-2xl h-56 mb-8 relative overflow-hidden flex items-center justify-center group-hover:bg-[#F3EFE0] dark:group-hover:bg-white/5 transition-colors">
                                 {/* Illustration: Invoice Scan */}
                                 <div className="relative w-32 h-40 bg-white rounded-lg border border-[#E6E2D6] shadow-sm transform -rotate-3 transition-transform group-hover:rotate-0 duration-500 flex flex-col p-3 gap-2">
                                     <div className="flex items-center gap-2 mb-1">
@@ -748,19 +907,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#FFD646]/5 to-transparent animate-pulse pointer-events-none"></div>
                             </div>
 
-                            <h3 className="text-2xl font-semibold text-[#111111] mb-3 tracking-tight">Centralized Pricing</h3>
-                            <p className="text-[#666666] text-sm leading-relaxed">
+                            <h3 className="text-2xl font-semibold text-[#111111] dark:text-white mb-3 tracking-tight">Centralized Pricing</h3>
+                            <p className="text-[#666666] dark:text-[#A1A1AA] text-sm leading-relaxed">
                                 Update an ingredient's price once, and it automatically recalculates costs for every recipe on your menu.
                             </p>
                         </div>
 
                         {/* Step 2 */}
-                        <div className="group relative flex flex-col h-full bg-white border border-[#E6E2D6] rounded-[2rem] p-8 hover:shadow-lg hover:shadow-[#F3EFE0] transition-all duration-300">
-                            <div className="absolute -top-3.5 left-8 bg-white border border-[#E6E2D6] px-4 py-1.5 rounded-full text-[10px] font-bold text-[#111111] uppercase tracking-widest z-10">
+                        <div className="group relative flex flex-col h-full bg-white dark:bg-[#111] border border-[#E6E2D6] dark:border-white/10 rounded-[2rem] p-8 hover:shadow-lg hover:shadow-[#F3EFE0] dark:hover:shadow-none transition-all duration-300">
+                            <div className="absolute -top-3.5 left-8 bg-white dark:bg-[#111] border border-[#E6E2D6] dark:border-white/10 px-4 py-1.5 rounded-full text-[10px] font-bold text-[#111111] dark:text-white uppercase tracking-widest z-10">
                                 Step 2
                             </div>
 
-                            <div className="bg-[#F8F6F1] rounded-2xl h-56 mb-8 relative overflow-hidden flex items-center justify-center group-hover:bg-[#F3EFE0] transition-colors">
+                            <div className="bg-[#F8F6F1] dark:bg-black rounded-2xl h-56 mb-8 relative overflow-hidden flex items-center justify-center group-hover:bg-[#F3EFE0] dark:group-hover:bg-white/5 transition-colors">
                                 {/* Illustration: Processing/Recipe Costing */}
                                 <div className="grid grid-cols-1 gap-3 w-40">
                                     <div className="bg-white p-3 rounded-xl border border-[#E6E2D6] shadow-sm flex items-center justify-between transform translate-x-4 group-hover:translate-x-0 transition-transform duration-500 delay-75">
@@ -787,19 +946,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                                 </div>
                             </div>
 
-                            <h3 className="text-2xl font-semibold text-[#111111] mb-3 tracking-tight">Auto-Update Costs</h3>
-                            <p className="text-[#666666] text-sm leading-relaxed">
+                            <h3 className="text-2xl font-semibold text-[#111111] dark:text-white mb-3 tracking-tight">Auto-Update Costs</h3>
+                            <p className="text-[#666666] dark:text-[#A1A1AA] text-sm leading-relaxed">
                                 Recipes are automatically re-calculated when ingredient prices change. Know your margins in real-time.
                             </p>
                         </div>
 
                         {/* Step 3 */}
-                        <div className="group relative flex flex-col h-full bg-white border border-[#E6E2D6] rounded-[2rem] p-8 hover:shadow-lg hover:shadow-[#F3EFE0] transition-all duration-300">
-                            <div className="absolute -top-3.5 left-8 bg-white border border-[#E6E2D6] px-4 py-1.5 rounded-full text-[10px] font-bold text-[#111111] uppercase tracking-widest z-10">
+                        <div className="group relative flex flex-col h-full bg-white dark:bg-[#111] border border-[#E6E2D6] dark:border-white/10 rounded-[2rem] p-8 hover:shadow-lg hover:shadow-[#F3EFE0] dark:hover:shadow-none transition-all duration-300">
+                            <div className="absolute -top-3.5 left-8 bg-white dark:bg-[#111] border border-[#E6E2D6] dark:border-white/10 px-4 py-1.5 rounded-full text-[10px] font-bold text-[#111111] dark:text-white uppercase tracking-widest z-10">
                                 Step 3
                             </div>
 
-                            <div className="bg-[#F8F6F1] rounded-2xl h-56 mb-8 relative overflow-hidden flex items-center justify-center group-hover:bg-[#F3EFE0] transition-colors">
+                            <div className="bg-[#F8F6F1] dark:bg-black rounded-2xl h-56 mb-8 relative overflow-hidden flex items-center justify-center group-hover:bg-[#F3EFE0] dark:group-hover:bg-white/5 transition-colors">
                                 {/* Illustration: Insights */}
                                 <div className="w-48 bg-white rounded-xl border border-[#E6E2D6] shadow-sm p-4 flex flex-col gap-3 group-hover:scale-105 transition-transform duration-500">
                                     <div className="flex justify-between items-center mb-1">
@@ -819,8 +978,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                                 </div>
                             </div>
 
-                            <h3 className="text-2xl font-semibold text-[#111111] mb-3 tracking-tight">Maximize Profit</h3>
-                            <p className="text-[#666666] text-sm leading-relaxed">
+                            <h3 className="text-2xl font-semibold text-[#111111] dark:text-white mb-3 tracking-tight">Maximize Profit</h3>
+                            <p className="text-[#666666] dark:text-[#A1A1AA] text-sm leading-relaxed">
                                 Identify low-margin dishes and wastage trends instantly. Make data-driven decisions to boost your bottom line.
                             </p>
                         </div>

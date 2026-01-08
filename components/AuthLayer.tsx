@@ -205,37 +205,36 @@ export const AuthLayer = () => {
   const { title, sub } = getHeader();
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#E3E5E6] flex items-center justify-center p-6 transition font-sans overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-[#E3E5E6] dark:bg-[#09090B] flex items-center justify-center p-6 transition font-sans overflow-hidden">
       {/* Background Orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-1/4 w-[600px] h-[600px] bg-[#FCD34D] rounded-full mix-blend-multiply filter blur-[228px] opacity-10 animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-white rounded-full mix-blend-overlay filter blur-[100px] opacity-40"></div>
+        <div className="absolute top-[-10%] left-1/4 w-[600px] h-[600px] bg-[#FCD34D] rounded-full mix-blend-multiply dark:mix-blend-normal dark:opacity-5 filter blur-[228px] opacity-10 animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-white dark:bg-[#1A1A1A] rounded-full mix-blend-overlay dark:mix-blend-normal filter blur-[100px] opacity-40 dark:opacity-20"></div>
       </div>
 
-      <div className="w-full max-w-md bg-white/70 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white/50 relative overflow-hidden transition-all duration-300">
+      <div className="w-full max-w-md bg-white/70 dark:bg-[#1A1A1A]/90 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-white/10 relative overflow-hidden transition-all duration-300">
 
-        {/* Brand Icon */}
         <div className="flex justify-center mb-6 mt-10">
-          <div className="w-16 h-16 rounded-2xl bg-[#FCD34D] text-[#303030] flex items-center justify-center shadow-lg transform -rotate-3 transition-transform hover:rotate-0 border border-white/50">
+          <div className="w-16 h-16 rounded-2xl bg-[#FCD34D] text-[#303030] flex items-center justify-center shadow-lg transform -rotate-3 transition-transform hover:rotate-0 border border-white/50 dark:border-white/10">
             <iconify-icon icon={view === 'forgot' ? "lucide:key-round" : view === 'verify' ? "lucide:mail-check" : "lucide:chef-hat"} width="32"></iconify-icon>
           </div>
         </div>
 
         {/* Header */}
         <div className="text-center mb-8 px-8">
-          <h1 className="text-2xl font-bold tracking-tight text-[#303030] transition-all">{title}</h1>
-          <p className="text-sm text-gray-500 mt-2 transition-all font-medium">{sub}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-[#303030] dark:text-white transition-all">{title}</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 transition-all font-medium">{sub}</p>
         </div>
 
         {/* Messages */}
         {errorMsg && (
-          <div className="mx-8 mb-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600 text-xs font-bold animate-pulse">
+          <div className="mx-8 mb-4 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl flex items-center gap-2 text-red-600 dark:text-red-400 text-xs font-bold animate-pulse">
             <iconify-icon icon="lucide:alert-circle" width="16"></iconify-icon>
             {errorMsg}
           </div>
         )}
         {successMsg && (
-          <div className="mx-8 mb-4 p-3 bg-green-50 border border-green-100 rounded-xl flex items-center gap-2 text-green-600 text-xs font-bold">
+          <div className="mx-8 mb-4 p-3 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/20 rounded-xl flex items-center gap-2 text-green-600 dark:text-green-400 text-xs font-bold">
             <iconify-icon icon="lucide:check-circle" width="16"></iconify-icon>
             {successMsg}
           </div>
@@ -247,12 +246,12 @@ export const AuthLayer = () => {
           {view !== 'verify' && (
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1 mb-1.5 block">Email Address</label>
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1 mb-1.5 block">Email Address</label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full px-4 py-3.5 rounded-xl border border-gray-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-[#FCD34D]/50 focus:border-[#FCD34D] transition-all outline-none text-[#303030] placeholder-gray-400 text-sm font-medium"
+                  className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-white/5 focus:bg-white dark:focus:bg-white/10 focus:ring-2 focus:ring-[#FCD34D]/50 focus:border-[#FCD34D] transition-all outline-none text-[#303030] dark:text-white placeholder-gray-400 text-sm font-medium"
                   placeholder="name@company.com"
                   disabled={loading}
                 />
@@ -262,13 +261,13 @@ export const AuthLayer = () => {
 
           {(view === 'login' || view === 'signup') && (
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1 mb-1.5 block">Password</label>
+              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1 mb-1.5 block">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="w-full px-4 py-3.5 rounded-xl border border-gray-200 bg-white/50 focus:bg-white focus:ring-2 focus:ring-[#FCD34D]/50 focus:border-[#FCD34D] transition-all outline-none text-[#303030] placeholder-gray-400 text-sm font-medium pr-10"
+                  className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white/50 dark:bg-white/5 focus:bg-white dark:focus:bg-white/10 focus:ring-2 focus:ring-[#FCD34D]/50 focus:border-[#FCD34D] transition-all outline-none text-[#303030] dark:text-white placeholder-gray-400 text-sm font-medium pr-10"
                   placeholder="••••••••"
                   disabled={loading || rateLimited}
                 />
@@ -378,23 +377,23 @@ export const AuthLayer = () => {
           <div className="flex flex-col gap-3 text-center mt-6 pt-4 border-t border-gray-100">
             {view === 'login' && (
               <>
-                <button onClick={() => switchView('signup')} className="text-xs text-gray-500 hover:text-[#303030] transition-colors">
+                <button onClick={() => switchView('signup')} className="text-xs text-gray-500 dark:text-gray-400 hover:text-[#303030] dark:hover:text-white transition-colors">
                   Don't have an account? <span className="font-bold underline">Sign Up</span>
                 </button>
-                <button onClick={() => switchView('forgot')} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                <button onClick={() => switchView('forgot')} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
                   Forgot Password?
                 </button>
               </>
             )}
 
             {view === 'signup' && (
-              <button onClick={() => switchView('login')} className="text-xs text-gray-500 hover:text-[#303030] transition-colors">
+              <button onClick={() => switchView('login')} className="text-xs text-gray-500 dark:text-gray-400 hover:text-[#303030] dark:hover:text-white transition-colors">
                 Already have an account? <span className="font-bold underline">Sign In</span>
               </button>
             )}
 
             {view === 'forgot' && (
-              <button onClick={() => switchView('login')} className="text-xs text-gray-500 hover:text-[#303030] transition-colors">
+              <button onClick={() => switchView('login')} className="text-xs text-gray-500 dark:text-gray-400 hover:text-[#303030] dark:hover:text-white transition-colors">
                 Remember your password? <span className="font-bold underline">Sign In</span>
               </button>
             )}

@@ -16,6 +16,7 @@ import { Recipes } from './views/Recipes';
 import { Analytics } from './views/Analytics';
 import { Settings } from './views/Settings';
 import { LandingPage } from './views/LandingPage';
+import { POS } from './views/POS';
 
 const MainContent = () => {
   const { isLoggedIn, view, isLoading, authChecked } = useApp();
@@ -48,17 +49,18 @@ const MainContent = () => {
   }
 
   return (
-    <SoftLayout disableScroll={view === 'inventory' || view === 'recipes'}>
+    <SoftLayout disableScroll={view === 'inventory' || view === 'recipes' || view === 'pos'}>
       {/* Full-screen loading overlay when fetching data after login */}
       {(isLoading || minSplashWait) && <SplashScreen />}
 
       {/* View Content */}
-      <div className={`animate-enter ${view === 'inventory' || view === 'recipes' ? 'h-full' : 'min-h-full'}`}>
+      <div className={`animate-enter ${view === 'inventory' || view === 'recipes' || view === 'pos' ? 'h-full' : 'min-h-full'}`}>
         {view === 'dashboard' && <Dashboard />}
         {view === 'inventory' && <Inventory />}
         {view === 'recipes' && <Recipes />}
         {view === 'analytics' && <Analytics />}
         {view === 'settings' && <Settings />}
+        {view === 'pos' && <POS />}
       </div>
 
       <Modals />
