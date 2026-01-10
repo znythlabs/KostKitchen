@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../AppContext';
+import { LiquidTabs } from '../components/LiquidTabs';
 import { CustomSelect } from '../components/CustomSelect';
 import { getCurrencySymbol } from '../lib/format-utils';
 
@@ -13,9 +14,19 @@ export const Recipes = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
 
+  // Pagination State for Grid View
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(8);
+  const [expandedRecipeId, setExpandedRecipeId] = useState<number | null>(null);
+
   // --- FILTERING STATE ---
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // null = All Items
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, searchQuery]);
 
   // Get unique categories from existing recipes + standard options
   const allCategories = useMemo(() => {
@@ -236,7 +247,7 @@ export const Recipes = () => {
         </div>
 
         {/* Builder Content Grid */}
-        <div className="flex-1 overflow-hidden px-6 pb-6 pt-6 w-full max-w-[1920px] mx-auto">
+        <div className="flex-1 overflow-hidden pb-6 pt-2 w-full max-w-[1920px] mx-auto">
           <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             {/* LEFT COLUMN: Inputs & Ingredients (8 cols) */}
             <div className="lg:col-span-8 flex flex-col gap-6 h-full min-h-0 overflow-hidden">
@@ -338,20 +349,16 @@ export const Recipes = () => {
               {/* Ingredients List */}
               <div className="flex-1 soft-card p-0 flex flex-col overflow-hidden shadow-sm relative">
                 <div className="flex-none p-5 pb-2 flex justify-between items-center">
-                  <div className="flex gap-2 bg-gray-100 dark:bg-[#2A2A2A] p-1 rounded-full">
-                    <button
-                      onClick={() => setActiveTab('ingredient')}
-                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${activeTab === 'ingredient' ? 'bg-white dark:bg-[#1A1A1A] shadow-sm text-[#303030] dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                    >
-                      Ingredients
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('other')}
-                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${activeTab === 'other' ? 'bg-white dark:bg-[#1A1A1A] shadow-sm text-[#303030] dark:text-white' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                    >
-                      Packaging
-                    </button>
-                  </div>
+                  <LiquidTabs
+                    tabs={[
+                      { id: 'ingredient', label: 'Ingredients' },
+                      { id: 'other', label: 'Packaging' }
+                    ]}
+                    activeId={activeTab}
+                    onChange={(id) => id && setActiveTab(id as 'ingredient' | 'other')}
+                    className="bg-gray-100 dark:bg-[#2A2A2A]"
+                    layoutId="recipe-builder-tabs"
+                  />
 
                   <button
                     onClick={() => {
@@ -584,167 +591,202 @@ export const Recipes = () => {
 
   // LIST Grid View
   return (
-    <div id="view-recipes" className="flex-1 overflow-y-auto no-scrollbar pb-12 animate-fade-in text-[#303030] dark:text-white space-y-8">
+    <div className="flex flex-col h-full animate-fade-in text-[#303030] dark:text-white">
+      <div id="view-recipes" className="flex-1 overflow-y-auto no-scrollbar pb-4 space-y-5">
 
-      {/* Header + Filters */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex bg-[#F2F2F0] dark:bg-[#27272A] p-1 rounded-full border border-gray-200/50 dark:border-white/5 overflow-x-auto max-w-full no-scrollbar">
-          {/* "All Items" Button */}
-          <button
-            onClick={() => setSelectedCategory(null)}
-            className={`px-5 py-2 rounded-full text-xs font-bold flex-shrink-0 transition ${selectedCategory === null ? 'bg-[#303030] dark:bg-white text-white dark:text-black' : 'text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-white/10'
-              }`}
-          >
-            All Items
-          </button>
-          {/* Dynamic Category Buttons */}
-          {allCategories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-5 py-2 rounded-full text-xs font-bold flex-shrink-0 transition ${selectedCategory === cat ? 'bg-[#303030] dark:bg-white text-white dark:text-black' : 'text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-white/10'
-                }`}
-            >
-              {cat}
-            </button>
-          ))}
-          <button
-            onClick={() => openPrompt("Add Category", "New category name:", (val) => addRecipeCategory(val))}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-[#3F3F46] ml-2 flex-shrink-0 text-gray-400 dark:text-gray-300 hover:text-[#303030] dark:hover:text-white transition hover:shadow-sm"
-            title="Add Category"
-          >
-            <iconify-icon icon="lucide:plus" width="14"></iconify-icon>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:flex-none">
-            <iconify-icon icon="lucide:search" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" width="16"></iconify-icon>
-            <input
-              type="text"
-              placeholder="Search recipes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="soft-input dark:bg-[#27272A] dark:border-white/10 dark:text-white rounded-full pl-6 pr-10 py-2.5"
-            />
-          </div>
-          <button onClick={toggleBuilder} className="bg-[#303030] dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 hover:shadow-lg transition">
-            <iconify-icon icon="lucide:plus" width="16"></iconify-icon> New Recipe
-          </button>
-        </div>
-      </div>
-
-      {/* Recipe Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-        {filteredRecipes.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-gray-400">
-            {data.recipes.length === 0
-              ? "No recipes found. Create one to get started!"
-              : `No recipes match "${selectedCategory || 'none'}${searchQuery ? ` or "${searchQuery}"` : ''}". Try a different filter.`
+        {/* Categories & Search */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <LiquidTabs
+            tabs={[
+              { id: 'all', label: 'All Items' },
+              ...allCategories.map(cat => ({ id: cat, label: cat }))
+            ]}
+            activeId={selectedCategory || 'all'}
+            onChange={(id: string | null) => setSelectedCategory(id === 'all' ? null : id)}
+            className="flex-1 min-w-0"
+            rightAccessory={
+              <button
+                onClick={() => openPrompt("Add Category", "New category name:", (val) => addRecipeCategory(val))}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-[#3F3F46] ml-2 flex-shrink-0 text-gray-400 dark:text-gray-300 hover:text-[#303030] dark:hover:text-white transition hover:shadow-sm"
+                title="Add Category"
+              >
+                <iconify-icon icon="lucide:plus" width="14"></iconify-icon>
+              </button>
             }
-          </div>
-        ) : (
-          filteredRecipes.map(recipe => {
-            const { cost, margin, status } = getRecipeStats(recipe);
-            const isMenuOpen = activeMenuId === recipe.id;
+          />
 
-            return (
-              <div key={recipe.id} className="soft-card p-6 hover:shadow-lg transition-all group cursor-default">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex items-start gap-4 w-full">
-                    {/* Updated Image Container Size */}
-                    <div className="w-20 h-20 flex-shrink-0 rounded-2xl bg-white dark:bg-[#2A2A2A] shadow-sm flex items-center justify-center text-2xl border border-[#FCD34D]/10 overflow-hidden relative">
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:flex-none">
+              <iconify-icon icon="lucide:search" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" width="16"></iconify-icon>
+              <input
+                type="text"
+                placeholder="Search recipes..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                className="soft-input dark:bg-[#27272A] dark:border-white/10 dark:text-white rounded-full pl-6 pr-10 py-2.5"
+              />
+            </div>
+            <button onClick={toggleBuilder} className="bg-[#303030] dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 hover:shadow-lg transition">
+              <iconify-icon icon="lucide:plus" width="16"></iconify-icon> New Recipe
+            </button>
+          </div>
+        </div>
+
+        {/* Recipe Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+          {filteredRecipes.length === 0 ? (
+            <div className="col-span-full py-12 text-center text-gray-400">
+              {data.recipes.length === 0
+                ? "No recipes found. Create one to get started!"
+                : `No recipes match "${selectedCategory || 'none'}${searchQuery ? ` or "${searchQuery}"` : ''}". Try a different filter.`
+              }
+            </div>
+          ) : (
+            filteredRecipes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(recipe => {
+              const { cost, margin, status } = getRecipeStats(recipe);
+              const isMenuOpen = activeMenuId === recipe.id;
+              const isExpanded = expandedRecipeId === recipe.id;
+
+              return (
+                <div key={recipe.id} className="bg-white dark:bg-[#202020] p-4 rounded-[20px] shadow-sm hover:shadow-md transition-all group cursor-default border border-transparent hover:border-[#FCD34D] flex flex-col">
+                  <div className="flex gap-4">
+                    {/* Image */}
+                    <div className="w-24 h-24 flex-shrink-0 rounded-2xl bg-gray-50 dark:bg-[#2A2A2A] shadow-inner flex items-center justify-center text-xl overflow-hidden relative">
                       {recipe.image ? <img src={recipe.image} className="w-full h-full object-cover" /> : '🍽️'}
-                      {/* Overlay Gradient for depth */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-lg leading-tight text-[#303030] dark:text-white group-hover:text-orange-500 transition line-clamp-2">{recipe.name}</h3>
-                      <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md mt-1 inline-block bg-gray-100 dark:bg-[#333] text-gray-500 dark:text-gray-400`}>
-                        {recipe.category}
-                      </span>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                      <div>
+                        <div className="flex justify-between items-start gap-2">
+                          <h3 className="font-bold text-base leading-tight text-[#303030] dark:text-white truncate pr-6">{recipe.name}</h3>
+
+                          {/* Action Menu */}
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuId(isMenuOpen ? null : recipe.id);
+                              }}
+                              className={`w-6 h-6 flex items-center justify-center rounded-full transition-colors -mt-1 -mr-1 ${isMenuOpen ? 'bg-gray-200 dark:bg-[#3F3F46] text-[#303030] dark:text-white' : 'text-gray-300 hover:text-[#303030] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#3F3F46]'}`}
+                            >
+                              <iconify-icon icon="lucide:more-horizontal" width="16"></iconify-icon>
+                            </button>
+
+                            {isMenuOpen && (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)}></div>
+                                <div className="absolute right-0 top-6 z-20 w-32 bg-white dark:bg-[#1A1A1A] border border-gray-100 dark:border-[#333] rounded-xl shadow-xl py-1 animate-in fade-in zoom-in-95 duration-200 flex flex-col text-left overflow-hidden">
+                                  <button
+                                    onClick={() => { setActiveMenuId(null); setSelectedRecipeId(recipe.id); setViewMode('builder'); }}
+                                    className="px-4 py-2.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#2A2A2A] flex items-center gap-2 transition-colors w-full text-left"
+                                  >
+                                    <iconify-icon icon="lucide:edit-2" width="14"></iconify-icon>
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setActiveMenuId(null);
+                                      openConfirm("Duplicate Recipe", `Copy ${recipe.name}?`, () => duplicateRecipe(recipe.id));
+                                    }}
+                                    className="px-4 py-2.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#2A2A2A] flex items-center gap-2 transition-colors w-full text-left"
+                                  >
+                                    <iconify-icon icon="lucide:copy" width="14"></iconify-icon>
+                                    Clone
+                                  </button>
+                                  <div className="h-px bg-gray-50 dark:bg-[#333] my-1"></div>
+                                  <button
+                                    onClick={() => {
+                                      setActiveMenuId(null);
+                                      openConfirm("Delete Recipe", `Delete ${recipe.name}?`, () => deleteRecipe(recipe.id), true);
+                                    }}
+                                    className="px-4 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center gap-2 transition-colors w-full text-left"
+                                  >
+                                    <iconify-icon icon="lucide:trash-2" width="14"></iconify-icon>
+                                    Delete
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-0.5 block">
+                          {recipe.category}
+                        </span>
+                      </div>
+
+                      {/* Compact Stats Grid */}
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
+                        <div>
+                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">PRICE</p>
+                          <p className="font-bold text-sm text-[#303030] dark:text-white">{currencySymbol}{(recipe.price || 0).toFixed(0)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">COST</p>
+                          <p className="font-bold text-sm text-[#303030] dark:text-white">{currencySymbol}{cost.toFixed(2)}</p>
+                        </div>
+                      </div>
+
+                      {/* Margin Bar */}
+                      <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-white/5">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${status === 'Excellent' ? 'bg-[#10B981]' : status === 'Good' ? 'bg-[#FCD34D]' : 'bg-red-500'}`}></span>
+                        <div className="flex-1 flex justify-between items-center bg-gray-50 dark:bg-white/5 rounded-full h-4 px-2">
+                          <span className="text-[9px] font-bold text-gray-400 uppercase">{status}</span>
+                          <span className="text-[10px] font-bold text-[#303030] dark:text-white">{margin.toFixed(0)}%</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Action Menu */}
-                  <div className="relative">
+                  {/* Expandable Description */}
+                  <div className="flex flex-col items-center mt-3 pt-1 border-t border-dashed border-gray-200 dark:border-white/10 w-full">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setActiveMenuId(isMenuOpen ? null : recipe.id);
+                        setExpandedRecipeId(isExpanded ? null : recipe.id);
                       }}
-                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${isMenuOpen ? 'bg-gray-200 dark:bg-[#3F3F46] text-[#303030] dark:text-white' : 'text-gray-300 hover:text-[#303030] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#3F3F46]'}`}
+                      className="w-full flex items-center justify-center py-1 text-gray-300 hover:text-gray-500 dark:hover:text-gray-200 transition-colors group/expand"
                     >
-                      <iconify-icon icon="lucide:more-horizontal" width="20"></iconify-icon>
+                      <iconify-icon icon="lucide:chevron-down" class={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : 'group-hover/expand:translate-y-0.5'}`} width="16"></iconify-icon>
                     </button>
-
-                    {isMenuOpen && (
-                      <>
-                        <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)}></div>
-                        <div className="absolute right-0 top-8 z-20 w-32 bg-white border border-gray-100 rounded-xl shadow-xl py-1 animate-in fade-in zoom-in-95 duration-200 flex flex-col text-left overflow-hidden">
-                          <button
-                            onClick={() => { setActiveMenuId(null); setSelectedRecipeId(recipe.id); setViewMode('builder'); }}
-                            className="px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors w-full text-left"
-                          >
-                            <iconify-icon icon="lucide:edit-2" width="14"></iconify-icon>
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => {
-                              setActiveMenuId(null);
-                              openConfirm("Duplicate Recipe", `Copy ${recipe.name}?`, () => duplicateRecipe(recipe.id));
-                            }}
-                            className="px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors w-full text-left"
-                          >
-                            <iconify-icon icon="lucide:copy" width="14"></iconify-icon>
-                            Clone
-                          </button>
-                          <div className="h-px bg-gray-50 my-1"></div>
-                          <button
-                            onClick={() => {
-                              setActiveMenuId(null);
-                              openConfirm("Delete Recipe", `Delete ${recipe.name}?`, () => deleteRecipe(recipe.id), true);
-                            }}
-                            className="px-4 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 flex items-center gap-2 transition-colors w-full text-left"
-                          >
-                            <iconify-icon icon="lucide:trash-2" width="14"></iconify-icon>
-                            Delete
-                          </button>
-                        </div>
-                      </>
+                    {isExpanded && (
+                      <div className="w-full text-[10px] text-gray-500 dark:text-gray-400 mt-1 animate-fade-in pb-1 text-center">
+                        <p>{recipe.description || "No description available."}</p>
+                      </div>
                     )}
                   </div>
                 </div>
+              );
+            })
+          )}
+        </div>
+        <div className="flex-none pt-4 mt-auto">
+          {Math.ceil(filteredRecipes.length / itemsPerPage) > 1 && (
+            <div className="flex justify-center items-center gap-4 py-4 shrink-0 border-t border-gray-100 dark:border-white/5 mt-auto">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${currentPage === 1 ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'bg-white dark:bg-[#303030] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040] shadow-sm'}`}
+              >
+                <iconify-icon icon="lucide:chevron-left" width="20"></iconify-icon>
+              </button>
 
-                <div className="flex gap-4 mb-8">
-                  <div className="flex-1 bg-white/60 dark:bg-white/5 rounded-xl p-3 border border-gray-100 dark:border-white/5">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Selling Price</p>
-                    <p className="font-bold text-[#303030] dark:text-white text-lg">{currencySymbol}{(recipe.price || 0).toFixed(0)}</p>
-                  </div>
-                  <div className="flex-1 bg-white/60 dark:bg-white/5 rounded-xl p-3 border border-gray-100 dark:border-white/5">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Plate Cost</p>
-                    <p className="font-bold text-[#303030] dark:text-white text-lg">{currencySymbol}{cost.toFixed(2)}</p>
-                  </div>
-                </div>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Page {currentPage} of {Math.ceil(filteredRecipes.length / itemsPerPage)}
+              </span>
 
-                <div className="flex items-center justify-between border-t border-[#FCD34D]/10 pt-4">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${status === 'Excellent' ? 'bg-[#10B981]'
-                      : status === 'Good' ? 'bg-[#FCD34D]' : 'bg-red-500'}`}></span>
-                    <span className="text-xs font-medium text-gray-500">{status}</span>
-                  </div>
-                  <span className="text-xl font-bold text-[#303030] dark:text-white opacity-80">{margin.toFixed(0)}%</span>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredRecipes.length / itemsPerPage), prev + 1))}
+                disabled={currentPage === Math.ceil(filteredRecipes.length / itemsPerPage)}
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${currentPage === Math.ceil(filteredRecipes.length / itemsPerPage) ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : 'bg-white dark:bg-[#303030] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#404040] shadow-sm'}`}
+              >
+                <iconify-icon icon="lucide:chevron-right" width="20"></iconify-icon>
+              </button>
+            </div>
+          )}
+        </div>
 
-      <div className="flex justify-between items-center bg-[#F9F9F7] p-4 rounded-xl text-xs text-gray-400">
-        <p>Showing <strong>{filteredRecipes.length}</strong> of {data.recipes.length} recipes</p>
-      </div>
-
-    </div>
+      </div >
+    </div >
   );
 };

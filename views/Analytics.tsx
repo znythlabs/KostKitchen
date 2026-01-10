@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../AppContext';
+import { LiquidTabs } from '../components/LiquidTabs';
 import { getCurrencySymbol } from '../lib/format-utils';
 
 
@@ -224,20 +225,13 @@ export const Analytics = () => {
 
 
                 <div className="flex items-center gap-2">
-                    <div className="flex bg-[#F2F2F0] dark:bg-[#1A1A1A] p-1 rounded-full border border-gray-200/50 dark:border-white/5">
-
-                        {['Day', 'Week', 'Month'].map((p) => (
-                            <button
-                                key={p}
-                                onClick={() => setPeriod(p.toLowerCase() as any)}
-                                className={`px-6 py-1.5 rounded-full text-xs font-semibold transition-all ${period === p.toLowerCase()
-                                    ? 'bg-[#303030] dark:bg-white text-white dark:text-black shadow-md'
-                                    : 'text-gray-500 hover:bg-white/50 dark:hover:bg-white/10 dark:text-gray-400'
-                                    }`}
-                            >
-                                {p}
-                            </button>
-                        ))}
+                    <div className="flex items-center gap-2">
+                        <LiquidTabs
+                            tabs={['Day', 'Week', 'Month'].map(p => ({ id: p.toLowerCase(), label: p }))}
+                            activeId={period}
+                            onChange={(id) => id && setPeriod(id as any)}
+                            className="bg-[#F2F2F0] dark:bg-[#1A1A1A]"
+                        />
                     </div>
                 </div>
             </div>

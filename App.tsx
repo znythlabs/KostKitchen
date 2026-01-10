@@ -15,7 +15,7 @@ import { Inventory } from './views/Inventory';
 import { Recipes } from './views/Recipes';
 import { Analytics } from './views/Analytics';
 import { Settings } from './views/Settings';
-import { LandingPage } from './views/LandingPage';
+// import { LandingPage } from './views/LandingPage';
 import { POS } from './views/POS';
 
 const MainContent = () => {
@@ -43,7 +43,9 @@ const MainContent = () => {
 
   if (!isLoggedIn) {
     if (showLanding) {
-      return <LandingPage onEnterApp={() => setShowLanding(false)} />;
+      // return <LandingPage onEnterApp={() => setShowLanding(false)} />;
+      // Temporary bypass for missing file
+      return <AuthLayer />;
     }
     return <AuthLayer />;
   }

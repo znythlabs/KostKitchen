@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { LiquidTabs } from '../components/LiquidTabs';
 import { useApp } from '../AppContext';
 import { getCurrencySymbol } from '../lib/format-utils';
 import jsPDF from 'jspdf';
@@ -95,18 +96,14 @@ export const Inventory = () => {
             </button>
           </div>
           <div className="flex flex-col gap-1">
-            {inventoryCategories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeCategory === cat
-                  ? 'bg-[#303030] dark:bg-white text-white dark:text-black shadow-md'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5'
-                  }`}
-              >
-                {cat}
-              </button>
-            ))}
+            <LiquidTabs
+              tabs={inventoryCategories.map(cat => ({ id: cat, label: cat }))}
+              activeId={activeCategory}
+              onChange={(id) => id && setActiveCategory(id)}
+              className="bg-transparent p-0 border-none"
+              orientation="vertical"
+              layoutId="inventory-cats"
+            />
           </div>
         </div>
 

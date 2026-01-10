@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { CustomSelect } from './CustomSelect';
 import { getCurrencySymbol } from '../lib/format-utils';
+import { LiquidTabs } from './LiquidTabs';
 
 const ConfirmationModal = () => {
   const { confirmModal, closeConfirmation } = useApp();
@@ -396,21 +397,18 @@ export const Modals = () => {
         <form className="flex flex-col flex-1 overflow-hidden" onSubmit={handleStockSubmit}>
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
 
-            <div className={`flex bg-gray-100 dark:bg-[#2C2C2E] p-1 rounded-lg ${editingStockItem ? 'opacity-50 pointer-events-none' : ''}`}>
-              <button
-                type="button"
-                onClick={() => setStockForm(s => ({ ...s, type: 'ingredient' }))}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${stockForm.type === 'ingredient' ? 'bg-white dark:bg-[#3A3A3C] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500'}`}
-              >
-                Ingredient
-              </button>
-              <button
-                type="button"
-                onClick={() => setStockForm(s => ({ ...s, type: 'other' }))}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${stockForm.type === 'other' ? 'bg-white dark:bg-[#3A3A3C] shadow-sm text-gray-900 dark:text-white' : 'text-gray-500'}`}
-              >
-                Other Item
-              </button>
+            <div className={`mb-4 ${editingStockItem ? 'opacity-50 pointer-events-none' : ''}`}>
+              <LiquidTabs
+                tabs={[
+                  { id: 'ingredient', label: 'Ingredient' },
+                  { id: 'other', label: 'Other Item' }
+                ]}
+                activeId={stockForm.type}
+                onChange={(id) => id && setStockForm(s => ({ ...s, type: id as 'ingredient' | 'other' }))}
+                className="bg-gray-100 dark:bg-[#2C2C2E] w-full"
+                layoutId="modal-stock-type"
+                fullWidth
+              />
             </div>
 
             <div>
