@@ -306,8 +306,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         const { data: { user } } = await supabase.auth.getUser();
         setUser(user);
 
-        // Parallel Fetch via Data Service
-        const [ingredients, recipes, settings, expenses, dailySnapshots, orders] = await Promise.all([
+        // Parallel Fetch via Data Service with Error Handling
+        const results = await Promise.allSettled([
           dataService.getIngredients(),
           dataService.getRecipes(),
           dataService.getSettings(),
@@ -315,6 +315,25 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
           dataService.getSnapshots(),
           dataService.getOrders()
         ]);
+
+        const [
+          ingredientsRes, recipesRes, settingsRes, expensesRes, dailySnapshotsRes, ordersRes
+        ] = results;
+
+        // Log failures
+        if (ingredientsRes.status === 'rejected') console.error('Failed to load ingredients:', ingredientsRes.reason);
+        if (recipesRes.status === 'rejected') console.error('Failed to load recipes:', recipesRes.reason);
+        if (settingsRes.status === 'rejected') console.error('Failed to load settings:', settingsRes.reason);
+        if (expensesRes.status === 'rejected') console.error('Failed to load expenses:', expensesRes.reason);
+        if (dailySnapshotsRes.status === 'rejected') console.error('Failed to load snapshots:', dailySnapshotsRes.reason);
+        if (ordersRes.status === 'rejected') console.error('Failed to load orders:', ordersRes.reason);
+
+        const ingredients = ingredientsRes.status === 'fulfilled' ? ingredientsRes.value : [];
+        const recipes = recipesRes.status === 'fulfilled' ? recipesRes.value : [];
+        const settings = settingsRes.status === 'fulfilled' ? settingsRes.value : null;
+        const expenses = expensesRes.status === 'fulfilled' ? expensesRes.value : [];
+        const dailySnapshots = dailySnapshotsRes.status === 'fulfilled' ? dailySnapshotsRes.value : [];
+        const orders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
 
         const freshData = {
           ingredients,
@@ -325,24 +344,25 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             expenses: expenses,
             isVatRegistered: settings?.isVatRegistered || false,
             isPwdSeniorActive: settings?.isPwdSeniorActive || false,
-            otherDiscountRate: settings?.otherDiscountRate || 0
+            otherDiscountRate: settings?.otherDiscountRate || 0,
+            currency: settings?.currency || 'PHP',
+            measurementUnit: settings?.measurementUnit || 'Metric'
           }
         };
 
         setData(freshData);
+
+        // Notify if massive failure
+        if (results.every(r => r.status === 'rejected')) {
+          showToast("Failed to load data from server. Working offline.", "error");
+        }
 
         // STEP 3: Save fresh data to cache for next time
         console.log('[Cache] Saving fresh data to cache...');
         await saveDataCache({
           ingredients,
           recipes,
-          settings: {
-            isVatRegistered: settings?.isVatRegistered || false,
-            isPwdSeniorActive: settings?.isPwdSeniorActive || false,
-            otherDiscountRate: settings?.otherDiscountRate || 0,
-            currency: settings?.currency || 'PHP',
-            measurementUnit: settings?.measurementUnit || 'Metric'
-          },
+          settings: freshData.settings,
           expenses,
           dailySnapshots,
           orders,
@@ -356,8 +376,9 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         setIsLoggedIn(true);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching data:", error);
+      showToast(`Error loading data: ${error.message || 'Unknown error'}`, "error");
       // If network fails, we still have cached data loaded (if available)
     } finally {
       if (!silent) setLoading(false);
