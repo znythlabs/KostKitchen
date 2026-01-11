@@ -292,7 +292,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
           }
         });
         // Hide loading since we have cached data
-        if (!silent) setLoading(false);
+
       }
 
       // STEP 2: Fetch fresh data from Supabase (background refresh)
@@ -360,7 +360,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       console.error("Error fetching data:", error);
       // If network fails, we still have cached data loaded (if available)
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
