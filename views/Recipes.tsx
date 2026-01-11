@@ -443,7 +443,7 @@ export const Recipes = () => {
             {/* RIGHT COLUMN: Cost Analysis Receipt (4 cols) - Added min-h-0 for scroll fix */}
             <div className="lg:col-span-4 h-full min-h-0 flex flex-col pt-0 pb-0">
               {/* The Dark Receipt - COMPACT */}
-              <div className="bg-[#1A1A1A] rounded-sm shadow-2xl overflow-hidden flex flex-col h-full border border-[#333] font-mono text-gray-200 relative">
+              <div className="bg-[#1A1A1A] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col h-full border border-[#333] font-mono text-gray-200 relative">
 
                 {/* Header */}
                 <div className="text-center pt-6 pb-4 flex-none">
@@ -603,7 +603,9 @@ export const Recipes = () => {
             ]}
             activeId={selectedCategory || 'all'}
             onChange={(id: string | null) => setSelectedCategory(id === 'all' ? null : id)}
-            className="flex-1 min-w-0"
+            className="flex-1 min-w-0 bg-[#F2F2F0] dark:bg-[#1A1A1A]"
+            layoutId="recipes-grid-tabs"
+            fill={true}
             rightAccessory={
               <button
                 onClick={() => openPrompt("Add Category", "New category name:", (val) => addRecipeCategory(val))}

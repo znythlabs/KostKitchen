@@ -6,7 +6,7 @@ import { SoftLayout } from './components/SoftLayout';
 import { Modals } from './components/Modals';
 import './styles/soft-ui.css'; // Import Soft UI styles
 import { TourGuide } from './components/TourGuide';
-import { LoadingToast } from './components/LoadingToast';
+
 import { SplashScreen } from './components/SplashScreen';
 
 // Views
@@ -15,8 +15,9 @@ import { Inventory } from './views/Inventory';
 import { Recipes } from './views/Recipes';
 import { Analytics } from './views/Analytics';
 import { Settings } from './views/Settings';
-// import { LandingPage } from './views/LandingPage';
+import { LandingPage } from './views/LandingPage';
 import { POS } from './views/POS';
+import { HRPayroll } from './views/HRPayroll';
 
 const MainContent = () => {
   const { isLoggedIn, view, isLoading, authChecked } = useApp();
@@ -43,26 +44,27 @@ const MainContent = () => {
 
   if (!isLoggedIn) {
     if (showLanding) {
-      // return <LandingPage onEnterApp={() => setShowLanding(false)} />;
+      return <LandingPage onEnterApp={() => setShowLanding(false)} />;
       // Temporary bypass for missing file
-      return <AuthLayer />;
+      // return <AuthLayer />;
     }
     return <AuthLayer />;
   }
 
   return (
-    <SoftLayout disableScroll={view === 'inventory' || view === 'recipes' || view === 'pos'}>
+    <SoftLayout disableScroll={view === 'inventory' || view === 'recipes' || view === 'pos' || view === 'hr'}>
       {/* Full-screen loading overlay when fetching data after login */}
       {(isLoading || minSplashWait) && <SplashScreen />}
 
       {/* View Content */}
-      <div className={`animate-enter ${view === 'inventory' || view === 'recipes' || view === 'pos' ? 'h-full' : 'min-h-full'}`}>
+      <div className={`animate-enter ${view === 'inventory' || view === 'recipes' || view === 'pos' || view === 'hr' ? 'h-full' : 'min-h-full'}`}>
         {view === 'dashboard' && <Dashboard />}
         {view === 'inventory' && <Inventory />}
         {view === 'recipes' && <Recipes />}
         {view === 'analytics' && <Analytics />}
         {view === 'settings' && <Settings />}
         {view === 'pos' && <POS />}
+        {view === 'hr' && <HRPayroll />}
       </div>
 
       <Modals />
@@ -76,7 +78,7 @@ const App = () => {
     <AppProvider>
       <SoundProvider>
         <MainContent />
-        <LoadingToast />
+
       </SoundProvider>
     </AppProvider>
   );

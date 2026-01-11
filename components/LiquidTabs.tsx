@@ -21,22 +21,25 @@ interface LiquidTabsProps {
     rightAccessory?: React.ReactNode;
     /** Layout orientation */
     orientation?: "horizontal" | "vertical";
+    /** If true, tabs will eventually fill the container width and compress (flex-1) */
+    fill?: boolean;
 }
 
-export function LiquidTabs({ tabs, activeId, onChange, className = "", layoutId = "active-tab-indicator", rightAccessory, orientation = "horizontal" }: LiquidTabsProps) {
+export function LiquidTabs({ tabs, activeId, onChange, className = "", layoutId = "active-tab-indicator", rightAccessory, orientation = "horizontal", fill = false }: LiquidTabsProps) {
     const isVertical = orientation === "vertical";
 
     return (
         <div className={`relative flex ${isVertical ? 'flex-col items-stretch' : 'flex-row items-center'} bg-[#F2F2F0] dark:bg-[#303030]/50 p-1 ${isVertical ? 'rounded-xl' : 'rounded-full'} border border-gray-200/50 dark:border-white/5 overflow-hidden ${className}`}>
-            <div className={`flex-1 flex ${isVertical ? 'flex-col w-full overflow-y-auto no-scrollbar' : 'items-center overflow-x-auto no-scrollbar'} relative min-w-0`}>
+            <div className={`flex-1 flex ${isVertical ? 'flex-col w-full overflow-y-auto no-scrollbar' : `items-center ${fill ? 'w-full' : 'overflow-x-auto no-scrollbar'}`} relative min-w-0`}>
                 {tabs.map((tab) => {
                     const isActive = activeId === tab.id;
                     return (
-                        <button
+                        <motion.button
+                            layout
                             key={tab.id}
                             onClick={() => onChange(tab.id)}
                             className={`
-                relative px-5 py-2 ${isVertical ? 'rounded-lg w-full text-left' : 'rounded-full whitespace-nowrap'} text-sm font-semibold transition-colors z-0 flex-shrink-0
+                relative px-5 py-2 ${isVertical ? 'rounded-lg w-full text-left' : 'rounded-full whitespace-nowrap'} text-sm font-semibold transition-colors z-0 ${fill ? 'flex-1 min-w-0 text-center px-1' : 'flex-shrink-0'}
                 ${isActive
                                     ? "text-white dark:text-black"
                                     : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5"
@@ -53,8 +56,8 @@ export function LiquidTabs({ tabs, activeId, onChange, className = "", layoutId 
                                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                                 />
                             )}
-                            {tab.label}
-                        </button>
+                            <span className="truncate block w-full">{tab.label}</span>
+                        </motion.button>
                     );
                 })}
             </div>

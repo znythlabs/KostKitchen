@@ -405,9 +405,9 @@ export const Modals = () => {
                 ]}
                 activeId={stockForm.type}
                 onChange={(id) => id && setStockForm(s => ({ ...s, type: id as 'ingredient' | 'other' }))}
-                className="bg-gray-100 dark:bg-[#2C2C2E] w-full"
+                className="bg-[#F2F2F0] dark:bg-[#1A1A1A] w-full"
                 layoutId="modal-stock-type"
-                fullWidth
+                fill={true}
               />
             </div>
 

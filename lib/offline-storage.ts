@@ -15,7 +15,7 @@
 
 export interface SyncOperation {
     id: string;
-    table: 'ingredients' | 'recipes' | 'recipe_ingredients' | 'expenses' | 'settings' | 'daily_snapshots';
+    table: 'ingredients' | 'recipes' | 'recipe_ingredients' | 'expenses' | 'settings' | 'daily_snapshots' | 'orders';
     operation: 'insert' | 'update' | 'delete' | 'upsert';
     payload: any;
     timestamp: number;
@@ -31,6 +31,7 @@ interface OfflineStore {
         settings: any;
         expenses: any[];
         dailySnapshots: any[];
+        orders: any[];
         lastSync: number;
     } | null;
 }

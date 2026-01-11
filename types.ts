@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export type View = 'dashboard' | 'recipes' | 'inventory' | 'finance' | 'calendar' | 'profile' | 'engineering' | 'analytics' | 'settings' | 'pos';
+export type View = 'dashboard' | 'recipes' | 'inventory' | 'finance' | 'calendar' | 'profile' | 'engineering' | 'analytics' | 'settings' | 'pos' | 'hr';
 
 export interface TourStep {
   targetId: string;
@@ -129,6 +129,26 @@ export interface AppData {
   ingredients: Ingredient[];
   recipes: Recipe[];
   dailySnapshots: DailySnapshot[];
+  orders: Order[];
+}
+
+export interface OrderItem {
+  recipeId: number;
+  name: string;
+  qty: number;
+  price: number;
+  cost: number;
+}
+
+export interface Order {
+  id: string;
+  customerName?: string;
+  table?: string;
+  status: 'New' | 'Cooking' | 'Ready' | 'Completed';
+  items: OrderItem[];
+  total: number;
+  timestamp: number;
+  color?: 'red' | 'green' | 'blue'; // For UI consistency with mock
 }
 
 export interface BuilderState {
@@ -239,4 +259,9 @@ export interface AppContextType {
   closePrompt: () => void;
   registerTourElement: (id: string, element: HTMLElement | null) => void;
   getTourElement: (id: string) => HTMLElement | null;
+
+  // POS & Orders
+  createOrder: (order: Order) => void;
+  updateOrderStatus: (id: string, status: Order['status']) => void;
+  completeOrder: (id: string) => Promise<void>;
 }

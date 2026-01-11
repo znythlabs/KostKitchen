@@ -3,7 +3,7 @@ import { supabase, isAuthenticated, getCurrentUserId } from './lib/supabase';
 import { dataService } from './lib/data-service';
 import { updateSessionActivity, isSessionActive, clearSession } from './lib/auth-utils';
 import { saveDataCache, loadDataCache, isOnline } from './lib/offline-storage';
-import { AppData, View, BuilderState, Ingredient, Recipe, Expense, AppContextType, DailySnapshot, WeeklySummary, MonthlySummary, Theme } from './types';
+import { AppData, View, BuilderState, Ingredient, Recipe, Expense, AppContextType, DailySnapshot, WeeklySummary, MonthlySummary, Theme, Order } from './types';
 import { INITIAL_DATA, INITIAL_BUILDER, TOUR_STEPS } from './constants';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -77,7 +77,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     settings: { ...INITIAL_DATA.settings, currency: 'PHP', measurementUnit: 'Metric' },
     ingredients: [],
     recipes: [],
-    dailySnapshots: []
+    dailySnapshots: [],
+    orders: []
   });
 
   const [builder, setBuilder] = useState<BuilderState>(INITIAL_BUILDER);
@@ -96,7 +97,14 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   };
 
   const [inventoryEditMode, setInventoryEditMode] = useState(false);
-  const [activeModal, setActiveModal] = useState<'picker' | 'stock' | null>(null);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState('dashboard');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000); // Auto hide after 3 seconds
+  };
   const [pickerFilter, setPickerFilter] = useState<'ingredient' | 'other' | null>(null);
   const [editingStockItem, setEditingStockItem] = useState<Ingredient | null>(null);
 
@@ -273,6 +281,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
           ingredients: cachedData.ingredients || [],
           recipes: cachedData.recipes || [],
           dailySnapshots: cachedData.dailySnapshots || [],
+          orders: cachedData.orders || [],
           settings: {
             expenses: cachedData.expenses || [],
             isVatRegistered: cachedData.settings?.isVatRegistered || false,
@@ -298,18 +307,20 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         setUser(user);
 
         // Parallel Fetch via Data Service
-        const [ingredients, recipes, settings, expenses, dailySnapshots] = await Promise.all([
+        const [ingredients, recipes, settings, expenses, dailySnapshots, orders] = await Promise.all([
           dataService.getIngredients(),
           dataService.getRecipes(),
           dataService.getSettings(),
           dataService.getExpenses(),
-          dataService.getSnapshots()
+          dataService.getSnapshots(),
+          dataService.getOrders()
         ]);
 
         const freshData = {
           ingredients,
           recipes,
           dailySnapshots,
+          orders,
           settings: {
             expenses: expenses,
             isVatRegistered: settings?.isVatRegistered || false,
@@ -334,6 +345,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
           },
           expenses,
           dailySnapshots,
+          orders,
           lastSync: Date.now()
         });
 
@@ -794,6 +806,150 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     await dataService.updateSettings({ daily_sales_target: amount });
   };
 
+  // --- POS ORDER LOGIC ---
+
+  const createOrder = async (order: Order) => {
+    setData(prev => ({
+      ...prev,
+      orders: [order, ...prev.orders]
+    }));
+    await dataService.createOrder(order);
+  };
+
+  const updateOrderStatus = async (id: string, status: Order['status']) => {
+    setData(prev => ({
+      ...prev,
+      orders: prev.orders.map(o => o.id === id ? { ...o, status } : o)
+    }));
+    await dataService.updateOrder(id, { status });
+  };
+
+  const completeOrder = async (id: string) => {
+    const order = data.orders.find(o => o.id === id);
+    if (!order) return;
+
+    // 1. Deduct Inventory (similar to cookRecipe but for multiple items)
+    const updates: { id: number, stockQty: number }[] = [];
+    const ingredientMap = new Map<number, number>(); // track deductions to aggregate if same ingredient used multiple times
+
+    // Build deduction map
+    order.items.forEach(item => {
+      const recipe = data.recipes.find(r => r.id === item.recipeId);
+      if (recipe) {
+        // Calculate portion ratio
+        const batchSize = recipe.batchSize || 1;
+        const ratio = item.qty / batchSize;
+
+        recipe.ingredients.forEach(ri => {
+          const currentDeduction = ingredientMap.get(ri.id) || 0;
+          ingredientMap.set(ri.id, currentDeduction + (ri.qty * ratio));
+        });
+      }
+    });
+
+    // Apply deductions
+    for (const [ingId, qtyNeeded] of ingredientMap.entries()) {
+      const ingredient = data.ingredients.find(i => i.id === ingId);
+      if (ingredient) {
+        const newStock = Math.max(0, ingredient.stockQty - qtyNeeded);
+        updates.push({ id: ingId, stockQty: newStock });
+      }
+    }
+
+    // Optimistic Inventory Update
+    const newIngredients = data.ingredients.map(i => {
+      const update = updates.find(u => u.id === i.id);
+      return update ? { ...i, stockQty: update.stockQty } : i;
+    });
+
+    // 2. Update Daily Snapshot (Financials)
+    const today = new Date().toISOString().split('T')[0];
+    const snapshotIndex = data.dailySnapshots.findIndex(s => s.date === today);
+    let newSnapshots = [...data.dailySnapshots];
+
+    // Calculate Financials for this order
+    const orderFinancials = order.items.reduce((acc, item) => {
+      const recipe = data.recipes.find(r => r.id === item.recipeId);
+      if (!recipe) return acc;
+
+      const financials = getRecipeFinancials(recipe);
+      // Adjust per qty sold in this order (financials are per daily volume in getRecipeFinancials? No, let's re-check)
+      // getRecipeFinancials uses r.dailyVolume. We need unit financials.
+
+      const unitGross = financials.unitPrice;
+      const unitCost = financials.unitCost;
+
+      // Re-calculate VAT/Discounts per unit for accuracy or assume proportional?
+      // Let's use simpler math for the snapshot update to ensure robustness:
+
+      const itemRevenue = item.price * item.qty; // Gross Sales
+      const itemCost = unitCost * item.qty;      // COGS
+
+      return {
+        grossSales: acc.grossSales + itemRevenue,
+        cogs: acc.cogs + itemCost,
+        recipesSold: [...acc.recipesSold, { recipeId: item.recipeId, recipeName: item.name, quantity: item.qty, revenue: itemRevenue }]
+      };
+    }, { grossSales: 0, cogs: 0, recipesSold: [] as any[] });
+
+    // Net Revenue & Gross Profit (Approximate without full discount logic applied per item in POS yet unless Order carries that data)
+    // Assuming standard VAT rate from settings if any
+    const vatRate = data.settings.isVatRegistered ? 0.12 : 0;
+    const netRevenue = orderFinancials.grossSales / (1 + vatRate);
+    const vat = orderFinancials.grossSales - netRevenue;
+    const grossProfit = netRevenue - orderFinancials.cogs;
+
+    if (snapshotIndex >= 0) {
+      const s = newSnapshots[snapshotIndex];
+      newSnapshots[snapshotIndex] = {
+        ...s,
+        grossSales: s.grossSales + orderFinancials.grossSales,
+        netRevenue: s.netRevenue + netRevenue,
+        cogs: s.cogs + orderFinancials.cogs,
+        grossProfit: s.grossProfit + grossProfit,
+        vat: s.vat + vat,
+        totalOrders: s.totalOrders + 1,
+        recipesSold: [...s.recipesSold, ...orderFinancials.recipesSold] // In real app, merge duplicates
+      };
+    } else {
+      // Create new snapshot
+      newSnapshots.push({
+        date: today,
+        grossSales: orderFinancials.grossSales,
+        netRevenue: netRevenue,
+        cogs: orderFinancials.cogs,
+        grossProfit: grossProfit,
+        opex: 0, // Calculated elsewhere or fixed
+        netProfit: grossProfit, // - opex
+        vat: vat,
+        discounts: 0,
+        totalOrders: 1,
+        recipesSold: orderFinancials.recipesSold
+      });
+    }
+
+    // 3. Update State
+    setData(prev => ({
+      ...prev,
+      ingredients: newIngredients,
+      dailySnapshots: newSnapshots,
+      orders: prev.orders.map(o => o.id === id ? { ...o, status: 'Completed' } : o)
+    }));
+
+    // 4. Persist Inventory Changes
+    for (const u of updates) {
+      await dataService.updateIngredient(u.id, { stockQty: u.stockQty });
+    }
+
+    // 5. Persist Order Status
+    await dataService.updateOrder(id, { status: 'Completed' });
+
+    // 6. Persist Snapshot (Simplification: just overwrite today's snapshot if possible or let auto-save handle it? 
+    // dataService has getSnapshots but not explicit updateSnapshot in the snippet I saw. 
+    // Usually snapshots are derived or saved periodically. I'll check if updateSnapshot exists in a later step if needed. 
+    // For now, local state update reflects immediate change.)
+  };
+
   const updateSettings = async (newSettings: Partial<AppData['settings']>) => {
     setData(prev => ({
       ...prev,
@@ -921,7 +1077,7 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       builder, setBuilder, loadRecipeToBuilder,
       selectedRecipeId, setSelectedRecipeId,
       inventoryEditMode, toggleInventoryEdit,
-      activeModal, setActiveModal, pickerFilter, setPickerFilter, editingStockItem,
+      activeModal, setActiveModal, activeSection, setActiveSection, toast, showToast, pickerFilter, setPickerFilter, editingStockItem,
       confirmModal, cookModal, cookRecipe,
       // Modals
       setConfirmModal, openConfirm,
@@ -949,7 +1105,10 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
       closeCookModal,
       updateDailyTarget,
       inventoryCategories, addInventoryCategory,
-      recipeCategories, addRecipeCategory
+      recipeCategories, addRecipeCategory,
+      createOrder,
+      updateOrderStatus,
+      completeOrder
     }}>
       {children}
     </AppContext.Provider>

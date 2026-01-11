@@ -1,6 +1,10 @@
 import React, { ReactNode } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../AppContext';
 import { View } from '../types';
+import { LoadingToast } from './LoadingToast';
+import { Toast } from './Toast';
+import { SplashScreen } from './SplashScreen';
 
 interface SoftLayoutProps {
     children: ReactNode;
@@ -8,42 +12,36 @@ interface SoftLayoutProps {
     disableScroll?: boolean;
 }
 
+const NavItem = ({ target, label, icon, currentView, setView }: { target: View, label: string, icon: string, currentView: View, setView: (v: View) => void }) => {
+    const isActive = currentView === target;
+    return (
+        <button
+            type="button"
+            onClick={() => setView(target)}
+            className={`nav-item relative z-0 group ${isActive ? 'text-white dark:text-[#303030]' : 'text-gray-500 hover:text-[#303030] dark:text-gray-400 dark:hover:text-gray-200'}`}
+        >
+            {isActive && (
+                <motion.div
+                    layoutId="sidebar-active"
+                    className="absolute inset-0 bg-[#303030] dark:bg-[#FCD34D] rounded-[1.2rem] -z-10 shadow-md"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+            )}
+            <iconify-icon icon={icon} width="20" class={`relative z-10 transition-colors ${isActive ? 'text-white dark:text-[#303030]' : 'text-gray-500 group-hover:text-[#303030] dark:text-gray-400 dark:group-hover:text-gray-200'}`}></iconify-icon>
+            <span className={`relative z-10 font-medium text-sm transition-colors ${isActive ? 'text-white dark:text-[#303030]' : ''}`}>{label}</span>
+        </button>
+    );
+};
+
 export const SoftLayout = ({ children, headerAction, disableScroll = false }: SoftLayoutProps) => {
-    const { view, setView, theme, setTheme } = useApp();
-
-    // Mapping internal view names to display titles/subtitles
-    const titles: Record<string, string> = {
-        dashboard: 'Overview',
-        recipes: 'Menu Engineering',
-        inventory: 'Inventory',
-        analytics: 'Performance',
-        settings: 'Settings & Tools',
-    };
-
-    const subtitles: Record<string, string> = {
-        dashboard: "Here's what's happening in your kitchen today.",
-        recipes: 'Optimize your dish pricing and margins.',
-        inventory: 'Real-time stock levels and supplier tracking.',
-        analytics: 'Deep dive into your financial metrics.',
-        settings: 'Configure your kitchen parameters.',
-    };
-
-    const NavItem = ({ target, label, icon }: { target: View, label: string, icon: string }) => {
-        const isActive = view === target;
-        return (
-            <button
-                type="button"
-                onClick={() => setView(target)}
-                className={`nav-item ${isActive ? 'active' : ''} group`}
-            >
-                <iconify-icon icon={icon} width="20"></iconify-icon>
-                <span className="font-medium text-sm">{label}</span>
-            </button>
-        );
-    };
+    const { view, setView, theme, setTheme, isLoading } = useApp();
 
     return (
-        <div className="flex h-full w-full text-[#303030] dark:text-[#E7E5E4] overflow-hidden">
+        <div className="flex h-screen w-full bg-[#E5E5E5] dark:bg-[#121212] font-sans selection:bg-[#FCD34D] selection:text-[#303030] overflow-hidden transition-colors duration-200">
+            <LoadingToast />
+            <Toast />
+            {isLoading && <SplashScreen />}
+
             {/* Sidebar - Desktop */}
             <aside className="hidden lg:flex flex-col gap-4 h-full w-[280px] p-4 pr-0">
                 {/* Brand Card */}
@@ -67,22 +65,23 @@ export const SoftLayout = ({ children, headerAction, disableScroll = false }: So
                     <div className="flex items-center gap-2 relative z-10">
                         <div className="w-8 h-8 rounded-full bg-[#202020] text-[#FCD34D] flex items-center justify-center">
                             <iconify-icon icon="lucide:store" width="16"></iconify-icon></div>
-                            <span className="text-lg font-black text-[#202020] tracking-tight">OPEN POS</span>
-                            <iconify-icon icon="lucide:arrow-right" class="group-hover:translate-x-1 transition-transform text-[#202020]"></iconify-icon>
-                        
+                        <span className="text-lg font-black text-[#202020] tracking-tight">OPEN POS</span>
+                        <iconify-icon icon="lucide:arrow-right" class="group-hover:translate-x-1 transition-transform text-[#202020]"></iconify-icon>
+
                     </div>
                 </button>
 
                 {/* Navigation Card */}
                 <nav className="flex-1 soft-card p-4 space-y-2 overflow-y-auto no-scrollbar dark:bg-white/5 dark:border-white/10">
-                    <NavItem target="dashboard" label="Dashboard" icon="lucide:layout-grid" />
-                    <NavItem target="recipes" label="Menu Costs" icon="lucide:utensils" />
-                    <NavItem target="inventory" label="Inventory" icon="lucide:package" />
-                    <NavItem target="analytics" label="Analytics" icon="lucide:bar-chart-2" />
+                    <NavItem target="dashboard" label="Dashboard" icon="lucide:layout-grid" currentView={view} setView={setView} />
+                    <NavItem target="recipes" label="Menu Costs" icon="lucide:utensils" currentView={view} setView={setView} />
+                    <NavItem target="inventory" label="Inventory" icon="lucide:package" currentView={view} setView={setView} />
+                    <NavItem target="analytics" label="Analytics" icon="lucide:bar-chart-2" currentView={view} setView={setView} />
+                    <NavItem target="hr" label="HR & Payroll" icon="lucide:users" currentView={view} setView={setView} />
 
                     <div className="pt-4 mt-4 border-t border-gray-100 dark:border-white/10">
                         <p className="px-5 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">System</p>
-                        <NavItem target="settings" label="Settings" icon="lucide:settings" />
+                        <NavItem target="settings" label="Settings" icon="lucide:settings" currentView={view} setView={setView} />
                     </div>
                 </nav>
             </aside>
@@ -119,7 +118,7 @@ export const SoftLayout = ({ children, headerAction, disableScroll = false }: So
 
                 {/* Mobile Nav (Bottom Default) - kept for smaller screens if sidebar is hidden */}
                 <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 z-50 pb-safe-b dark:bg-[#1F1C15]/90 dark:border-white/10">
-                    <div className="grid grid-cols-5 h-[60px] items-center">
+                    <div className="grid grid-cols-6 h-[60px] items-center">
                         <button onClick={() => setView('dashboard')} className={`flex flex-col items-center justify-center ${view === 'dashboard' ? 'text-[#303030] dark:text-[#E7E5E4]' : 'text-gray-400'}`}>
                             <iconify-icon icon="lucide:layout-grid" width="24"></iconify-icon>
                         </button>
@@ -131,6 +130,9 @@ export const SoftLayout = ({ children, headerAction, disableScroll = false }: So
                         </button>
                         <button onClick={() => setView('analytics')} className={`flex flex-col items-center justify-center ${view === 'analytics' ? 'text-[#303030] dark:text-[#E7E5E4]' : 'text-gray-400'}`}>
                             <iconify-icon icon="lucide:bar-chart-2" width="24"></iconify-icon>
+                        </button>
+                        <button onClick={() => setView('hr')} className={`flex flex-col items-center justify-center ${view === 'hr' ? 'text-[#303030] dark:text-[#E7E5E4]' : 'text-gray-400'}`}>
+                            <iconify-icon icon="lucide:users" width="24"></iconify-icon>
                         </button>
 
                         <button onClick={() => setView('settings')} className={`flex flex-col items-center justify-center ${view === 'settings' ? 'text-[#303030] dark:text-[#E7E5E4]' : 'text-gray-400'}`}>

@@ -140,15 +140,14 @@ body {
 }
 
 .nav-item.active {
-    background-color: #303030;
-    color: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    /* Background handled by framer-motion in React */
+    background-color: transparent;
+    box-shadow: none;
 }
 
 .dark .nav-item.active {
-    background-color: #FCD34D;
-    color: #303030;
-    box-shadow: 0 4px 12px rgba(252, 211, 77, 0.2);
+    background-color: transparent;
+    box-shadow: none;
 }
 
 .nav-item:not(.active) {

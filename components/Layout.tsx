@@ -48,6 +48,7 @@ export const DesktopSidebar = () => {
         <div id="nav-finance"><NavItemDesktop target="finance" label="Financials" icon="lucide:pie-chart" /></div>
         <div id="nav-calendar"><NavItemDesktop target="calendar" label="Reports" icon="lucide:calendar" /></div>
         <div id="nav-pos"><NavItemDesktop target="pos" label="POS" icon="lucide:store" /></div>
+        <div id="nav-hr"><NavItemDesktop target="hr" label="HR & Payroll" icon="lucide:users" /></div>
       </div>
       <div className="p-3 border-t border-black/5 dark:border-white/10">
         <button type="button" onClick={() => setView('profile')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors group text-gray-500 dark:text-gray-400">
@@ -68,7 +69,7 @@ export const MobileNav = () => {
   const { view, setView } = useApp();
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 glass-regular border-x-0 border-b-0 z-40 pb-safe-b">
-      <div className="grid grid-cols-7 h-[52px]">
+      <div className="grid grid-cols-8 h-[52px]">
         <NavItemMobile target="dashboard" label="Overview" icon="lucide:layout-grid" />
         <NavItemMobile target="recipes" label="Menu" icon="lucide:chef-hat" />
         <NavItemMobile target="engineering" label="Matrix" icon="lucide:scatter-chart" />
@@ -76,6 +77,7 @@ export const MobileNav = () => {
         <NavItemMobile target="finance" label="Finance" icon="lucide:banknote" />
         <NavItemMobile target="calendar" label="Reports" icon="lucide:calendar" />
         <NavItemMobile target="pos" label="POS" icon="lucide:store" />
+        <NavItemMobile target="hr" label="HR" icon="lucide:users" />
       </div>
     </nav>
   );
@@ -94,7 +96,8 @@ export const Header = () => {
     finance: 'Financials',
     calendar: 'Reports',
     profile: 'Profile',
-    pos: 'Point of Sale'
+    pos: 'Point of Sale',
+    hr: 'HR & Payroll'
   };
 
   const cycleTheme = () => {

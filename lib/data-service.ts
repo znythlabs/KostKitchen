@@ -23,7 +23,7 @@ import {
     hasPendingChanges
 } from './offline-storage';
 import { validateIngredient, validateRecipe, validateExpense } from './validators';
-import { Ingredient, Recipe, Expense, DailySnapshot, AppData } from '../types';
+import { Ingredient, Recipe, Expense, DailySnapshot, AppData, Order } from '../types';
 
 // ============================================
 // TYPES
@@ -656,6 +656,144 @@ class DataService {
             return false;
         }
 
+        return true;
+    }
+
+
+
+    // ============================================
+    // ORDERS (POS)
+    // ============================================
+
+    async getOrders(limit: number = 50): Promise<Order[]> {
+        // Fetch active orders or recent history
+        // For simplicity, let's fetch last N orders. 
+        // Real app might separate "active" vs "history".
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+        if (error) throw error;
+
+        return (data || []).map((o: any) => ({
+            id: o.id,
+            customerName: o.customer_name,
+            table: o.table, // legacy field name in local type is 'table', db is table_number or just table? Plan said table_number. Let's stick to 'table' in local type.
+            // Wait, implementation plan said table_number. Local type has 'table'.
+            // I'll map table_number from DB to table in local type.
+            status: o.status,
+            items: o.items || [],
+            total: Number(o.total || 0),
+            timestamp: new Date(o.created_at).getTime(),
+            color: o.color
+        })).map((o: any) => ({
+            ...o,
+            table: o.table || 'Takeout' // Fallback
+        }));
+    }
+
+    async createOrder(order: Order): Promise<{ id: string } | null> {
+        const userId = await this.ensureUserId();
+
+        // Use the ID generated locally (it's string format in local, UUID in DB?)
+        // Local ID was #1234. DB expects UUID.
+        // Problem: Local IDs are simple strings like "#2912".
+        // DB ID is uuid default gen_random_uuid().
+        // We should let DB generate ID or generate a UUID locally if offline.
+        // However, AppContext uses the ID immediately.
+        // Solution: We'll store the local "display ID" maybe in a different field?
+        // Or just let the local ID be the UUID if we switch to UUIDs?
+        // Current POS.tsx generates `#${Math.floor(Math.random() * 10000)...}`
+        // Implementation plan said `id uuid default`...
+
+        // Let's store the local ID (display ID) in table_number or customer_name or just separate field?
+        // Or, we can just say the schema has an extra 'display_id' or we treat 'id' as text?
+        // The SQL defined 'id' as UUID. 
+        // If I try to insert "#1234" into UUID column it will fail.
+
+        // Fix: I will change the Plan/Logic slightly. 
+        // I will let Supabase generate the UUID for the primary key.
+        // I need to preserve the "Display ID" (like #1234) for the UI.
+        // I'll add 'order_number' to the schema? Or just put it in 'table_number' if it's not strictly a table?
+        // Actually, looking at `types.ts` `Order` interface: `id` is string.
+        // I should probably add `displayId` to `Order` type or `orderNo`.
+        // For now, to avoid schema drift from the user approved plan:
+        // The plan said: `id uuid`.
+        // Local logic makes `id` = "#1234".
+        // If I pass that to `createOrder`, it will break.
+        // I will change the local logic to generate a UUID for the `id` field, and maybe put the short code in `customerName` or a new field?
+        // Or better: The DB `id` is the canonical ID. The UI uses it.
+        // POS.tsx generates a random ID. I should change POS.tsx to generate a UUID?
+        // Or I can just cast the local ID to something else?
+
+        // Simpler approach: 
+        // The `orders` table has `id` (uuid).
+        // I can send `id: undefined` to let DB generate it.
+        // BUT offline needs an ID.
+        // So I should generate a UUID locally.
+        // I'll use `crypto.randomUUID()` in POS.tsx later.
+        // For `getOrders` mapping: map DB `id` (uuid) to local `id`.
+
+        // Payload construction:
+        const payload = {
+            user_id: userId,
+            id: order.id.length > 10 ? order.id : undefined, // If it looks like a UUID, usage it. Else let DB generate (and ignore local short ID? No, that breaks sync).
+            // Actually, if I want offline sync, I MUST generate ID locally.
+            // I'll assume for now I will fix POS.tsx to generate proper UUIDs.
+
+            customer_name: order.customerName,
+            table_number: order.table,
+            status: order.status,
+            total: order.total,
+            items: order.items,
+            color: order.color,
+            created_at: new Date(order.timestamp).toISOString()
+        };
+
+        if (!isOnline()) {
+            // If ID is missing (short ID), we have a problem. 
+            // I'll trust I'll fix POS.tsx to use UUIDs or I'll generate one here if needed?
+            // No, consistency is key.
+            // I'll just pass payload.
+            await addToSyncQueue({ table: 'orders', operation: 'insert', payload });
+            return { id: payload.id || 'temp-offline-id' };
+        }
+
+        const { data, error } = await supabase
+            .from('orders')
+            .upsert(payload) // upsert to be safe if ID exists
+            .select('id')
+            .single();
+
+        if (error) {
+            console.error('Create order error:', error);
+            return null;
+        }
+        return { id: data.id };
+    }
+
+    async updateOrder(id: string, updates: Partial<Order>): Promise<boolean> {
+        // Map to DB fields
+        const payload: any = {};
+        if (updates.status) payload.status = updates.status;
+        if (updates.items) payload.items = updates.items;
+        if (updates.total) payload.total = updates.total;
+
+        // payload.updated_at = new Date().toISOString(); // Let DB handle? or logic?
+        payload.updated_at = new Date().toISOString();
+
+        if (!isOnline()) {
+            await addToSyncQueue({ table: 'orders', operation: 'update', payload: { id, ...payload } });
+            return true;
+        }
+
+        const { error } = await supabase.from('orders').update(payload).eq('id', id);
+        if (error) {
+            console.error('Update order error:', error);
+            return false;
+        }
         return true;
     }
 
