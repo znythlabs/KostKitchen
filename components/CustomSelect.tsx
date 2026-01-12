@@ -8,9 +8,10 @@ interface CustomSelectProps {
   className?: string;
   placeholder?: string;
   align?: 'left' | 'right' | 'center';
+  getOptionClass?: (option: string) => string; // Support for custom colors per option
 }
 
-export const CustomSelect = ({ value, onChange, options, className = '', placeholder = 'Select', align = 'left' }: CustomSelectProps) => {
+export const CustomSelect = ({ value, onChange, options, className = '', placeholder = 'Select', align = 'left', getOptionClass }: CustomSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState({ top: undefined as number | undefined, bottom: undefined as number | undefined, left: 0, width: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -122,22 +123,27 @@ export const CustomSelect = ({ value, onChange, options, className = '', placeho
           }}
         >
           <div className="overflow-y-auto p-1 custom-scrollbar">
-            {uniqueOptions.map((opt) => (
-              <div
-                key={opt}
-                onClick={() => {
-                  onChange(opt);
-                  setIsOpen(false);
-                }}
-                className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors flex items-center justify-between ${value === opt
-                  ? 'bg-[#FCD34D]/10 text-[#FCD34D] font-bold'
-                  : 'text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/5'
-                  }`}
-              >
-                <span>{opt}</span>
-                {value === opt && <iconify-icon icon="lucide:check" width="14"></iconify-icon>}
-              </div>
-            ))}
+            {uniqueOptions.map((opt) => {
+              const customClass = getOptionClass ? getOptionClass(opt) : '';
+              const isSelected = value === opt;
+
+              return (
+                <div
+                  key={opt}
+                  onClick={() => {
+                    onChange(opt);
+                    setIsOpen(false);
+                  }}
+                  className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors flex items-center justify-between ${isSelected && !customClass
+                    ? 'bg-[#FCD34D]/10 text-[#FCD34D] font-bold'
+                    : customClass ? customClass : 'text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/5'
+                    }`}
+                >
+                  <span>{opt}</span>
+                  {isSelected && <iconify-icon icon="lucide:check" width="14"></iconify-icon>}
+                </div>
+              )
+            })}
           </div>
         </div>,
         document.body

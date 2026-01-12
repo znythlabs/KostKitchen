@@ -36,6 +36,11 @@ export const isAuthenticated = async (): Promise<boolean> => {
 
 // Helper to get current user ID
 export const getCurrentUserId = async (): Promise<string | null> => {
+    // Try session first (local/fast)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) return session.user.id;
+
+    // Fallback to getUser (network/safe)
     const { data: { user } } = await supabase.auth.getUser();
     return user?.id || null;
 };

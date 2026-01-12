@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../AppContext';
 import { getCurrencySymbol } from '../lib/format-utils';
 import { LiquidTabs } from '../components/LiquidTabs';
+import { CustomSelect } from '../components/CustomSelect';
 import { OrderItem, Order } from '../types';
 
 export const POS = () => {
-    const { data, createOrder, showToast } = useApp();
+    const { data, createOrder, showToast, updateOrderStatus } = useApp();
     const { recipes, orders } = data;
 
     const [activeTab, setActiveTab] = useState('All Items');
@@ -184,12 +185,26 @@ export const POS = () => {
                                         </div>
                                     </div>
                                     <div className="flex justify-between items-center">
-                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${order.status === 'New' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30' :
-                                                order.status === 'Cooking' ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-900/30' :
-                                                    'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900/30'
-                                            }`}>
-                                            {order.status}
-                                        </span>
+                                        <div className="relative group/status min-w-[100px]">
+                                            <CustomSelect
+                                                value={order.status === 'Completed' ? 'Done' : order.status}
+                                                onChange={(val) => {
+                                                    const status = val === 'Done' ? 'Completed' : val;
+                                                    updateOrderStatus(order.id, status as any);
+                                                }}
+                                                options={['New', 'Cooking', 'Ready', 'Done']}
+                                                className={`pl-2.5 pr-2 py-1 rounded-full text-[10px] font-bold border transition-all ${order.status === 'New' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30' :
+                                                    order.status === 'Cooking' ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-900/30' :
+                                                        'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900/30'
+                                                    }`}
+                                                getOptionClass={(opt) =>
+                                                    opt === 'New' ? 'text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20' :
+                                                        opt === 'Cooking' ? 'text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/20' :
+                                                            opt === 'Ready' ? 'text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20' :
+                                                                'text-green-600 hover:bg-green-50 font-bold'
+                                                }
+                                            />
+                                        </div>
                                         <span className="text-[10px] text-gray-400 font-medium">{order.items.reduce((s, i) => s + i.qty, 0)} items</span>
                                     </div>
                                 </div>
@@ -263,15 +278,12 @@ export const POS = () => {
                                 className="w-full bg-gray-50 dark:bg-[#2A2A2A] border-none rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-[#FCD34D]/50 transition-all outline-none"
                             />
                             <div className="relative">
-                                <select value={table} onChange={(e) => setTable(e.target.value)} className="w-full bg-gray-50 dark:bg-[#2A2A2A] border-none rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white appearance-none focus:ring-2 focus:ring-[#FCD34D]/50 transition-all outline-none cursor-pointer">
-                                    <option value="Takeout">Takeout</option>
-                                    <option value="Table 1">Table 1</option>
-                                    <option value="Table 2">Table 2</option>
-                                    <option value="Table 3">Table 3</option>
-                                </select>
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                                    <iconify-icon icon="lucide:chevron-down" width="16"></iconify-icon>
-                                </div>
+                                <CustomSelect
+                                    value={table}
+                                    onChange={(val) => setTable(val)}
+                                    options={['Takeout', 'Table 1', 'Table 2', 'Table 3']}
+                                    className="soft-input w-full cursor-pointer h-[46px] px-4 py-3 text-sm"
+                                />
                             </div>
                         </div>
                     </div>

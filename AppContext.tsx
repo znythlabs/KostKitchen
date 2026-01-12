@@ -256,24 +256,34 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   };
 
   // --- DATA FETCHING (Offline-First with Cache) ---
-  const refreshData = async (silent = false) => {
+  const refreshData = async (silent = false, force = false) => {
+    // Start Loading Timer
+    const startTime = Date.now();
     if (!silent) setLoading(true);
 
     try {
       const currentUserId = await getCurrentUserId();
+
+      // If no session, handle logout (but respect minimum delay if not silent)
       if (!currentUserId) {
+        setIsLoggedIn(false);
+        setUser(null);
+        setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [], orders: [] });
+        clearSession();
+        // Wait for remainder of 2s if needed
         if (!silent) {
-          setIsLoggedIn(false);
-          setUser(null);
-          setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [] });
+          const elapsed = Date.now() - startTime;
+          if (elapsed < 2000) await new Promise(r => setTimeout(r, 2000 - elapsed));
           setLoading(false);
-          clearSession();
         }
         return;
       }
 
       // STEP 1: Load from cache immediately (instant load)
-      const cachedData = await loadDataCache();
+      // Pass currentUserId to ensure we don't load another user's data
+      const cachedData = await loadDataCache(currentUserId);
+      let isCacheValid = false;
+
       if (cachedData && cachedData.ingredients) {
         console.log('[Cache] Loading cached data instantly...');
         setIsLoggedIn(true);
@@ -291,97 +301,157 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
             measurementUnit: cachedData.settings?.measurementUnit || 'Metric'
           }
         });
-        // Hide loading since we have cached data
 
+        // Check if cache is fresh by asking server if any meaningful changes occurred
+        // This replaces arbitrary time limits with actual data verification
+        let serverHasChanges = false;
+
+        if (cachedData.lastSync && isOnline()) {
+          try {
+            // Quick check (fast 6 queries) to see if we need the heavy download
+            // Timeout after 5s to prevent hanging this check
+            const checkPromise = dataService.checkForUpdates(cachedData.lastSync);
+            const timeoutPromise = new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error("Check timeout")), 5000));
+
+            serverHasChanges = await Promise.race([checkPromise, timeoutPromise]);
+            console.log(`[Network] Server check: Changes=${serverHasChanges}`);
+          } catch (e) {
+            console.warn("[Network] Change check failed/timed out, assuming no changes if cache exists.", e);
+            serverHasChanges = false; // Default to utilizing cache if network check fails (Offline-First)
+          }
+        } else {
+          // No lastSync or Offline -> Can't check server
+          serverHasChanges = isOnline(); // If online but no sync, assume we need data. If offline, no changes.
+        }
+
+        const hasData = cachedData.ingredients.length > 0 || cachedData.recipes.length > 0;
+
+        if (hasData) {
+          // If we have data and server says no changes (or we can't reach it but have local data), use cache
+          if (!serverHasChanges && !force) {
+            isCacheValid = true;
+          }
+        }
       }
 
       // STEP 2: Fetch fresh data from Supabase (background refresh)
+      // Skip if cache is valid (no server changes detected) and not forced
       if (isOnline()) {
-        console.log('[Network] Fetching fresh data from Supabase...');
+        if (isCacheValid && !force) {
+          console.log('[Network] Local data is up-to-date with server. Skipping heavy download.');
 
-        // Initialize Data Service with User ID
-        await dataService.init(currentUserId);
-        setIsLoggedIn(true);
+          // Still need to set user if not set
+          const { data: { user } } = await supabase.auth.getUser();
+          setUser(user);
+          updateSessionActivity();
 
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
+          // Should initiate background sync if pending ops?
+          // dataService.processQueue() called elsewhere usually but good to know
 
-        // Parallel Fetch via Data Service with Error Handling
-        const results = await Promise.allSettled([
-          dataService.getIngredients(),
-          dataService.getRecipes(),
-          dataService.getSettings(),
-          dataService.getExpenses(),
-          dataService.getSnapshots(),
-          dataService.getOrders()
-        ]);
+        } else {
+          console.log('[Network] Fetching fresh data from Supabase...', force ? '(Forced)' : '(Cache Stale)');
 
-        const [
-          ingredientsRes, recipesRes, settingsRes, expensesRes, dailySnapshotsRes, ordersRes
-        ] = results;
+          // Initialize Data Service with User ID
+          await dataService.init(currentUserId);
+          setIsLoggedIn(true);
 
-        // Log failures
-        if (ingredientsRes.status === 'rejected') console.error('Failed to load ingredients:', ingredientsRes.reason);
-        if (recipesRes.status === 'rejected') console.error('Failed to load recipes:', recipesRes.reason);
-        if (settingsRes.status === 'rejected') console.error('Failed to load settings:', settingsRes.reason);
-        if (expensesRes.status === 'rejected') console.error('Failed to load expenses:', expensesRes.reason);
-        if (dailySnapshotsRes.status === 'rejected') console.error('Failed to load snapshots:', dailySnapshotsRes.reason);
-        if (ordersRes.status === 'rejected') console.error('Failed to load orders:', ordersRes.reason);
+          const { data: { user } = {} } = await supabase.auth.getUser(); // Destructure with default empty object
+          setUser(user || null); // Ensure user is null if not found
 
-        const ingredients = ingredientsRes.status === 'fulfilled' ? ingredientsRes.value : [];
-        const recipes = recipesRes.status === 'fulfilled' ? recipesRes.value : [];
-        const settings = settingsRes.status === 'fulfilled' ? settingsRes.value : null;
-        const expenses = expensesRes.status === 'fulfilled' ? expensesRes.value : [];
-        const dailySnapshots = dailySnapshotsRes.status === 'fulfilled' ? dailySnapshotsRes.value : [];
-        const orders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
+          // Parallel Fetch via Data Service with Error Handling (with 15s timeout)
+          const fetchPromise = Promise.allSettled([
+            dataService.getIngredients(),
+            dataService.getRecipes(),
+            dataService.getSettings(),
+            dataService.getExpenses(),
+            dataService.getSnapshots(),
+            dataService.getOrders()
+          ]);
 
-        const freshData = {
-          ingredients,
-          recipes,
-          dailySnapshots,
-          orders,
-          settings: {
-            expenses: expenses,
-            isVatRegistered: settings?.isVatRegistered || false,
-            isPwdSeniorActive: settings?.isPwdSeniorActive || false,
-            otherDiscountRate: settings?.otherDiscountRate || 0,
-            currency: settings?.currency || 'PHP',
-            measurementUnit: settings?.measurementUnit || 'Metric'
+          const timeoutPromise = new Promise<any[]>((_, reject) => setTimeout(() => reject(new Error("Network timeout")), 15000));
+
+          let results: PromiseSettledResult<any>[] = [];
+          try {
+            results = (await Promise.race([fetchPromise, timeoutPromise])) as PromiseSettledResult<any>[];
+          } catch (e) {
+            console.warn('[Network] Fetch timed out, falling back to cache logic if any...');
+            results = [];
           }
-        };
 
-        setData(freshData);
+          const [
+            ingredientsRes, recipesRes, settingsRes, expensesRes, dailySnapshotsRes, ordersRes
+          ] = results.length > 0 ? results : Array(6).fill({ status: 'rejected', reason: 'Timeout' });
 
-        // Notify if massive failure
-        if (results.every(r => r.status === 'rejected')) {
-          showToast("Failed to load data from server. Working offline.", "error");
+          // Log failures
+          if (ingredientsRes.status === 'rejected') console.error('Failed to load ingredients:', ingredientsRes.reason);
+          if (recipesRes.status === 'rejected') console.error('Failed to load recipes:', recipesRes.reason);
+          if (settingsRes.status === 'rejected') console.error('Failed to load settings:', settingsRes.reason);
+          if (expensesRes.status === 'rejected') console.error('Failed to load expenses:', expensesRes.reason);
+          if (dailySnapshotsRes.status === 'rejected') console.error('Failed to load snapshots:', dailySnapshotsRes.reason);
+          if (ordersRes.status === 'rejected') console.error('Failed to load orders:', ordersRes.reason);
+
+          const ingredients = ingredientsRes.status === 'fulfilled' ? ingredientsRes.value : (cachedData?.ingredients || []);
+          const recipes = recipesRes.status === 'fulfilled' ? recipesRes.value : (cachedData?.recipes || []);
+          const settings = settingsRes.status === 'fulfilled' ? settingsRes.value : (cachedData?.settings || null);
+          const expenses = expensesRes.status === 'fulfilled' ? expensesRes.value : (cachedData?.expenses || []);
+          const dailySnapshots = dailySnapshotsRes.status === 'fulfilled' ? dailySnapshotsRes.value : (cachedData?.dailySnapshots || []);
+          const orders = ordersRes.status === 'fulfilled' ? ordersRes.value : (cachedData?.orders || []);
+
+          const freshData = {
+            ingredients,
+            recipes,
+            dailySnapshots,
+            orders,
+            settings: {
+              expenses: expenses,
+              // Merge with existing settings or defaults prevent overwrite glitches
+              isVatRegistered: settings?.isVatRegistered ?? data.settings.isVatRegistered,
+              isPwdSeniorActive: settings?.isPwdSeniorActive ?? data.settings.isPwdSeniorActive,
+              otherDiscountRate: settings?.otherDiscountRate ?? data.settings.otherDiscountRate,
+              currency: settings?.currency || 'PHP',
+              measurementUnit: settings?.measurementUnit || 'Metric'
+            }
+          };
+
+          setData(freshData);
+
+          // Notify if massive failure
+          if (results.every(r => r.status === 'rejected') && !isCacheValid) {
+            showToast("Failed to load data from server. Working offline.", "error");
+          }
+
+          // STEP 3: Save fresh data to cache for next time
+          if (results.some(r => r.status === 'fulfilled')) {
+            console.log('[Cache] Saving fresh data to cache...');
+            await saveDataCache({
+              ingredients, recipes, settings: freshData.settings, expenses, dailySnapshots, orders, lastSync: Date.now(), userId: currentUserId
+            });
+          }
+
+          updateSessionActivity();
         }
-
-        // STEP 3: Save fresh data to cache for next time
-        console.log('[Cache] Saving fresh data to cache...');
-        await saveDataCache({
-          ingredients,
-          recipes,
-          settings: freshData.settings,
-          expenses,
-          dailySnapshots,
-          orders,
-          lastSync: Date.now()
-        });
-
-        updateSessionActivity();
       } else {
         console.log('[Offline] Using cached data only');
         // Already loaded from cache above, just mark as logged in
         setIsLoggedIn(true);
+        if (!silent && !cachedData) {
+          showToast("You are offline. Please check connection.", "error");
+        }
       }
 
     } catch (error: any) {
       console.error("Error fetching data:", error);
-      showToast(`Error loading data: ${error.message || 'Unknown error'}`, "error");
+      showToast("Error loading data: " + error.message, "error");
       // If network fails, we still have cached data loaded (if available)
     } finally {
-      if (!silent) setLoading(false);
+      if (!silent) {
+        // Enforce minimum 2 second loading time
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 2000) {
+          await new Promise(resolve => setTimeout(resolve, 2000 - elapsed));
+        }
+        setLoading(false);
+      }
     }
   };
 
@@ -422,17 +492,36 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
         dataLoadedRef.current = false;
         setIsLoggedIn(false);
         setLoading(false);
-        setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [] });
+        setData({ settings: INITIAL_DATA.settings, ingredients: [], recipes: [], dailySnapshots: [], orders: [] });
         clearSession();
-        dataService.cleanup();
+        // dataService.cleanup(); // Disabled to preserve cache
       }
     });
 
     return () => {
       subscription.unsubscribe();
-      dataService.cleanup();
+      // dataService.cleanup(); // Disabled
     };
   }, []);
+
+  // --- AUTO-SAVE CACHE ---
+  // Automatically persists data updates to local cache to ensure offline capability
+  // and maintain accurate lastSync timestamp for smart updates.
+  useEffect(() => {
+    // Only save if logged in AND data has been fully loaded/initialized
+    // This prevents overwriting cache with empty INITIAL_DATA during startup
+    if (!isLoggedIn || !user?.id || !dataLoadedRef.current) return;
+
+    const timeoutId = setTimeout(() => {
+      saveDataCache({
+        ...data,
+        lastSync: Date.now(),
+        userId: user.id
+      }).catch(e => console.error("[Cache] Auto-save failed:", e));
+    }, 2000); // 2s debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [data, isLoggedIn, user]);
 
   const login = () => {
     const hasSeen = localStorage.getItem('hasSeenTour');
@@ -443,11 +532,27 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    clearSession();
-    dataService.cleanup();
-    window.location.reload();
+    // Immediate visual feedback
+    setLoading(true); // Shows splash screen "Initializing..." or similar. Ideally we want "Logging out..."
+    // Since SplashScreen uses "Initializing..." hardcoded or specific text, we might want to change setLoading behavior or just accept it as 'Working'.
+    // Or we can use showToast if available in context? No, but we can assume 'setLoading(true)' blocks interaction.
+
+    try {
+      // Clear local session immediately (perception of speed)
+      setUser(null);
+      clearSession();
+
+      // Attempt server logout with timeout (don't let network hang UI)
+      const signOutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 3000)); // 3s max wait
+
+      await Promise.race([signOutPromise, timeoutPromise]);
+    } catch (e) {
+      console.warn("Logout error (ignored):", e);
+    } finally {
+      // Hard refresh to ensure clean state
+      window.location.reload();
+    }
   };
 
   const getIngredient = (id: number) => data.ingredients.find(i => i.id === id);
@@ -830,11 +935,94 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   // --- POS ORDER LOGIC ---
 
   const createOrder = async (order: Order) => {
-    setData(prev => ({
-      ...prev,
-      orders: [order, ...prev.orders]
-    }));
-    await dataService.createOrder(order);
+    // 1. DEDUCT INVENTORY IMMEDIATELY (Move logic here as per user request)
+    const updates: { id: number, stockQty: number }[] = [];
+    const ingredientMap = new Map<number, number>();
+
+    // Build deduction map based on order items
+    order.items.forEach(item => {
+      // Use loose comparison or string conversion for IDs to prevent mismatches
+      const recipe = data.recipes.find(r => String(r.id) === String(item.recipeId));
+
+      if (recipe) {
+        console.log(`[Order] Found recipe: ${recipe.name}, items: ${recipe.ingredients?.length}`);
+
+        // Calculate portion ratio
+        // Ensure batchSize is at least 1 to avoid Infinity
+        const batchSize = Math.max(1, Number(recipe.batchSize) || 1);
+        const ratio = item.qty / batchSize;
+
+        if (recipe.ingredients && recipe.ingredients.length > 0) {
+          recipe.ingredients.forEach(ri => {
+            const currentDeduction = ingredientMap.get(ri.id) || 0;
+            ingredientMap.set(ri.id, currentDeduction + (ri.qty * ratio));
+          });
+        } else {
+          console.warn(`[Order] Recipe ${recipe.name} has no ingredients linked!`);
+          alert(`Warning: "${recipe.name}" has no ingredients defined. Stock cannot be deducted.`);
+          // Better to log or use a toast if available without disrupting flow too much
+        }
+      } else {
+        console.warn(`[Order] Recipe ID ${item.recipeId} not found in local data`);
+      }
+    });
+
+    if (ingredientMap.size === 0) {
+      console.warn("[Stock] No ingredients identified for deduction.");
+      // If items existed but no ingredients found, likely data issue
+      if (order.items.length > 0) {
+        // Optional: alert("Notice: No stock deducted. Check if recipes have ingredients.");
+      }
+    }
+
+    // Apply deductions to local state & prepare updates
+    for (const [ingId, qtyNeeded] of ingredientMap.entries()) {
+      // Robust ID lookup
+      const ingredient = data.ingredients.find(i => String(i.id) === String(ingId));
+
+      if (ingredient) {
+        const currentStock = Number(ingredient.stockQty) || 0;
+        const newStock = Math.max(0, currentStock - qtyNeeded);
+
+        console.log(`[Stock] Deducting ${qtyNeeded} from ${ingredient.name} (${currentStock} -> ${newStock})`);
+
+        updates.push({ id: ingredient.id, stockQty: newStock }); // Keep original ID type for update
+      } else {
+        console.warn(`[Stock] Ingredient ID ${ingId} not found for deduction`);
+      }
+    }
+
+    // Optimistic Update: Add Order AND Update Stock
+    setData((prev) => {
+      const newData = {
+        ...prev,
+        orders: [order, ...prev.orders],
+        ingredients: prev.ingredients.map(i => {
+          const update = updates.find(u => u.id === i.id);
+          return update ? { ...i, stockQty: update.stockQty } : i;
+        })
+      };
+      // Persist changes to cache immediately
+      saveDataCache({
+        ...newData,
+        lastSync: Date.now(),
+        userId: user?.id || ''
+      }).catch(e => console.error(e));
+
+      return newData;
+    });
+
+    // Background Sync
+    // 1. Create Order
+    dataService.createOrder(order).then(result => {
+      // Handle result if needed
+    });
+
+    // 2. Sync Stock Deductions (Parallel)
+    // We should ideally batch this, but for now we loop updates
+    updates.forEach(u => {
+      dataService.updateIngredient(u.id, { stockQty: u.stockQty });
+    });
   };
 
   const updateOrderStatus = async (id: string, status: Order['status']) => {
@@ -849,39 +1037,8 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     const order = data.orders.find(o => o.id === id);
     if (!order) return;
 
-    // 1. Deduct Inventory (similar to cookRecipe but for multiple items)
-    const updates: { id: number, stockQty: number }[] = [];
-    const ingredientMap = new Map<number, number>(); // track deductions to aggregate if same ingredient used multiple times
-
-    // Build deduction map
-    order.items.forEach(item => {
-      const recipe = data.recipes.find(r => r.id === item.recipeId);
-      if (recipe) {
-        // Calculate portion ratio
-        const batchSize = recipe.batchSize || 1;
-        const ratio = item.qty / batchSize;
-
-        recipe.ingredients.forEach(ri => {
-          const currentDeduction = ingredientMap.get(ri.id) || 0;
-          ingredientMap.set(ri.id, currentDeduction + (ri.qty * ratio));
-        });
-      }
-    });
-
-    // Apply deductions
-    for (const [ingId, qtyNeeded] of ingredientMap.entries()) {
-      const ingredient = data.ingredients.find(i => i.id === ingId);
-      if (ingredient) {
-        const newStock = Math.max(0, ingredient.stockQty - qtyNeeded);
-        updates.push({ id: ingId, stockQty: newStock });
-      }
-    }
-
-    // Optimistic Inventory Update
-    const newIngredients = data.ingredients.map(i => {
-      const update = updates.find(u => u.id === i.id);
-      return update ? { ...i, stockQty: update.stockQty } : i;
-    });
+    // 1. Update Order Status
+    await updateOrderStatus(id, 'Completed');
 
     // 2. Update Daily Snapshot (Financials)
     const today = new Date().toISOString().split('T')[0];
@@ -952,15 +1109,13 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
     // 3. Update State
     setData(prev => ({
       ...prev,
-      ingredients: newIngredients,
+      // ingredients: newIngredients, // REMOVED: Stock removed at creation
       dailySnapshots: newSnapshots,
       orders: prev.orders.map(o => o.id === id ? { ...o, status: 'Completed' } : o)
     }));
 
     // 4. Persist Inventory Changes
-    for (const u of updates) {
-      await dataService.updateIngredient(u.id, { stockQty: u.stockQty });
-    }
+    // REMOVED: Stock already deducted
 
     // 5. Persist Order Status
     await dataService.updateOrder(id, { status: 'Completed' });
@@ -1089,6 +1244,35 @@ export const AppProvider = ({ children }: PropsWithChildren) => {
   const closeModal = () => { setActiveModal(null); setEditingStockItem(null); setPickerFilter(null); };
   const askConfirmation = (opts: any) => setConfirmModal({ ...opts, isOpen: true });
   const closeConfirmation = () => setConfirmModal(prev => ({ ...prev, isOpen: false }));
+
+  // Check if we are stuck in "logged in but no data" state
+  const isDataEmpty = isLoggedIn && data.ingredients.length === 0 && data.recipes.length === 0 && data.orders.length === 0 && !loading;
+
+  if (isDataEmpty) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md text-center">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold mb-2">Data Failed to Load</h2>
+          <p className="text-gray-600 mb-6">
+            We couldn't load your restaurant data. This might be due to a connection issue or an empty database.
+          </p>
+          <button
+            onClick={() => refreshData(false, true)}
+            className="w-full bg-slate-900 text-white py-3 rounded-lg hover:bg-slate-800 transition-colors font-semibold"
+          >
+            Retry Loading
+          </button>
+          <button
+            onClick={logout}
+            className="mt-4 text-sm text-gray-500 hover:text-gray-700 underline"
+          >
+            Log Out & Clear Cache
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AppContext.Provider value={{

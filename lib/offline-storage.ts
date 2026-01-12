@@ -41,9 +41,9 @@ interface OfflineStore {
 // ============================================
 
 const DB_NAME = 'costkitchen_offline';
-const DB_VERSION = 1;
+const DB_VERSION = 3; // Increment again to ensure clean state
 const STORE_NAME = 'sync_queue';
-const CACHE_STORE = 'data_cache';
+const CACHE_STORE = 'data_cache_v2'; // Use new store name to avoid deleteObjectStore issues
 
 let db: IDBDatabase | null = null;
 
@@ -70,7 +70,8 @@ const openDatabase = (): Promise<IDBDatabase> => {
                 database.createObjectStore(STORE_NAME, { keyPath: 'id' });
             }
 
-            // Store for cached data
+            // Store for cached data - Always create new version if missing
+            // We do NOT delete the old store to prevent potential transaction errors
             if (!database.objectStoreNames.contains(CACHE_STORE)) {
                 database.createObjectStore(CACHE_STORE, { keyPath: 'key' });
             }
@@ -177,12 +178,13 @@ export const clearSyncQueue = async (): Promise<void> => {
 // DATA CACHE OPERATIONS
 // ============================================
 
-export const saveDataCache = async (data: OfflineStore['cachedData']): Promise<void> => {
+export const saveDataCache = async (data: OfflineStore['cachedData'] & { userId?: string }): Promise<void> => {
     const db = await openDatabase();
 
     return new Promise((resolve, reject) => {
         const transaction = db.transaction(CACHE_STORE, 'readwrite');
         const store = transaction.objectStore(CACHE_STORE);
+        // Store userId with the data blob
         const request = store.put({ key: 'appData', ...data, lastSync: Date.now() });
 
         request.onsuccess = () => resolve();
@@ -190,7 +192,7 @@ export const saveDataCache = async (data: OfflineStore['cachedData']): Promise<v
     });
 };
 
-export const loadDataCache = async (): Promise<OfflineStore['cachedData']> => {
+export const loadDataCache = async (expectedUserId?: string): Promise<OfflineStore['cachedData'] | null> => {
     const db = await openDatabase();
 
     return new Promise((resolve, reject) => {
@@ -201,6 +203,12 @@ export const loadDataCache = async (): Promise<OfflineStore['cachedData']> => {
         request.onsuccess = () => {
             const result = request.result;
             if (result) {
+                // If specific user ID expected, validate it
+                if (expectedUserId && result.userId && result.userId !== expectedUserId) {
+                    console.warn(`[Cache] Cache belongs to user ${result.userId}, but expected ${expectedUserId}. Ignoring.`);
+                    resolve(null);
+                    return;
+                }
                 const { key, ...data } = result;
                 resolve(data as OfflineStore['cachedData']);
             } else {

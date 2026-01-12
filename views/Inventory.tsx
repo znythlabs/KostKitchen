@@ -129,6 +129,7 @@ export const Inventory = () => {
                   <th className="py-4 bg-white dark:bg-[#1A1A1A]">Category</th>
                   <th className="py-4 bg-white dark:bg-[#1A1A1A]">Status</th>
                   <th className="py-4 w-1/4 bg-white dark:bg-[#1A1A1A]">Quantity</th>
+                  <th className="py-4 bg-white dark:bg-[#1A1A1A]">Min Stock</th>
                   <th className="py-4 bg-white dark:bg-[#1A1A1A]">Unit Cost</th>
                   <th className="py-4 text-right bg-white dark:bg-[#1A1A1A]">Total Value</th>
                   <th className="py-4 text-center pr-8 bg-white dark:bg-[#1A1A1A]">Actions</th>
@@ -136,7 +137,7 @@ export const Inventory = () => {
               </thead>
               <tbody className="text-sm">
                 {filteredIngredients.length === 0 ? (
-                  <tr><td colSpan={7} className="py-8 text-center text-gray-400">No items in this category.</td></tr>
+                  <tr><td colSpan={8} className="py-8 text-center text-gray-400">No items in this category.</td></tr>
                 ) : (
                   filteredIngredients.map(item => {
                     const status = getStockStatus(item);
@@ -157,16 +158,17 @@ export const Inventory = () => {
                           </div>
                         </td>
                         <td className="py-4">
-                          <div className="flex items-center gap-3 pr-8">
-                            <span className="text-xs font-bold text-[#303030] dark:text-white w-16 text-right">{item.stockQty} {item.unit}</span>
-                            <div className="h-1.5 flex-1 bg-gray-100 dark:bg-[#333] rounded-full overflow-hidden">
+                          <div className="flex items-center gap-4 pr-8">
+                            <span className="text-sm font-bold text-[#303030] dark:text-white w-20 text-right whitespace-nowrap">{item.stockQty} {item.unit}</span>
+                            <div className="h-2 flex-1 bg-gray-100 dark:bg-[#333] rounded-full overflow-hidden">
                               <div
                                 className={`h-full rounded-full ${status.bgClass}`}
-                                style={{ width: `${Math.min(100, ((item.stockQty || 0) / maxStock) * 100)}%` }}
+                                style={{ width: `${Math.min(100, ((item.stockQty || 0) / Math.max((item.stockQty || 0) * 1.1, (item.minStock || 1) * 2)) * 100)}%` }}
                               ></div>
                             </div>
                           </div>
                         </td>
+                        <td className="py-4 font-medium text-gray-500 dark:text-gray-400">{item.minStock || 0} {item.unit}</td>
                         <td className="py-4 font-medium text-gray-500 dark:text-gray-400">{currencySymbol}{item.cost.toFixed(2)}/{item.unit}</td>
                         <td className="py-4 text-right font-bold text-[#303030] dark:text-white">{currencySymbol}{totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td className="py-4 text-center pr-8 relative">

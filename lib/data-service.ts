@@ -213,11 +213,12 @@ class DataService {
 
     // Helper to get user ID with fallback
     private async ensureUserId(): Promise<string | null> {
-        if (this.userId) return this.userId;
-
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.id) {
-            this.userId = user.id;
+        // Always double check auth state if ID is missing or strictly
+        if (!this.userId) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user?.id) {
+                this.userId = user.id;
+            }
         }
         return this.userId;
     }
@@ -387,9 +388,12 @@ class DataService {
         if (recRes.error) throw recRes.error;
 
         // Build ingredients map for fast lookup
-        const ingredientsByRecipeId = new Map<number, { id: number; qty: number }[]>();
+        // Build ingredients map for fast lookup
+        // Use String keys to ensure matching regardless of number/string differences
+        const ingredientsByRecipeId = new Map<string, { id: number; qty: number }[]>();
+
         (recIngRes.data || []).forEach((ri: any) => {
-            const recipeId = ri.recipe_id;
+            const recipeId = String(ri.recipe_id); // Force string key
             if (!ingredientsByRecipeId.has(recipeId)) {
                 ingredientsByRecipeId.set(recipeId, []);
             }
@@ -405,7 +409,8 @@ class DataService {
             dailyVolume: Number(r.daily_volume),
             image: r.image,
             batchSize: Number(r.batch_size),
-            ingredients: ingredientsByRecipeId.get(r.id) || []
+            // Lookup using string ID
+            ingredients: ingredientsByRecipeId.get(String(r.id)) || []
         }));
     }
 
@@ -768,7 +773,8 @@ class DataService {
             .single();
 
         if (error) {
-            console.error('Create order error:', error);
+            console.error('Create order error details:', error);
+            console.error('Payload was:', payload);
             return null;
         }
         return { id: data.id };
@@ -795,6 +801,41 @@ class DataService {
             return false;
         }
         return true;
+    }
+
+
+    // ============================================
+    // SYNC OPTIMIZATION (Smart Updates)
+    // ============================================
+
+    /**
+     * Checks if there are any changes on the server since the last sync.
+     * Returns true if updates are available, false if local data is up to date.
+     */
+    async checkForUpdates(lastSyncTimestamp: number): Promise<boolean> {
+        if (!lastSyncTimestamp) return true;
+
+        const lastSync = new Date(lastSyncTimestamp).toISOString();
+        const tables = ['ingredients', 'recipes', 'settings', 'expenses', 'daily_snapshots', 'orders'];
+
+        // Parallel check for latest update in each table
+        const checks = tables.map(table =>
+            supabase
+                .from(table)
+                .select('updated_at')
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+        );
+
+        const results = await Promise.all(checks);
+
+        // If any table has a record updated AFTER lastSync, we need to refresh
+        return results.some(({ data, error }) => {
+            if (error || !data) return false;
+            // Compare timestamps
+            return new Date(data.updated_at).getTime() > lastSyncTimestamp;
+        });
     }
 
     // ============================================

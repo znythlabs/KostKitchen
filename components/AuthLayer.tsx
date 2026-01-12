@@ -155,22 +155,31 @@ export const AuthLayer = () => {
       }
     } else {
       // Login
-      const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-      if (error) {
-        recordLoginAttempt(false); // Track failed attempt
-        if (error.message.includes("Email not confirmed")) {
-          setView('verify');
-          setErrorMsg("Email not verified. Please check your inbox.");
-          setCooldown(0); // Allow immediate resend if needed
+      try {
+        const { error } = await Promise.race([
+          supabase.auth.signInWithPassword({ email: cleanEmail, password }),
+          new Promise<{ error: any }>((_, reject) => setTimeout(() => reject(new Error('Login timed out. Please check connection.')), 15000))
+        ]);
+
+        if (error) {
+          recordLoginAttempt(false); // Track failed attempt
+          if (error.message.includes("Email not confirmed")) {
+            setView('verify');
+            setErrorMsg("Email not verified. Please check your inbox.");
+            setCooldown(0); // Allow immediate resend if needed
+          } else {
+            setErrorMsg(error.message);
+          }
         } else {
-          setErrorMsg(error.message);
+          recordLoginAttempt(true); // Clear rate limit on success
+          login();
         }
-      } else {
-        recordLoginAttempt(true); // Clear rate limit on success
-        login();
+      } catch (err: any) {
+        setErrorMsg(err.message || "An unexpected error occurred.");
+      } finally {
+        setLoading(false);
       }
     }
-    setLoading(false);
   };
 
   const handleResend = async () => {
